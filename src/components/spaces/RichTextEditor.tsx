@@ -1,6 +1,5 @@
 import { useRef, useEffect, useState } from 'react';
-import Box from '@mui/joy@5.0.0-beta.48/Box';
-import Tooltip from '@mui/joy@5.0.0-beta.48/Tooltip';
+import { Tooltip } from '@heroui/react';
 import { storageToDisplay, displayToStorage, LinkInfo } from '../../utils/linkConverter';
 
 interface RichTextEditorProps {
@@ -12,7 +11,7 @@ interface RichTextEditorProps {
   placeholder?: string;
   spacesState?: any;
   viewportsState?: any;
-  sx?: any;
+  className?: string;
   textareaRef?: React.RefObject<HTMLTextAreaElement>;
   contentEditableRef?: React.RefObject<HTMLDivElement>;
   onTriggerSpaceLink?: (position: { top: number; left: number }, triggerIndex: number) => void;
@@ -33,7 +32,7 @@ export function RichTextEditor({
   placeholder = 'Type something...',
   spacesState,
   viewportsState,
-  sx = {},
+  className = '',
   textareaRef: externalRef,
   contentEditableRef: externalContentEditableRef,
   onTriggerSpaceLink,
@@ -124,8 +123,7 @@ export function RichTextEditor({
           {linkText}
           {isBroken && (
             <Tooltip 
-              title="Right-click for options" 
-              variant="outlined" 
+              content="Right-click for options" 
               size="sm"
               placement="top"
             >
@@ -230,7 +228,7 @@ export function RichTextEditor({
     // Controlla se l'utente ha appena digitato ">>"
     if (newText.endsWith('>>') && !displayContent.endsWith('>>')) {
       // Salva la posizione del cursore prima di rimuovere ">>"
-      const cursorPosition = caretPos - 2; // -2 perché stiamo per rimuovere ">>"
+      const cursorPosition = caretPos! - 2; // -2 perché stiamo per rimuovere ">>"
       
       // Rimuovi ">>" dal contenuto
       const contentWithoutTrigger = newText.slice(0, -2);
@@ -314,11 +312,11 @@ export function RichTextEditor({
           contentEditableRef.current!.appendChild(document.createTextNode(part));
         } else {
           const span = document.createElement('span');
-          span.setAttribute('data-link-id', part.props['data-link-id']);
-          span.setAttribute('data-link-text', part.props['data-link-text']);
+          span.setAttribute('data-link-id', (part as JSX.Element).props['data-link-id']);
+          span.setAttribute('data-link-text', (part as JSX.Element).props['data-link-text']);
           span.setAttribute('contenteditable', 'false');
           
-          const isBroken = brokenLinks?.has(part.props['data-link-id']);
+          const isBroken = brokenLinks?.has((part as JSX.Element).props['data-link-id']);
           
           span.style.color = isBroken ? '#d32f2f' : '#0b6bcb';
           span.style.fontWeight = '600';
@@ -329,8 +327,8 @@ export function RichTextEditor({
           span.style.gap = '4px';
           span.style.textDecoration = isBroken ? 'line-through' : 'none';
           
-          const linkId = part.props['data-link-id'];
-          const linkText = part.props['data-link-text'];
+          const linkId = (part as JSX.Element).props['data-link-id'];
+          const linkText = (part as JSX.Element).props['data-link-text'];
           
           span.textContent = linkText;
           
@@ -554,7 +552,7 @@ export function RichTextEditor({
   };
 
   return (
-    <Box
+    <div
       ref={contentEditableRef}
       contentEditable
       suppressContentEditableWarning
@@ -568,35 +566,14 @@ export function RichTextEditor({
       onFocus={onFocus}
       onBlur={onBlur}
       data-placeholder={!displayContent ? placeholder : ''}
-      sx={{
-        minHeight: '24px',
-        py: '2px',
-        px: '12px',
-        border: 'none !important',
-        outline: 'none !important',
-        backgroundColor: 'transparent',
-        lineHeight: 1.2,
-        whiteSpace: 'pre-wrap',
-        wordWrap: 'break-word',
-        cursor: 'text',
-        '&:focus': {
-          outline: 'none !important',
-          boxShadow: 'none !important',
-          border: 'none !important',
-        },
-        '&:focus-visible': {
-          outline: 'none !important',
-          boxShadow: 'none !important',
-          border: 'none !important',
-        },
-        '&[data-placeholder]:not(:focus)::before': {
-          content: 'attr(data-placeholder)',
-          color: 'text.tertiary',
-          pointerEvents: 'none',
-          position: 'absolute',
-        },
-        ...sx,
-      }}
+      className={`
+        min-h-[24px] py-[2px] px-3
+        bg-transparent
+        leading-[1.2] whitespace-pre-wrap break-words cursor-text
+        outline-none border-none shadow-none
+        empty:before:content-[attr(data-placeholder)] empty:before:text-default-400 empty:before:pointer-events-none empty:before:absolute
+        ${className}
+      `}
     />
   );
 }

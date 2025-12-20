@@ -1,12 +1,12 @@
-import Modal from '@mui/joy@5.0.0-beta.48/Modal';
-import ModalDialog from '@mui/joy@5.0.0-beta.48/ModalDialog';
-import DialogTitle from '@mui/joy@5.0.0-beta.48/DialogTitle';
-import DialogContent from '@mui/joy@5.0.0-beta.48/DialogContent';
-import DialogActions from '@mui/joy@5.0.0-beta.48/DialogActions';
-import Button from '@mui/joy@5.0.0-beta.48/Button';
-import Typography from '@mui/joy@5.0.0-beta.48/Typography';
+import {
+  Modal,
+  ModalContent,
+  ModalHeader,
+  ModalBody,
+  ModalFooter,
+  Button
+} from '@heroui/react';
 import { AlertTriangle } from 'lucide-react';
-import Box from '@mui/joy@5.0.0-beta.48/Box';
 
 interface DeleteSpaceDialogProps {
   open: boolean;
@@ -24,46 +24,39 @@ export function DeleteSpaceDialog({
   onClose
 }: DeleteSpaceDialogProps) {
   return (
-    <Modal open={open} onClose={onClose}>
-      <ModalDialog
-        variant="outlined"
-        role="alertdialog"
-        sx={{
-          maxWidth: 500,
-          borderRadius: '12px',
-        }}
-      >
-        <DialogTitle>
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
-            <AlertTriangle size={24} color="#d32f2f" />
-            Delete "{spaceId}"?
-          </Box>
-        </DialogTitle>
-        <DialogContent>
-          <Typography level="body-md" sx={{ mb: 2 }}>
-            This space is linked from {linkedPagesCount} {linkedPagesCount === 1 ? 'page' : 'pages'}.
-          </Typography>
-          <Typography level="body-sm" sx={{ color: 'text.secondary' }}>
-            If you proceed, these links will become broken. You'll be able to reconnect them by clicking the broken link icon.
-          </Typography>
-        </DialogContent>
-        <DialogActions>
-          <Button
-            variant="solid"
-            color="danger"
-            onClick={onConfirm}
-          >
-            Delete anyway
-          </Button>
-          <Button
-            variant="plain"
-            color="neutral"
-            onClick={onClose}
-          >
-            Cancel
-          </Button>
-        </DialogActions>
-      </ModalDialog>
+    <Modal isOpen={open} onClose={onClose} size="md">
+      <ModalContent>
+        {(onClose) => (
+          <>
+            <ModalHeader className="flex gap-2 items-center text-danger">
+              <AlertTriangle size={24} />
+              Delete "{spaceId}"?
+            </ModalHeader>
+            <ModalBody>
+              <p className="text-medium">
+                This space is linked from {linkedPagesCount} {linkedPagesCount === 1 ? 'page' : 'pages'}.
+              </p>
+              <p className="text-small text-default-500">
+                If you proceed, these links will become broken. You'll be able to reconnect them by clicking the broken link icon.
+              </p>
+            </ModalBody>
+            <ModalFooter>
+              <Button
+                variant="light"
+                onPress={onClose}
+              >
+                Cancel
+              </Button>
+              <Button
+                color="danger"
+                onPress={onConfirm}
+              >
+                Delete anyway
+              </Button>
+            </ModalFooter>
+          </>
+        )}
+      </ModalContent>
     </Modal>
   );
 }

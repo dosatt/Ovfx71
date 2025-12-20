@@ -1,6 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import Box from '@mui/joy@5.0.0-beta.48/Box';
-import Textarea from '@mui/joy@5.0.0-beta.48/Textarea';
+import { Textarea } from '@heroui/react';
 import { Space } from '../../types';
 import { spaceToMarkdown, markdownToSpace } from '../../utils/markdownConverter';
 
@@ -18,7 +17,7 @@ export function MarkdownView({ space, spacesState }: MarkdownViewProps) {
     setMarkdown(spaceToMarkdown(space));
   }, [space]);
 
-  const handleChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const newMarkdown = e.target.value;
     setMarkdown(newMarkdown);
 
@@ -35,7 +34,7 @@ export function MarkdownView({ space, spacesState }: MarkdownViewProps) {
     }
   };
 
-  const handleScroll = (e: React.UIEvent<HTMLTextAreaElement>) => {
+  const handleScroll = (e: React.UIEvent<HTMLInputElement>) => {
     if (lineNumbersRef.current) {
       lineNumbersRef.current.scrollTop = e.currentTarget.scrollTop;
     }
@@ -46,71 +45,33 @@ export function MarkdownView({ space, spacesState }: MarkdownViewProps) {
   const lineNumbers = Array.from({ length: lineCount }, (_, i) => i + 1);
 
   return (
-    <Box
-      sx={{
-        height: '100%',
-        overflow: 'hidden',
-        p: 2,
-        bgcolor: 'background.level1',
-        display: 'flex',
-        gap: 0
-      }}
-    >
+    <div className="h-full overflow-hidden p-4 bg-default-100 flex gap-0">
       {/* Line numbers */}
-      <Box
+      <div
         ref={lineNumbersRef}
-        sx={{
-          minWidth: '50px',
-          maxWidth: '50px',
-          overflow: 'hidden',
-          bgcolor: 'background.surface',
-          borderRight: '1px solid',
-          borderColor: 'divider',
-          pr: 1,
-          pt: 1,
-          pb: 1,
-          textAlign: 'right',
-          fontFamily: 'monospace',
-          fontSize: '0.875rem',
-          lineHeight: 1.6,
-          color: 'text.tertiary',
-          userSelect: 'none'
-        }}
+        className="min-w-[50px] max-w-[50px] overflow-hidden bg-background border-r border-divider pr-2 py-2 text-right font-mono text-sm leading-[1.6] text-default-400 select-none"
       >
         {lineNumbers.map((num) => (
-          <Box key={num} sx={{ lineHeight: 1.6 }}>
+          <div key={num} className="leading-[1.6]">
             {num}
-          </Box>
+          </div>
         ))}
-      </Box>
+      </div>
 
       {/* Textarea */}
       <Textarea
         value={markdown}
         onChange={handleChange}
         placeholder="Edit markdown..."
-        variant="plain"
-        sx={{
-          flex: 1,
-          width: '100%',
-          height: '100%',
-          fontFamily: 'monospace',
-          fontSize: '0.875rem',
-          lineHeight: 1.6,
-          bgcolor: 'background.surface',
-          border: 'none',
-          p: 1,
-          '& textarea': {
-            overflow: 'auto !important'
-          }
+        variant="flat"
+        classNames={{
+          base: "flex-1 w-full h-full",
+          input: "font-mono text-sm leading-[1.6] h-full overflow-auto !important p-2 bg-background border-none outline-none shadow-none resize-none",
+          inputWrapper: "h-full bg-background shadow-none p-0",
         }}
-        slotProps={{
-          textarea: {
-            ref: textareaRef,
-            onScroll: handleScroll
-          }
-        }}
+        ref={textareaRef}
+        onScroll={handleScroll as any}
       />
-    </Box>
+    </div>
   );
 }

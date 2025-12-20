@@ -1,5 +1,3 @@
-import { useState } from 'react';
-import Box from '@mui/joy@5.0.0-beta.48/Box';
 import { SpaceTreeItem } from './SpaceTreeItem';
 import type { Space } from '../types';
 
@@ -12,7 +10,7 @@ interface SpaceTreeProps {
 
 export function SpaceTree({ spaces, spacesState, onSpaceClick, level = 0 }: SpaceTreeProps) {
   return (
-    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.25 }}>
+    <div className="flex flex-col gap-1">
       {spaces.map(space => (
         <SpaceTreeItem
           key={space.id}
@@ -22,6 +20,6 @@ export function SpaceTree({ spaces, spacesState, onSpaceClick, level = 0 }: Spac
           level={level}
         />
       ))}
-    </Box>
+    </div>
   );
 }

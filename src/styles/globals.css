@@ -2,55 +2,6 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Force remove all focus outlines and shadows from Joy UI components */
-* {
-  outline: none !important;
-}
-
-*:focus,
-*:focus-visible,
-*:focus-within {
-  outline: none !important;
-  box-shadow: none !important;
-  background-color: 'rgba(0, 0, 0, 0)'!important;
-  borderColor: 'rgba(0, 0, 0, 0)' !important;
-}
-
-input,
-textarea,
-[contenteditable] {
-  outline: none !important;
-  box-shadow: none !important;
-  background-color: 'rgba(0, 0, 0, 0)'!important;
-  borderColor: 'rgba(0, 0, 0, 0)' !important;
-}
-
-input:focus,
-textarea:focus,
-[contenteditable]:focus {
-  outline: none !important;
-  box-shadow: none !important;
-  background-color: 'rgba(0, 0, 0, 0)'!important;
-  borderColor: 'rgba(0, 0, 0, 0)' !important;
-}
-
-/* MUI Joy specific overrides */
-.MuiInput-root,
-.MuiTextarea-root,
-.MuiInput-input,
-.MuiTextarea-textarea {
-  outline: none !important;
-  box-shadow: none !important;
-}
-
-.MuiInput-root:focus-within,
-.MuiTextarea-root:focus-within,
-.MuiInput-input:focus,
-.MuiTextarea-textarea:focus {
-  outline: none !important;
-  box-shadow: none !important;
-}
-
 /* Typography defaults */
 html,
 body {
@@ -96,4 +47,14 @@ body {
 
 [data-joy-color-scheme="dark"] ::-webkit-scrollbar-thumb:hover {
   background: rgba(255, 255, 255, 0.3);
+}
+
+/* Hide scrollbar for elements with .no-scrollbar class */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+.no-scrollbar {
+  -ms-overflow-style: none;  /* IE and Edge */
+  scrollbar-width: none;  /* Firefox */
 }

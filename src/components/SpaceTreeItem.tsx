@@ -1,12 +1,14 @@
 import { useRef, useState } from 'react';
 import { useDrag, useDrop } from 'react-dnd';
-import Box from '@mui/joy@5.0.0-beta.48/Box';
-import IconButton from '@mui/joy@5.0.0-beta.48/IconButton';
-import Typography from '@mui/joy@5.0.0-beta.48/Typography';
-import Modal from '@mui/joy@5.0.0-beta.48/Modal';
-import ModalDialog from '@mui/joy@5.0.0-beta.48/ModalDialog';
-import Input from '@mui/joy@5.0.0-beta.48/Input';
-import Button from '@mui/joy@5.0.0-beta.48/Button';
+import {
+  Button,
+  Modal,
+  ModalContent,
+  ModalHeader,
+  ModalBody,
+  ModalFooter,
+  Input
+} from '@heroui/react';
 import {
   ChevronRight,
   ChevronDown,
@@ -18,7 +20,8 @@ import {
   Star,
   Trash2,
   Edit2,
-  Smile
+  Smile,
+  ArrowLeft
 } from 'lucide-react';
 import { Space, SpaceType } from '../types';
 import { IconPicker } from './IconPicker';
@@ -39,10 +42,9 @@ const spaceIcons: Record<SpaceType, any> = {
 };
 
 const ITEM_TYPE = 'SPACE';
-const ITEM_TYPE_TO_WORKSPACE = 'SPACE_TO_WORKSPACE'; // Per drag verso workspace
-const ITEM_TYPE_TEXT_ELEMENT = 'TEXT_ELEMENT'; // Per drag di textElements
+const ITEM_TYPE_TO_WORKSPACE = 'SPACE_TO_WORKSPACE';
+const ITEM_TYPE_TEXT_ELEMENT = 'TEXT_ELEMENT';
 
-// Export per usare in altri componenti
 export { ITEM_TYPE_TO_WORKSPACE, ITEM_TYPE_TEXT_ELEMENT };
 
 export function SpaceTreeItem({ space, spacesState, onSpaceClick, level = 0 }: SpaceTreeItemProps) {
@@ -52,7 +54,9 @@ export function SpaceTreeItem({ space, spacesState, onSpaceClick, level = 0 }: S
   const [renaming, setRenaming] = useState(false);
   const [renameValue, setRenameValue] = useState('');
   const [changingIcon, setChangingIcon] = useState(false);
-  const [dropPosition, setDropPosition] = useState<'before' | 'after' | 'inside' | null>(null);
+  const [tempIcon, setTempIcon] = useState(space.icon || '');
+  const [tempColor, setTempColor] = useState(space.iconColor || '');
+  
   const ref = useRef<HTMLDivElement>(null);
   const buttonRef = useRef<HTMLButtonElement>(null);
 
@@ -60,15 +64,13 @@ export function SpaceTreeItem({ space, spacesState, onSpaceClick, level = 0 }: S
   const hasChildren = children.length > 0;
   const Icon = spaceIcons[space.type];
 
-  // Unified drag che funziona per entrambi gli scopi
   const [{ isDragging }, drag] = useDrag(() => ({
-    type: ITEM_TYPE_TO_WORKSPACE, // Uso sempre questo tipo principale
+    type: ITEM_TYPE_TO_WORKSPACE,
     item: { 
       id: space.id, 
       parentId: space.parentId,
       spaceId: space.id, 
       spaceData: space,
-      // Flag per distinguere il comportamento
       isSpaceDrag: true
     },
     collect: (monitor) => ({
@@ -123,17 +125,23 @@ export function SpaceTreeItem({ space, spacesState, onSpaceClick, level = 0 }: S
   };
 
   const handleIconChange = (icon: string) => {
-    spacesState.updateSpace(space.id, { icon });
-    setChangingIcon(false);
+    setTempIcon(icon);
   };
 
   const handleColorChange = (color: string) => {
-    spacesState.updateSpace(space.id, { iconColor: color });
+    setTempColor(color);
+  };
+
+  const handleConfirmIcon = () => {
+    spacesState.updateSpace(space.id, { icon: tempIcon, iconColor: tempColor });
+    setChangingIcon(false);
   };
 
   const handleChangeIcon = () => {
     setShowMenu(false);
     setContextMenu(null);
+    setTempIcon(space.icon || '');
+    setTempColor(space.iconColor || '');
     setChangingIcon(true);
   };
 
@@ -149,110 +157,79 @@ export function SpaceTreeItem({ space, spacesState, onSpaceClick, level = 0 }: S
 
   return (
     <>
-      <Box>
-        <Box
+      <div>
+        <div
           ref={ref}
-          sx={{
-            display: 'flex',
-            alignItems: 'center',
-            pl: level * 2 + 1, // Indentazione progressiva per ogni livello + padding base
-            pr: 1,
-            py: 0.5,
-            borderRadius: '6px',
-            cursor: 'pointer',
-            opacity: isDragging ? 0.5 : 1,
-            bgcolor: isOver && canDrop ? 'primary.softBg' : 'transparent',
-            '&:hover': {
-              bgcolor: 'background.level1',
-              '& .menu-button': {
-                opacity: 1
-              }
-            }
-          }}
+          className={`
+            flex items-center pr-2 py-1 rounded-lg cursor-pointer transition-colors duration-150 ease-out group
+            ${isDragging ? 'opacity-50' : 'opacity-100'}
+            ${isOver && canDrop ? 'bg-primary/10' : 'hover:bg-default-100'}
+          `}
+          style={{ paddingLeft: `${level * 16 + 8}px` }}
         >
           {hasChildren && (
-            <IconButton
+            <Button
+              isIconOnly
               size="sm"
-              variant="plain"
+              variant="light"
               onClick={(e) => {
                 e.stopPropagation();
                 setExpanded(!expanded);
               }}
-              sx={{ minWidth: 20, minHeight: 20, mr: 0.5 }}
+              className="min-w-[20px] w-5 h-5 p-0 mr-1 text-default-500"
             >
               {expanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
-            </IconButton>
+            </Button>
           )}
 
-          <Box
+          <div
             onClick={() => onSpaceClick(space)}
             onContextMenu={handleContextMenu}
-            sx={{
-              flex: 1,
-              display: 'flex',
-              alignItems: 'center',
-              gap: 0.75,
-              minWidth: 0,
-              ml: hasChildren ? 0 : 2.5 // Allinea gli elementi senza figli con quelli che hanno figli
-            }}
+            className={`flex-1 flex items-center gap-2 min-w-0 ${hasChildren ? '' : 'ml-[24px]'}`}
           >
             {(() => {
-              // Determina l'icona da mostrare
               let IconComponent = null;
               if (space.icon) {
                 IconComponent = (LucideIcons as any)[space.icon];
               }
               if (!IconComponent) {
-                IconComponent = Icon; // Usa l'icona di default per tipo
+                IconComponent = Icon;
               }
               
               return IconComponent ? (
                 <IconComponent 
                   size={16} 
-                  style={{ 
-                    flexShrink: 0,
-                    color: space.iconColor || 'currentColor' 
-                  }}
+                  className="shrink-0"
+                  style={{ color: space.iconColor || 'currentColor' }}
                 />
               ) : (
-                space.icon && <span style={{ fontSize: '1rem', flexShrink: 0 }}>{space.icon}</span>
+                space.icon && <span className="text-base shrink-0">{space.icon}</span>
               );
             })()}
-            <Typography
-              level="body-sm"
-              sx={{
-                overflow: 'hidden',
-                textOverflow: 'ellipsis',
-                whiteSpace: 'nowrap'
-              }}
-            >
+            <span className="text-small truncate overflow-hidden text-ellipsis whitespace-nowrap">
               {space.title}
-            </Typography>
-          </Box>
+            </span>
+          </div>
 
-          <Box sx={{ display: 'flex', gap: 0.5, alignItems: 'center' }}>
-            <IconButton
+          <div className="flex gap-1 items-center opacity-0 group-hover:opacity-100 transition-opacity">
+            <Button
               ref={buttonRef}
+              isIconOnly
               size="sm"
-              variant="plain"
-              className="menu-button"
+              variant="light"
               onClick={(e) => {
                 e.stopPropagation();
                 setShowMenu(!showMenu);
               }}
-              sx={{ 
-                minWidth: 20, 
-                minHeight: 20,
-                opacity: 0
-              }}
+              className="min-w-[20px] w-5 h-5"
             >
               <MoreVertical size={14} />
-            </IconButton>
-          </Box>
-        </Box>
+            </Button>
+          </div>
+        </div>
 
         {hasChildren && expanded && (
-          <Box>
+          <div>
             {children.map((child: Space) => (
               <SpaceTreeItem
                 key={child.id}
@@ -262,266 +239,173 @@ export function SpaceTreeItem({ space, spacesState, onSpaceClick, level = 0 }: S
                 level={level + 1}
               />
             ))}
-          </Box>
+          </div>
         )}
-      </Box>
+      </div>
 
       {/* Simple dropdown menu */}
       {showMenu && buttonRef.current && (() => {
         const buttonRect = buttonRef.current.getBoundingClientRect();
         const menuWidth = 200;
-        const menuHeight = 150; // Stima approssimativa
+        const menuHeight = 150;
         const windowWidth = window.innerWidth;
         const windowHeight = window.innerHeight;
         
-        // Calcola se il menu esce dallo schermo
         const isOffRight = buttonRect.left + menuWidth > windowWidth;
         const isOffBottom = buttonRect.bottom + menuHeight > windowHeight;
         
         return (
-          <Box
-            sx={{
-              position: 'fixed',
-              bgcolor: 'background.popup',
-              boxShadow: 'md',
-              borderRadius: '8px',
-              p: 0.5,
-              zIndex: 1000,
-              minWidth: menuWidth,
-              top: isOffBottom 
-                ? `${buttonRect.top - menuHeight}px` 
-                : `${buttonRect.bottom + 4}px`,
-              left: isOffRight 
-                ? `${buttonRect.right - menuWidth}px` 
-                : `${buttonRect.left}px`
-            }}
-          >
-            <Box
-              onClick={handleRename}
-              sx={{
-                p: 1,
-                borderRadius: '6px',
-                cursor: 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                gap: 1,
-                '&:hover': {
-                  bgcolor: 'background.level1'
-                }
+          <>
+            <div 
+              className="fixed inset-0 z-[999]" 
+              onClick={() => setShowMenu(false)}
+            />
+            <div
+              className="fixed bg-white shadow-lg rounded-lg p-1 z-[1000] border border-divider min-w-[200px]"
+              style={{
+                top: isOffBottom ? `${buttonRect.top - menuHeight}px` : `${buttonRect.bottom + 4}px`,
+                left: isOffRight ? `${buttonRect.right - menuWidth}px` : `${buttonRect.left}px`
               }}
             >
-              <Edit2 size={14} />
-              <Typography level="body-sm">
-                Rename
-              </Typography>
-            </Box>
-            <Box
-              onClick={handleToggleFavorite}
-              sx={{
-                p: 1,
-                borderRadius: '6px',
-                cursor: 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                gap: 1,
-                '&:hover': {
-                  bgcolor: 'background.level1'
-                }
-              }}
-            >
-              <Star size={14} />
-              <Typography level="body-sm">
-                {space.isFavorite ? 'Remove from favorites' : 'Add to favorites'}
-              </Typography>
-            </Box>
-            <Box
-              onClick={handleDelete}
-              sx={{
-                p: 1,
-                borderRadius: '6px',
-                cursor: 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                gap: 1,
-                color: 'danger.500',
-                '&:hover': {
-                  bgcolor: 'danger.softBg'
-                }
-              }}
-            >
-              <Trash2 size={14} />
-              <Typography level="body-sm">Delete</Typography>
-            </Box>
-          </Box>
+              <div
+                onClick={handleRename}
+                className="p-2 rounded-md cursor-pointer flex items-center gap-2 hover:bg-default-100 transition-colors"
+              >
+                <Edit2 size={14} />
+                <span className="text-small">Rename</span>
+              </div>
+              <div
+                onClick={handleToggleFavorite}
+                className="p-2 rounded-md cursor-pointer flex items-center gap-2 hover:bg-default-100 transition-colors"
+              >
+                <Star size={14} />
+                <span className="text-small">
+                  {space.isFavorite ? 'Remove from favorites' : 'Add to favorites'}
+                </span>
+              </div>
+              <div
+                onClick={handleDelete}
+                className="p-2 rounded-md cursor-pointer flex items-center gap-2 text-danger hover:bg-danger-50 transition-colors"
+              >
+                <Trash2 size={14} />
+                <span className="text-small">Delete</span>
+              </div>
+            </div>
+          </>
         );
       })()}
 
-      {/* Backdrop to close menu */}
-      {showMenu && (
-        <Box
-          onClick={() => setShowMenu(false)}
-          sx={{
-            position: 'fixed',
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            zIndex: 999
-          }}
-        />
-      )}
-
       {/* Rename modal */}
-      <Modal open={renaming} onClose={() => setRenaming(false)}>
-        <ModalDialog>
-          <Typography level="title-md" sx={{ mb: 1.5 }}>
-            Rinomina Space
-          </Typography>
-          <Input
-            autoFocus
-            value={renameValue}
-            onChange={(e) => setRenameValue(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter') handleRenameSubmit();
-              if (e.key === 'Escape') setRenaming(false);
-            }}
-            placeholder="Nome dello space"
-            sx={{ mb: 2 }}
-          />
-          <Box sx={{ display: 'flex', gap: 1, justifyContent: 'flex-end' }}>
-            <Button variant="plain" onClick={() => setRenaming(false)}>
-              Annulla
-            </Button>
-            <Button onClick={handleRenameSubmit}>
-              Salva
-            </Button>
-          </Box>
-        </ModalDialog>
+      <Modal isOpen={renaming} onClose={() => setRenaming(false)}>
+        <ModalContent>
+          {(onClose) => (
+            <>
+              <ModalHeader className="flex flex-col gap-1">Rinomina Space</ModalHeader>
+              <ModalBody>
+                <Input
+                  autoFocus
+                  value={renameValue}
+                  onValueChange={setRenameValue}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') handleRenameSubmit();
+                    if (e.key === 'Escape') setRenaming(false);
+                  }}
+                  placeholder="Nome dello space"
+                  variant="bordered"
+                />
+              </ModalBody>
+              <ModalFooter>
+                <Button color="danger" variant="light" onPress={onClose}>
+                  Annulla
+                </Button>
+                <Button color="primary" onPress={handleRenameSubmit}>
+                  Salva
+                </Button>
+              </ModalFooter>
+            </>
+          )}
+        </ModalContent>
       </Modal>
 
       {/* Icon change modal */}
-      <Modal open={changingIcon} onClose={() => setChangingIcon(false)}>
-        <ModalDialog>
-          <Typography level="title-md" sx={{ mb: 1.5 }}>
-            Cambia Icona
-          </Typography>
-          <IconPicker
-            currentIcon={space.icon}
-            onIconChange={handleIconChange}
-            onColorChange={handleColorChange}
-          />
-          <Box sx={{ display: 'flex', gap: 1, justifyContent: 'flex-end' }}>
-            <Button variant="plain" onClick={() => setChangingIcon(false)}>
-              Annulla
-            </Button>
-          </Box>
-        </ModalDialog>
+      <Modal isOpen={changingIcon} onClose={() => setChangingIcon(false)} size="lg">
+        <ModalContent>
+          {(onClose) => (
+            <>
+              <ModalHeader className="flex gap-2 items-center">
+                <Button isIconOnly variant="light" size="sm" onPress={onClose}>
+                  <ArrowLeft size={18} />
+                </Button>
+                Cambia Icona
+              </ModalHeader>
+              <ModalBody>
+                <IconPicker
+                  currentIcon={tempIcon}
+                  currentColor={tempColor}
+                  onIconChange={handleIconChange}
+                  onColorChange={handleColorChange}
+                />
+              </ModalBody>
+              <ModalFooter>
+                <Button color="danger" variant="light" onPress={onClose}>
+                  Annulla
+                </Button>
+                <Button color="primary" onPress={handleConfirmIcon}>
+                  OK
+                </Button>
+              </ModalFooter>
+            </>
+          )}
+        </ModalContent>
       </Modal>
 
       {/* Context menu */}
       {contextMenu && (
-        <Box
-          sx={{
-            position: 'fixed',
-            bgcolor: 'background.popup',
-            boxShadow: 'md',
-            borderRadius: '8px',
-            p: 0.5,
-            zIndex: 1000,
-            top: `${contextMenu.y}px`,
-            left: `${contextMenu.x}px`,
-            transform: 'translate(-50%, calc(-100% - 4px))'
-          }}
-        >
-          <Box
-            onClick={handleRename}
-            sx={{
-              p: 1,
-              borderRadius: '6px',
-              cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              gap: 1,
-              '&:hover': {
-                bgcolor: 'background.level1'
-              }
+        <>
+          <div 
+            className="fixed inset-0 z-[999]" 
+            onClick={() => setContextMenu(null)}
+          />
+          <div
+            className="fixed bg-white shadow-lg rounded-lg p-1 z-[1000] border border-divider min-w-[180px]"
+            style={{
+              top: `${contextMenu.y}px`,
+              left: `${contextMenu.x}px`,
+              transform: 'translate(-50%, -100%) translateY(-4px)'
             }}
           >
-            <Edit2 size={14} />
-            <Typography level="body-sm">
-              Rename
-            </Typography>
-          </Box>
-          <Box
-            onClick={handleContextToggleFavorite}
-            sx={{
-              p: 1,
-              borderRadius: '6px',
-              cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              gap: 1,
-              '&:hover': {
-                bgcolor: 'background.level1'
-              }
-            }}
-          >
-            <Star size={14} />
-            <Typography level="body-sm">
-              {space.isFavorite ? 'Remove from favorites' : 'Add to favorites'}
-            </Typography>
-          </Box>
-          <Box
-            onClick={handleContextDelete}
-            sx={{
-              p: 1,
-              borderRadius: '6px',
-              cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              gap: 1,
-              color: 'danger.500',
-              '&:hover': {
-                bgcolor: 'danger.softBg'
-              }
-            }}
-          >
-            <Trash2 size={14} />
-            <Typography level="body-sm">Delete</Typography>
-          </Box>
-          <Box
-            onClick={handleChangeIcon}
-            sx={{
-              p: 1,
-              borderRadius: '6px',
-              cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              gap: 1,
-              '&:hover': {
-                bgcolor: 'background.level1'
-              }
-            }}
-          >
-            <Smile size={14} />
-            <Typography level="body-sm">Change Icon</Typography>
-          </Box>
-        </Box>
-      )}
-
-      {/* Backdrop to close context menu */}
-      {contextMenu && (
-        <Box
-          onClick={() => setContextMenu(null)}
-          sx={{
-            position: 'fixed',
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            zIndex: 999
-          }}
-        />
+            <div
+              onClick={handleRename}
+              className="p-2 rounded-md cursor-pointer flex items-center gap-2 hover:bg-default-100 transition-colors"
+            >
+              <Edit2 size={14} />
+              <span className="text-small">Rename</span>
+            </div>
+            <div
+              onClick={handleContextToggleFavorite}
+              className="p-2 rounded-md cursor-pointer flex items-center gap-2 hover:bg-default-100 transition-colors"
+            >
+              <Star size={14} />
+              <span className="text-small">
+                {space.isFavorite ? 'Remove from favorites' : 'Add to favorites'}
+              </span>
+            </div>
+            <div
+              onClick={handleChangeIcon}
+              className="p-2 rounded-md cursor-pointer flex items-center gap-2 hover:bg-default-100 transition-colors"
+            >
+              <Smile size={14} />
+              <span className="text-small">Change Icon</span>
+            </div>
+            <div
+              onClick={handleContextDelete}
+              className="p-2 rounded-md cursor-pointer flex items-center gap-2 text-danger hover:bg-danger-50 transition-colors"
+            >
+              <Trash2 size={14} />
+              <span className="text-small">Delete</span>
+            </div>
+          </div>
+        </>
       )}
     </>
   );

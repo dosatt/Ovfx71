@@ -1,6 +1,5 @@
 import { useRef, useState, useEffect } from 'react';
-import Box from '@mui/joy@5.0.0-beta.48/Box';
-import IconButton from '@mui/joy@5.0.0-beta.48/IconButton';
+import { Button } from '@heroui/react';
 import { Pencil, Eraser, Trash2 } from 'lucide-react';
 
 export function DrawApp() {
@@ -70,30 +69,34 @@ export function DrawApp() {
   };
 
   return (
-    <Box sx={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+    <div className="flex flex-col h-full bg-white">
       {/* Toolbar */}
-      <Box sx={{ p: 1, borderBottom: '1px solid', borderColor: 'divider', display: 'flex', gap: 1 }}>
-        <IconButton
+      <div className="p-2 border-b border-divider flex gap-2">
+        <Button
+          isIconOnly
           size="sm"
-          variant={tool === 'pen' ? 'solid' : 'plain'}
-          onClick={() => setTool('pen')}
+          variant={tool === 'pen' ? 'solid' : 'light'}
+          color={tool === 'pen' ? 'primary' : 'default'}
+          onPress={() => setTool('pen')}
         >
           <Pencil size={16} />
-        </IconButton>
-        <IconButton
+        </Button>
+        <Button
+          isIconOnly
           size="sm"
-          variant={tool === 'eraser' ? 'solid' : 'plain'}
-          onClick={() => setTool('eraser')}
+          variant={tool === 'eraser' ? 'solid' : 'light'}
+          color={tool === 'eraser' ? 'primary' : 'default'}
+          onPress={() => setTool('eraser')}
         >
           <Eraser size={16} />
-        </IconButton>
-        <IconButton size="sm" variant="plain" onClick={clearCanvas}>
+        </Button>
+        <Button isIconOnly size="sm" variant="light" color="danger" onPress={clearCanvas}>
           <Trash2 size={16} />
-        </IconButton>
-      </Box>
+        </Button>
+      </div>
 
       {/* Canvas */}
-      <Box sx={{ flex: 1, position: 'relative', overflow: 'hidden' }}>
+      <div className="flex-1 relative overflow-hidden bg-white">
         <canvas
           ref={canvasRef}
           width={1920}
@@ -102,14 +105,12 @@ export function DrawApp() {
           onMouseMove={draw}
           onMouseUp={stopDrawing}
           onMouseLeave={stopDrawing}
+          className={`w-full h-full ${tool === 'pen' ? 'cursor-crosshair' : 'cursor-pointer'}`}
           style={{
-            cursor: tool === 'pen' ? 'crosshair' : 'pointer',
-            width: '100%',
-            height: '100%',
             backgroundColor: '#ffffff'
           }}
         />
-      </Box>
-    </Box>
+      </div>
+    </div>
   );
 }

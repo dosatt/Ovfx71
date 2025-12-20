@@ -1,4 +1,3 @@
-import { Box, Typography } from '@mui/joy@5.0.0-beta.48';
 import { Link2, Copy, MoveRight } from 'lucide-react';
 
 interface DragTooltipProps {
@@ -11,19 +10,22 @@ export function DragTooltip({ mode }: DragTooltipProps) {
       icon: Link2,
       title: 'Collega',
       description: 'Crea un link nell\'altro space',
-      color: 'primary',
+      color: 'text-primary-500',
+      bgColor: 'bg-primary-50',
     },
     duplicate: {
       icon: Copy,
       title: 'Duplica',
       description: 'Crea una copia indipendente',
-      color: 'success',
+      color: 'text-success-500',
+      bgColor: 'bg-success-50',
     },
     move: {
       icon: MoveRight,
       title: 'Sposta',
       description: 'Rimuove dall\'originale',
-      color: 'warning',
+      color: 'text-warning-500',
+      bgColor: 'bg-warning-50',
     },
   };
 
@@ -31,116 +33,58 @@ export function DragTooltip({ mode }: DragTooltipProps) {
   const Icon = config.icon;
 
   return (
-    <Box
-      sx={{
-        position: 'fixed',
-        bottom: 24,
-        left: '50%',
-        transform: 'translateX(-50%)',
-        bgcolor: 'background.popup',
-        border: '1px solid',
-        borderColor: 'divider',
-        borderRadius: '12px',
-        px: 3,
-        py: 2,
-        boxShadow: 'lg',
-        zIndex: 10000,
-        display: 'flex',
-        flexDirection: 'column',
-        gap: 1.5,
-        minWidth: 320,
-      }}
+    <div
+      className="fixed bottom-6 left-1/2 -translate-x-1/2 bg-white border border-divider rounded-xl px-4 py-3 shadow-lg z-[10000] flex flex-col gap-2 min-w-[320px]"
     >
       {/* Current mode */}
-      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
-        <Box
-          sx={{
-            width: 32,
-            height: 32,
-            borderRadius: '8px',
-            bgcolor: `${config.color}.softBg`,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-          }}
+      <div className="flex items-center gap-3">
+        <div
+          className={`w-8 h-8 rounded-lg ${config.bgColor} flex items-center justify-center shrink-0`}
         >
-          <Icon size={18} style={{ color: `var(--joy-palette-${config.color}-500)` }} />
-        </Box>
-        <Box sx={{ flex: 1 }}>
-          <Typography level="title-sm" sx={{ fontWeight: 600 }}>
+          <Icon size={18} className={config.color} />
+        </div>
+        <div className="flex-1">
+          <p className="text-sm font-semibold">
             {config.title}
-          </Typography>
-          <Typography level="body-xs" sx={{ color: 'text.tertiary' }}>
+          </p>
+          <p className="text-xs text-default-500">
             {config.description}
-          </Typography>
-        </Box>
-      </Box>
+          </p>
+        </div>
+      </div>
 
       {/* Divider */}
-      <Box sx={{ height: '1px', bgcolor: 'divider' }} />
+      <div className="h-px bg-divider" />
 
       {/* Shortcuts */}
-      <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.75 }}>
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
-          <Typography 
-            level="body-xs" 
-            sx={{ 
-              fontFamily: 'monospace',
-              bgcolor: 'background.level1',
-              px: 0.75,
-              py: 0.25,
-              borderRadius: '4px',
-              minWidth: 40,
-              textAlign: 'center',
-            }}
-          >
+      <div className="flex flex-col gap-1.5">
+        <div className="flex items-center gap-3">
+          <code className="bg-default-100 px-1.5 py-0.5 rounded text-xs min-w-[40px] text-center font-mono">
             Alt
-          </Typography>
-          <Typography level="body-xs" sx={{ color: 'text.secondary' }}>
+          </code>
+          <span className="text-xs text-default-500">
             Duplica elemento
-          </Typography>
-        </Box>
+          </span>
+        </div>
         
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
-          <Typography 
-            level="body-xs" 
-            sx={{ 
-              fontFamily: 'monospace',
-              bgcolor: 'background.level1',
-              px: 0.75,
-              py: 0.25,
-              borderRadius: '4px',
-              minWidth: 40,
-              textAlign: 'center',
-            }}
-          >
+        <div className="flex items-center gap-3">
+          <code className="bg-default-100 px-1.5 py-0.5 rounded text-xs min-w-[40px] text-center font-mono">
             Shift
-          </Typography>
-          <Typography level="body-xs" sx={{ color: 'text.secondary' }}>
+          </code>
+          <span className="text-xs text-default-500">
             Sposta elemento
-          </Typography>
-        </Box>
+          </span>
+        </div>
         
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
-          <Typography 
-            level="body-xs" 
-            sx={{ 
-              fontFamily: 'monospace',
-              bgcolor: 'background.level1',
-              px: 0.75,
-              py: 0.25,
-              borderRadius: '4px',
-              minWidth: 40,
-              textAlign: 'center',
-            }}
-          >
+        <div className="flex items-center gap-3">
+          <code className="bg-default-100 px-1.5 py-0.5 rounded text-xs min-w-[40px] text-center font-mono">
             —
-          </Typography>
-          <Typography level="body-xs" sx={{ color: 'text.secondary' }}>
+          </code>
+          <span className="text-xs text-default-500">
             Collega elemento
-          </Typography>
-        </Box>
-      </Box>
-    </Box>
+          </span>
+        </div>
+      </div>
+    </div>
   );
 }

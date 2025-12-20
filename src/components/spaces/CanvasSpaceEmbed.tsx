@@ -1,7 +1,5 @@
 import { Space } from '../../types';
 import { SpaceEmbed } from './SpaceEmbed';
-import Box from '@mui/joy@5.0.0-beta.48/Box';
-import Typography from '@mui/joy@5.0.0-beta.48/Typography';
 import * as LucideIcons from 'lucide-react';
 import { FileText, LayoutDashboard, Database, Palette } from 'lucide-react';
 
@@ -81,52 +79,47 @@ export function CanvasSpaceEmbed({
         onMouseLeave={onMouseLeave}
         style={{ cursor, opacity }}
       >
-        <Box
-          sx={{
+        <div
+          style={{
             width: '100%',
             height: '100%',
             border: strokeDasharray ? '2px dashed #1976d2' : '2px solid #ccc',
             borderRadius: '8px',
-            bgcolor: 'background.surface',
-            p: 1.5,
+            backgroundColor: '#ffffff',
+            padding: '12px',
             display: 'flex',
             flexDirection: 'column',
             alignItems: 'center',
             justifyContent: 'center',
-            gap: 1,
+            gap: '8px',
             boxSizing: 'border-box'
           }}
         >
-          <Box
-            sx={{
-              width: 48,
-              height: 48,
+          <div
+            style={{
+              width: '48px',
+              height: '48px',
               borderRadius: '8px',
-              bgcolor: 'primary.softBg',
+              backgroundColor: 'var(--heroui-primary-100)',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center'
             }}
           >
             <TypeIcon size={24} />
-          </Box>
-          <Typography level="title-md">
+          </div>
+          <h3 className="text-lg font-semibold">
             {element.spaceName || 'Space non trovato'}
-          </Typography>
+          </h3>
           {element.spaceType && (
-            <Typography level="body-xs" sx={{ color: 'text.tertiary' }}>
+            <p className="text-xs text-default-400">
               {element.spaceType}
-            </Typography>
+            </p>
           )}
-        </Box>
+        </div>
       </foreignObject>
     );
   }
-
-  const TypeIcon = getTypeIcon(embeddedSpace.type);
-  const SpaceIcon = embeddedSpace.icon && (LucideIcons as any)[embeddedSpace.icon] 
-    ? (LucideIcons as any)[embeddedSpace.icon] 
-    : TypeIcon;
 
   return (
     <foreignObject
@@ -143,8 +136,8 @@ export function CanvasSpaceEmbed({
       onMouseLeave={onMouseLeave}
       style={{ cursor, opacity }}
     >
-      <Box
-        sx={{
+      <div
+        style={{
           width: '100%',
           height: '100%',
           border: strokeDasharray ? '2px dashed #1976d2' : 'none',
@@ -158,7 +151,7 @@ export function CanvasSpaceEmbed({
           onNavigate={onNavigate}
           compact={false}
         />
-      </Box>
+      </div>
     </foreignObject>
   );
 }

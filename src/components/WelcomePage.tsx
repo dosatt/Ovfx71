@@ -1,7 +1,8 @@
-import Box from '@mui/joy@5.0.0-beta.48/Box';
-import Typography from '@mui/joy@5.0.0-beta.48/Typography';
-import Button from '@mui/joy@5.0.0-beta.48/Button';
-import Card from '@mui/joy@5.0.0-beta.48/Card';
+import {
+  Button,
+  Card,
+  CardBody
+} from '@heroui/react';
 import { 
   FileText, 
   Layout, 
@@ -11,7 +12,6 @@ import {
   Mail, 
   MessageSquare, 
   Calendar,
-  Pencil,
   Clock
 } from 'lucide-react';
 
@@ -38,173 +38,109 @@ export function WelcomePage({ onCreateSpace, onOpenApp, recentSpaces = [], onOpe
   ];
 
   return (
-    <Box
-      sx={{
-        height: '100%',
-        overflow: 'auto',
-        p: 1.5,
-        '&::-webkit-scrollbar': { display: 'none' },
-        '-ms-overflow-style': 'none',
-        scrollbarWidth: 'none'
-      }}
-    >
-      <Box sx={{ maxWidth: '600px', mx: 'auto' }}>
+    <div className="h-full overflow-auto p-6 no-scrollbar">
+      <div className="max-w-[600px] mx-auto">
         {/* Header */}
-        <Box sx={{ mb: 2, textAlign: 'center' }}>
-          <Typography level="h3" sx={{ mb: 0.25 }}>
+        <div className="mb-8 text-center">
+          <h3 className="text-3xl font-bold mb-1">
             Benvenuto in OVFX
-          </Typography>
-          <Typography level="body-sm" sx={{ color: 'text.tertiary' }}>
+          </h3>
+          <p className="text-default-500">
             Crea un nuovo spazio o apri un'applicazione
-          </Typography>
-        </Box>
+          </p>
+        </div>
 
         {/* Spaces */}
-        <Box sx={{ mb: 2 }}>
-          <Typography level="title-sm" sx={{ mb: 1, px: 0.5 }}>
+        <div className="mb-8">
+          <h4 className="text-sm font-semibold mb-4 px-2">
             Nuovo Spazio
-          </Typography>
-          <Box
-            sx={{
-              display: 'grid',
-              gridTemplateColumns: 'repeat(auto-fill, minmax(130px, 1fr))',
-              gap: 1
-            }}
-          >
+          </h4>
+          <div className="grid grid-cols-[repeat(auto-fill,minmax(130px,1fr))] gap-4">
             {spaces.map(({ type, icon: Icon, label, description }) => (
               <Card
                 key={type}
-                variant="outlined"
-                sx={{
-                  cursor: 'pointer',
-                  transition: 'all 0.2s',
-                  p: 1,
-                  '&:hover': {
-                    borderColor: 'primary.outlinedBorder',
-                    transform: 'translateY(-1px)',
-                    boxShadow: 'sm'
-                  }
-                }}
-                onClick={() => onCreateSpace(type)}
+                isPressable
+                onPress={() => onCreateSpace(type)}
+                className="border border-divider shadow-sm hover:border-primary hover:shadow-md transition-all"
               >
-                <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 1 }}>
-                  <Box
-                    sx={{
-                      p: 0.5,
-                      borderRadius: 'sm',
-                      bgcolor: 'primary.softBg',
-                      color: 'primary.solidBg',
-                      flexShrink: 0
-                    }}
-                  >
-                    <Icon size={14} />
-                  </Box>
-                  <Box sx={{ flex: 1, minWidth: 0 }}>
-                    <Typography level="title-xs" sx={{ mb: 0.125 }}>
-                      {label}
-                    </Typography>
-                    <Typography level="body-xs" sx={{ color: 'text.tertiary', fontSize: '0.7rem' }}>
-                      {description}
-                    </Typography>
-                  </Box>
-                </Box>
+                <CardBody className="p-3">
+                  <div className="flex flex-col items-start gap-2">
+                    <div className="p-2 rounded-md bg-primary/10 text-primary">
+                      <Icon size={18} />
+                    </div>
+                    <div>
+                      <p className="text-sm font-semibold mb-0.5">{label}</p>
+                      <p className="text-tiny text-default-400 leading-tight">
+                        {description}
+                      </p>
+                    </div>
+                  </div>
+                </CardBody>
               </Card>
             ))}
-          </Box>
-        </Box>
+          </div>
+        </div>
 
         {/* Apps */}
-        <Box sx={{ mb: 2 }}>
-          <Typography level="title-sm" sx={{ mb: 1, px: 0.5 }}>
+        <div className="mb-8">
+          <h4 className="text-sm font-semibold mb-4 px-2">
             Applicazioni
-          </Typography>
-          <Box
-            sx={{
-              display: 'grid',
-              gridTemplateColumns: 'repeat(auto-fill, minmax(130px, 1fr))',
-              gap: 1
-            }}
-          >
+          </h4>
+          <div className="grid grid-cols-[repeat(auto-fill,minmax(130px,1fr))] gap-4">
             {apps.map(({ type, icon: Icon, label, description }) => (
               <Card
                 key={type}
-                variant="outlined"
-                sx={{
-                  cursor: 'pointer',
-                  transition: 'all 0.2s',
-                  p: 1,
-                  '&:hover': {
-                    borderColor: 'primary.outlinedBorder',
-                    transform: 'translateY(-1px)',
-                    boxShadow: 'sm'
-                  }
-                }}
-                onClick={() => onOpenApp(type)}
+                isPressable
+                onPress={() => onOpenApp(type)}
+                className="border border-divider shadow-sm hover:border-success hover:shadow-md transition-all"
               >
-                <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 1 }}>
-                  <Box
-                    sx={{
-                      p: 0.5,
-                      borderRadius: 'sm',
-                      bgcolor: 'success.softBg',
-                      color: 'success.solidBg',
-                      flexShrink: 0
-                    }}
-                  >
-                    <Icon size={14} />
-                  </Box>
-                  <Box sx={{ flex: 1, minWidth: 0 }}>
-                    <Typography level="title-xs" sx={{ mb: 0.125 }}>
-                      {label}
-                    </Typography>
-                    <Typography level="body-xs" sx={{ color: 'text.tertiary', fontSize: '0.7rem' }}>
-                      {description}
-                    </Typography>
-                  </Box>
-                </Box>
+                <CardBody className="p-3">
+                  <div className="flex flex-col items-start gap-2">
+                    <div className="p-2 rounded-md bg-success/10 text-success">
+                      <Icon size={18} />
+                    </div>
+                    <div>
+                      <p className="text-sm font-semibold mb-0.5">{label}</p>
+                      <p className="text-tiny text-default-400 leading-tight">
+                        {description}
+                      </p>
+                    </div>
+                  </div>
+                </CardBody>
               </Card>
             ))}
-          </Box>
-        </Box>
+          </div>
+        </div>
 
         {/* Recent Files */}
         {recentSpaces.length > 0 && (
-          <Box>
-            <Typography level="title-sm" sx={{ mb: 1, px: 0.5, display: 'flex', alignItems: 'center', gap: 0.5 }}>
-              <Clock size={14} />
+          <div>
+            <h4 className="text-sm font-semibold mb-4 px-2 flex items-center gap-2">
+              <Clock size={16} />
               Recenti
-            </Typography>
-            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.25 }}>
+            </h4>
+            <div className="flex flex-col gap-1">
               {recentSpaces.map((space) => (
                 <Button
                   key={space.id}
-                  variant="plain"
+                  variant="light"
                   size="sm"
-                  onClick={() => onOpenSpace?.(space.id)}
-                  sx={{
-                    justifyContent: 'flex-start',
-                    px: 1,
-                    py: 0.75,
-                    minHeight: 'auto',
-                    fontSize: '0.8125rem',
-                    '&:hover': {
-                      bgcolor: 'background.level1'
-                    }
-                  }}
+                  onPress={() => onOpenSpace?.(space.id)}
+                  className="justify-start px-3 py-2 h-auto hover:bg-default-100"
                 >
-                  <FileText size={12} />
-                  <Typography level="body-sm" sx={{ ml: 0.75 }}>
+                  <FileText size={16} className="text-default-500" />
+                  <span className="ml-2 text-sm text-default-700">
                     {space.title}
-                  </Typography>
-                  <Typography level="body-xs" sx={{ ml: 'auto', color: 'text.tertiary', fontSize: '0.7rem' }}>
+                  </span>
+                  <span className="ml-auto text-xs text-default-400">
                     {space.type}
-                  </Typography>
+                  </span>
                 </Button>
               ))}
-            </Box>
-          </Box>
+            </div>
+          </div>
         )}
-      </Box>
-    </Box>
+      </div>
+    </div>
   );
 }

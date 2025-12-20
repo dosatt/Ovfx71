@@ -1,14 +1,17 @@
 import { useState } from 'react';
 import { createPortal } from 'react-dom';
-import Box from '@mui/joy@5.0.0-beta.48/Box';
-import IconButton from '@mui/joy@5.0.0-beta.48/IconButton';
-import Typography from '@mui/joy@5.0.0-beta.48/Typography';
-import Button from '@mui/joy@5.0.0-beta.48/Button';
-import Tooltip from '@mui/joy@5.0.0-beta.48/Tooltip';
-import Modal from '@mui/joy@5.0.0-beta.48/Modal';
-import ModalDialog from '@mui/joy@5.0.0-beta.48/ModalDialog';
-import Input from '@mui/joy@5.0.0-beta.48/Input';
+import {
+  Button,
+  Tooltip,
+  Modal,
+  ModalContent,
+  ModalHeader,
+  ModalBody,
+  ModalFooter,
+  Input
+} from '@heroui/react';
 import { X, ChevronLeft, ChevronRight, FileCode, SplitSquareVertical, SplitSquareHorizontal, Plus, Star, File, Edit2, Trash2, LayoutGrid, DiamondPlus } from 'lucide-react';
+import * as LucideIcons from 'lucide-react';
 import type { Viewport } from '../types';
 import type { Space } from '../types';
 import type { Settings } from '../hooks/useSettings';
@@ -78,49 +81,35 @@ export function ViewportHeader({ viewport, space, spacesState, viewportsState, s
   };
 
   return (
-    <Box
-      sx={{
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        px: 1,
-        py: 0.5,
-        gap: 1,
-        minHeight: 40,
-        borderBottom: '1px solid',
-        borderColor: 'divider',
-        bgcolor: 'background.surface'
-      }}
+    <div
+      className="flex items-center justify-between px-2 py-1 gap-2 min-h-[40px] border-b border-divider bg-white"
     >
       {/* Navigation */}
-      <Box sx={{ display: 'flex', gap: 0.5 }}>
-        <IconButton 
+      <div className="flex gap-1">
+        <Button 
+          isIconOnly
           size="sm" 
-          variant="plain" 
-          disabled={!canGoBack}
+          variant="light" 
+          isDisabled={!canGoBack}
           onClick={() => viewportsState.navigateHistory(viewport.id, 'back')}
+          className="min-w-0 w-8 h-8"
         >
           <ChevronLeft size={16} />
-        </IconButton>
-        <IconButton 
+        </Button>
+        <Button 
+          isIconOnly
           size="sm" 
-          variant="plain" 
-          disabled={!canGoForward}
+          variant="light" 
+          isDisabled={!canGoForward}
           onClick={() => viewportsState.navigateHistory(viewport.id, 'forward')}
+          className="min-w-0 w-8 h-8"
         >
           <ChevronRight size={16} />
-        </IconButton>
-      </Box>
+        </Button>
+      </div>
 
       {/* Tabs - Centrate */}
-      <Box sx={{ 
-        flex: 1, 
-        minWidth: 0, 
-        display: 'flex', 
-        gap: 0.5, 
-        alignItems: 'center',
-        justifyContent: 'center'
-      }}>
+      <div className="flex-1 min-w-0 flex gap-1 items-center justify-center">
         {viewport.tabs?.map(tab => {
           const isActive = tab.id === viewport.activeTabId;
           const tabSpace = tab.spaceId ? spacesState.spaces.find((s: Space) => s.id === tab.spaceId) : null;
@@ -145,68 +134,52 @@ export function ViewportHeader({ viewport, space, spacesState, viewportsState, s
           const displayTitle = tabSpace?.title || tab.title;
           
           return (
-            <Tooltip key={tab.id} title={tab.title} size="sm">
+            <Tooltip key={tab.id} content={tab.title} size="sm">
               <Button
                 size="sm"
-                variant={isActive ? 'soft' : 'plain'}
+                variant={isActive ? 'flat' : 'light'}
                 onClick={() => {
                   viewportsState.setActiveTab(viewport.id, tab.id);
                   viewportsState.setFocusedViewportId(viewport.id);
                 }}
-                endDecorator={
+                endContent={
                   isActive && !isOnlyWelcomeTab ? (
-                    <Box
-                      component="span"
+                    <span
                       onClick={(e) => {
                         e.stopPropagation();
                         handleCloseTab(tab.id);
                       }}
-                      sx={{ 
-                        ml: 0.5, 
-                        display: 'flex',
-                        alignItems: 'center',
-                        cursor: 'pointer',
-                        '&:hover': {
-                          opacity: 0.7
-                        }
-                      }}
+                      className="ml-1 flex items-center cursor-pointer hover:opacity-70"
                     >
                       <X size={12} />
-                    </Box>
+                    </span>
                   ) : undefined
                 }
-                sx={{ 
-                  flexShrink: 0,
-                  minWidth: (isActive || showTitle) ? 100 : 'auto',
-                  maxWidth: (isActive || showTitle) ? 200 : 'auto',
-                  px: (isActive || showTitle) ? settings.tabPaddingLeft : 1,
-                  pt: settings.tabPaddingTop,
-                  pb: settings.tabPaddingBottom,
-                  pr: (isActive || showTitle) ? settings.tabPaddingRight : 1,
-                  justifyContent: isActive ? 'space-between' : (showTitle ? 'flex-start' : 'center'),
+                style={{
                   borderRadius: settings.tabBorderRadius,
-                  display: 'flex',
-                  alignItems: 'center'
+                  paddingLeft: (isActive || showTitle) ? settings.tabPaddingLeft : 8,
+                  paddingTop: settings.tabPaddingTop,
+                  paddingBottom: settings.tabPaddingBottom,
+                  paddingRight: (isActive || showTitle) ? settings.tabPaddingRight : 8,
                 }}
+                className={`
+                  flex-shrink-0 flex items-center
+                  ${isActive ? 'bg-default-100' : ''}
+                  ${isActive || showTitle ? 'min-w-[100px] max-w-[200px] justify-between' : 'min-w-0 max-w-auto px-2 justify-center'}
+                `}
                 onContextMenu={(e) => handleTabContextMenu(e, tab.id, tab.title)}
               >
                 {(isActive || showTitle) ? (
-                  <>
+                  <div className="flex items-center w-full overflow-hidden">
                     {IconComponent ? (
-                      <IconComponent size={16} style={{ marginRight: 4, color: iconColor }} />
+                      <IconComponent size={16} style={{ marginRight: 4, color: iconColor }} className="shrink-0" />
                     ) : (
-                      tabSpace?.icon && <span style={{ marginRight: 4 }}>{tabSpace.icon}</span>
+                      tabSpace?.icon && <span style={{ marginRight: 4 }} className="shrink-0">{tabSpace.icon}</span>
                     )}
-                    <span style={{ 
-                      overflow: 'hidden', 
-                      textOverflow: 'ellipsis', 
-                      whiteSpace: 'nowrap',
-                      flex: 1,
-                      textAlign: 'left'
-                    }}>
+                    <span className="truncate text-left flex-1 text-small">
                       {displayTitle}
                     </span>
-                  </>
+                  </div>
                 ) : (
                   IconComponent ? (
                     <IconComponent size={16} style={{ color: iconColor }} />
@@ -219,31 +192,34 @@ export function ViewportHeader({ viewport, space, spacesState, viewportsState, s
           );
         })}
         
-        <Tooltip title="Nuova Tab" size="sm">
-          <IconButton
+        <Tooltip content="Nuova Tab" size="sm">
+          <Button
+            isIconOnly
             size="sm"
-            variant="outlined"
+            variant="bordered"
             color="primary"
             onClick={() => viewportsState.addTab(viewport.id, undefined, undefined, 'New Tab')}
-            sx={{ flexShrink: 0 }}
+            className="flex-shrink-0 w-8 h-8 min-w-0 border-small"
           >
             <Plus size={16} />
-          </IconButton>
+          </Button>
         </Tooltip>
-      </Box>
+      </div>
 
       {/* Actions */}
-      <Box sx={{ display: 'flex', gap: 0.5 }}>
-        <Tooltip title="Azioni viewport" size="sm">
-          <IconButton
+      <div className="flex gap-1">
+        <Tooltip content="Azioni viewport" size="sm">
+          <Button
+            isIconOnly
             size="sm"
-            variant="plain"
+            variant="light"
             onClick={(e) => setActionsMenuAnchor(e.currentTarget)}
+            className="min-w-0 w-8 h-8"
           >
             <LayoutGrid size={16} />
-          </IconButton>
+          </Button>
         </Tooltip>
-      </Box>
+      </div>
 
       {/* Custom Dropdown menu */}
       {actionsMenuAnchor && createPortal(
@@ -278,149 +254,78 @@ export function ViewportHeader({ viewport, space, spacesState, viewportsState, s
           
           return (
             <>
-              <Box
+              <div
                 onClick={() => setActionsMenuAnchor(null)}
-                sx={{
-                  position: 'fixed',
-                  top: 0,
-                  left: 0,
-                  right: 0,
-                  bottom: 0,
-                  zIndex: 999
-                }}
+                className="fixed inset-0 z-[999]"
               />
-              <Box
-                sx={{
-                  position: 'fixed',
-                  top: `${top}px`,
-                  left: `${left}px`,
-                  bgcolor: 'background.popup',
-                  boxShadow: 'md',
-                  borderRadius: '8px',
-                  p: 0.5,
-                  zIndex: 1000,
-                  minWidth: menuWidth,
-                  maxHeight: menuHeight,
-                  overflow: 'auto',
-                  border: '1px solid',
-                  borderColor: 'divider'
-                }}
+              <div
+                style={{ top: `${top}px`, left: `${left}px` }}
+                className="fixed bg-white shadow-lg rounded-lg p-1 z-[1000] min-w-[200px] max-h-[250px] overflow-auto border border-divider"
               >
                 {space && (
                   <>
-                    <Box
+                    <div
                       onClick={() => {
                         spacesState.toggleFavorite(space.id);
                         setActionsMenuAnchor(null);
                       }}
-                      sx={{
-                        p: 1,
-                        borderRadius: '6px',
-                        cursor: 'pointer',
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: 1,
-                        '&:hover': {
-                          bgcolor: 'background.level1'
-                        }
-                      }}
+                      className="p-2 rounded-md cursor-pointer flex items-center gap-2 hover:bg-default-100 transition-colors"
                     >
                       <Star size={16} fill={space.isFavorite ? 'currentColor' : 'none'} />
-                      <Typography level="body-sm">
+                      <span className="text-small">
                         {space.isFavorite ? 'Rimuovi dai preferiti' : 'Aggiungi ai preferiti'}
-                      </Typography>
-                    </Box>
+                      </span>
+                    </div>
                     {onToggleMarkdown && (
-                      <Box
+                      <div
                         onClick={() => {
                           onToggleMarkdown();
                           setActionsMenuAnchor(null);
                         }}
-                        sx={{
-                          p: 1,
-                          borderRadius: '6px',
-                          cursor: 'pointer',
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: 1,
-                          '&:hover': {
-                            bgcolor: 'background.level1'
-                          }
-                        }}
+                        className="p-2 rounded-md cursor-pointer flex items-center gap-2 hover:bg-default-100 transition-colors"
                       >
                         <FileCode size={16} />
-                        <Typography level="body-sm">
+                        <span className="text-small">
                           {showMarkdown ? 'Nascondi vista .md' : 'Mostra vista .md'}
-                        </Typography>
-                      </Box>
+                        </span>
+                      </div>
                     )}
-                    <Box sx={{ my: 0.5, height: '1px', bgcolor: 'divider' }} />
+                    <div className="my-1 h-[1px] bg-divider" />
                   </>
                 )}
-                <Box
+                <div
                   onClick={() => {
                     viewportsState.splitViewport(viewport.id, 'vertical');
                     setActionsMenuAnchor(null);
                   }}
-                  sx={{
-                    p: 1,
-                    borderRadius: '6px',
-                    cursor: 'pointer',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: 1,
-                    '&:hover': {
-                      bgcolor: 'background.level1'
-                    }
-                  }}
+                  className="p-2 rounded-md cursor-pointer flex items-center gap-2 hover:bg-default-100 transition-colors"
                 >
                   <SplitSquareHorizontal size={16} />
-                  <Typography level="body-sm">Dividi verticalmente</Typography>
-                </Box>
-                <Box
+                  <span className="text-small">Dividi verticalmente</span>
+                </div>
+                <div
                   onClick={() => {
                     viewportsState.splitViewport(viewport.id, 'horizontal');
                     setActionsMenuAnchor(null);
                   }}
-                  sx={{
-                    p: 1,
-                    borderRadius: '6px',
-                    cursor: 'pointer',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: 1,
-                    '&:hover': {
-                      bgcolor: 'background.level1'
-                    }
-                  }}
+                  className="p-2 rounded-md cursor-pointer flex items-center gap-2 hover:bg-default-100 transition-colors"
                 >
                   <SplitSquareVertical size={16} />
-                  <Typography level="body-sm">Dividi orizzontalmente</Typography>
-                </Box>
+                  <span className="text-small">Dividi orizzontalmente</span>
+                </div>
                 {canClose && (
-                  <Box
+                  <div
                     onClick={() => {
                       viewportsState.closeViewport(viewport.id);
                       setActionsMenuAnchor(null);
                     }}
-                    sx={{
-                      p: 1,
-                      borderRadius: '6px',
-                      cursor: 'pointer',
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: 1,
-                      color: 'danger.500',
-                      '&:hover': {
-                        bgcolor: 'danger.softBg'
-                      }
-                    }}
+                    className="p-2 rounded-md cursor-pointer flex items-center gap-2 text-danger hover:bg-danger-50 transition-colors"
                   >
                     <X size={16} />
-                    <Typography level="body-sm">Chiudi viewport</Typography>
-                  </Box>
+                    <span className="text-small">Chiudi viewport</span>
+                  </div>
                 )}
-              </Box>
+              </div>
             </>
           );
         })(),
@@ -428,100 +333,67 @@ export function ViewportHeader({ viewport, space, spacesState, viewportsState, s
       )}
 
       {/* Rename Tab Modal */}
-      <Modal open={renameTabId !== null} onClose={() => setRenameTabId(null)}>
-        <ModalDialog>
-          <Typography level="title-md" sx={{ mb: 1.5 }}>
-            Rinomina Tab
-          </Typography>
-          <Input
-            autoFocus
-            value={renameValue}
-            onChange={(e) => setRenameValue(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter') handleRenameSubmit();
-              if (e.key === 'Escape') setRenameTabId(null);
-            }}
-            placeholder="Nome tab"
-            sx={{ mb: 2 }}
-          />
-          <Box sx={{ display: 'flex', gap: 1, justifyContent: 'flex-end' }}>
-            <Button variant="plain" onClick={() => setRenameTabId(null)}>
-              Annulla
-            </Button>
-            <Button onClick={handleRenameSubmit}>
-              Salva
-            </Button>
-          </Box>
-        </ModalDialog>
+      <Modal isOpen={renameTabId !== null} onOpenChange={() => setRenameTabId(null)}>
+        <ModalContent>
+          {(onClose) => (
+            <>
+              <ModalHeader className="flex flex-col gap-1">Rinomina Tab</ModalHeader>
+              <ModalBody>
+                <Input
+                  autoFocus
+                  value={renameValue}
+                  onValueChange={setRenameValue}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') handleRenameSubmit();
+                    if (e.key === 'Escape') setRenameTabId(null);
+                  }}
+                  placeholder="Nome tab"
+                  variant="bordered"
+                />
+              </ModalBody>
+              <ModalFooter>
+                <Button color="danger" variant="light" onPress={onClose}>
+                  Annulla
+                </Button>
+                <Button color="primary" onPress={handleRenameSubmit}>
+                  Salva
+                </Button>
+              </ModalFooter>
+            </>
+          )}
+        </ModalContent>
       </Modal>
 
       {/* Context Menu */}
       {contextMenu && (
         <>
-          <Box
+          <div
             onClick={() => setContextMenu(null)}
-            sx={{
-              position: 'fixed',
-              top: 0,
-              left: 0,
-              right: 0,
-              bottom: 0,
-              zIndex: 999
-            }}
+            className="fixed inset-0 z-[999]"
           />
-          <Box
-            sx={{
-              position: 'fixed',
-              left: contextMenu.x,
-              top: contextMenu.y,
-              bgcolor: 'background.popup',
-              boxShadow: 'md',
-              borderRadius: '8px',
-              p: 0.5,
-              zIndex: 1000,
-              minWidth: 180
-            }}
+          <div
+            style={{ left: contextMenu.x, top: contextMenu.y }}
+            className="fixed bg-white shadow-lg rounded-lg p-1 z-[1000] min-w-[180px] border border-divider"
           >
-            <Box
+            <div
               onClick={handleRename}
-              sx={{
-                p: 1,
-                borderRadius: '6px',
-                cursor: 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                gap: 1,
-                '&:hover': {
-                  bgcolor: 'background.level1'
-                }
-              }}
+              className="p-2 rounded-md cursor-pointer flex items-center gap-2 hover:bg-default-100 transition-colors"
             >
               <Edit2 size={14} />
-              <Typography level="body-sm">
+              <span className="text-small">
                 Rinomina
-              </Typography>
-            </Box>
-            <Box
+              </span>
+            </div>
+            <div
               onClick={handleDelete}
-              sx={{
-                p: 1,
-                borderRadius: '6px',
-                cursor: 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                gap: 1,
-                color: 'danger.500',
-                '&:hover': {
-                  bgcolor: 'danger.softBg'
-                }
-              }}
+              className="p-2 rounded-md cursor-pointer flex items-center gap-2 text-danger hover:bg-danger-50 transition-colors"
             >
               <Trash2 size={14} />
-              <Typography level="body-sm">Elimina</Typography>
-            </Box>
-          </Box>
+              <span className="text-small">Elimina</span>
+            </div>
+          </div>
         </>
       )}
-    </Box>
+    </div>
   );
 }

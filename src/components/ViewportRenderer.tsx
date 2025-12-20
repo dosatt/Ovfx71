@@ -1,5 +1,4 @@
 import { useState, useRef, useEffect } from 'react';
-import Box from '@mui/joy@5.0.0-beta.48/Box';
 import { Viewport } from '../types';
 import { ViewportContent } from './ViewportContent';
 import type { Settings } from '../hooks/useSettings';
@@ -121,24 +120,17 @@ export function ViewportRenderer({ viewport, spacesState, viewportsState, settin
   };
 
   return (
-    <Box
+    <div
       ref={containerRef}
-      sx={{
-        display: 'flex',
-        flexDirection: isHorizontal ? 'column' : 'row',
-        width: '100%',
-        height: '100%',
-        gap: '2px',
-        position: 'relative'
-      }}
+      className={`flex w-full h-full gap-[2px] relative ${isHorizontal ? 'flex-col' : 'flex-row'}`}
     >
-      <Box
-        sx={{
+      <div
+        className="relative overflow-hidden"
+        style={{
           width: isHorizontal ? '100%' : `calc(${size}% - 1px)`,
           height: isHorizontal ? `calc(${size}% - 1px)` : '100%',
-          ...(isHorizontal ? { minHeight: '200px' } : { minWidth: '280px' }),
-          overflow: 'hidden',
-          position: 'relative'
+          minHeight: isHorizontal ? '200px' : undefined,
+          minWidth: !isHorizontal ? '280px' : undefined
         }}
       >
         <ViewportRenderer
@@ -150,46 +142,25 @@ export function ViewportRenderer({ viewport, spacesState, viewportsState, settin
           brokenLinks={brokenLinks}
           brokenLinksVersion={brokenLinksVersion}
         />
-      </Box>
+      </div>
 
       {/* Resize handle in the gap */}
-      <Box
+      <div
         onMouseDown={handleMouseDown}
         onMouseEnter={() => setIsHovering(true)}
         onMouseLeave={() => setIsHovering(false)}
-        sx={{
-          position: 'relative',
-          width: isHorizontal ? '100%' : '2px',
-          height: isHorizontal ? '2px' : '100%',
-          flexShrink: 0,
-          cursor: isHorizontal ? 'row-resize' : 'col-resize',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          zIndex: 100
-        }}
+        className={`relative flex items-center justify-center shrink-0 z-[100] ${isHorizontal ? 'w-full h-[2px] cursor-row-resize' : 'w-[2px] h-full cursor-col-resize'}`}
       >
-        <Box
-          sx={{
-            width: isHorizontal ? '30px' : '2px',
-            height: isHorizontal ? '2px' : '30px',
-            bgcolor: isDragging || isHovering ? 'primary.solidBg' : 'divider',
-            borderRadius: '2px',
-            transition: 'all 0.2s',
-            pointerEvents: 'none',
-            '&:hover': {
-              bgcolor: 'primary.solidBg'
-            }
-          }}
+        <div
+          className={`transition-all duration-200 pointer-events-none rounded-[2px] ${isHorizontal ? 'w-[30px] h-[2px]' : 'w-[2px] h-[30px]'} ${isDragging || isHovering ? 'bg-primary' : 'bg-divider'}`}
         />
-      </Box>
+      </div>
 
-      <Box
-        sx={{
-          flex: 1,
-          ...(isHorizontal ? { minHeight: '200px' } : { minWidth: '280px' }),
-          overflow: 'hidden',
-          position: 'relative'
+      <div
+        className="flex-1 relative overflow-hidden"
+        style={{
+          minHeight: isHorizontal ? '200px' : undefined,
+          minWidth: !isHorizontal ? '280px' : undefined
         }}
       >
         <ViewportRenderer
@@ -201,7 +172,7 @@ export function ViewportRenderer({ viewport, spacesState, viewportsState, settin
           brokenLinks={brokenLinks}
           brokenLinksVersion={brokenLinksVersion}
         />
-      </Box>
-    </Box>
+      </div>
+    </div>
   );
 }

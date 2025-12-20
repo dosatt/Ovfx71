@@ -1,6 +1,4 @@
 import { useState } from 'react';
-import Box from '@mui/joy@5.0.0-beta.48/Box';
-import Sheet from '@mui/joy@5.0.0-beta.48/Sheet';
 import { Viewport } from '../types';
 import { ViewportHeader } from './ViewportHeader';
 import { PageEditor } from './spaces/PageEditor';
@@ -13,6 +11,7 @@ import { CalendarApp } from './apps/CalendarApp';
 import { MailApp } from './apps/MailApp';
 import { ChatApp } from './apps/ChatApp';
 import { DrawApp } from './apps/DrawApp';
+import { ModbusConfigApp } from './apps/ModbusConfigApp';
 import { WelcomePage } from './WelcomePage';
 import type { Settings } from '../hooks/useSettings';
 
@@ -38,8 +37,8 @@ export function ViewportContent({ viewport, spacesState, viewportsState, setting
     viewportsState.setFocusedViewportId(viewport.id);
   };
 
-  const handleOpenApp = (appType: 'browser' | 'mail' | 'chat' | 'calendar' | 'draw') => {
-    const title = appType.charAt(0).toUpperCase() + appType.slice(1);
+  const handleOpenApp = (appType: 'browser' | 'mail' | 'chat' | 'calendar' | 'draw' | 'modbus') => {
+    const title = appType === 'modbus' ? 'Modbus' : appType.charAt(0).toUpperCase() + appType.slice(1);
     viewportsState.replaceCurrentTab(viewport.id, undefined, appType, title);
     viewportsState.setFocusedViewportId(viewport.id);
   };
@@ -57,24 +56,15 @@ export function ViewportContent({ viewport, spacesState, viewportsState, setting
   };
 
   return (
-    <Sheet
+    <div
       onClick={handleViewportClick}
       data-viewport-id={viewport.id}
-      sx={{
-        width: '100%',
-        height: '100%',
-        display: 'flex',
-        flexDirection: 'column',
-        borderRadius: '15px',
-        overflow: 'hidden',
-        border: '2px solid',
-        borderColor: isFocused ? 'primary.outlinedBorder' : 'divider',
-        transition: 'border-color 0.2s',
-        bgcolor: settings.viewportTransparency ? 'rgba(255, 255, 255, 0.7)' : 'background.surface',
-        backdropFilter: settings.viewportBlur ? 'blur(20px)' : 'none',
-        WebkitBackdropFilter: settings.viewportBlur ? 'blur(20px)' : 'none',
-        boxShadow: '0 8px 24px rgba(0, 0, 0, 0.08), 0 2px 6px rgba(0, 0, 0, 0.04)'
-      }}
+      className={`
+        w-full h-full flex flex-col rounded-[15px] overflow-hidden border-2 transition-colors duration-200 shadow-medium
+        ${isFocused ? 'border-primary' : 'border-divider'}
+        ${settings.viewportTransparency ? 'bg-white/70' : 'bg-white'}
+        ${settings.viewportBlur ? 'backdrop-blur-xl' : ''}
+      `}
     >
       <ViewportHeader
         viewport={viewport}
@@ -86,16 +76,12 @@ export function ViewportContent({ viewport, spacesState, viewportsState, setting
         settings={settings}
       />
 
-      <Box
+      <div
         data-viewport-content
-        sx={{
-          flex: 1,
-          overflow: 'auto',
-          bgcolor: settings.viewportTransparency ? 'transparent' : 'background.surface',
-          '&::-webkit-scrollbar': { display: 'none' },
-          '-ms-overflow-style': 'none',
-          scrollbarWidth: 'none'
-        }}
+        className={`
+          flex-1 overflow-auto no-scrollbar
+          ${settings.viewportTransparency ? 'bg-transparent' : 'bg-white'}
+        `}
       >
         {/* Render APP if active tab has appType */}
         {activeTab?.appType && (
@@ -105,6 +91,7 @@ export function ViewportContent({ viewport, spacesState, viewportsState, setting
             {activeTab.appType === 'mail' && <MailApp />}
             {activeTab.appType === 'chat' && <ChatApp />}
             {activeTab.appType === 'draw' && <DrawApp />}
+            {activeTab.appType === 'modbus' && <ModbusConfigApp />}
           </>
         )}
 
@@ -153,7 +140,7 @@ export function ViewportContent({ viewport, spacesState, viewportsState, setting
             }))}
           />
         )}
-      </Box>
-    </Sheet>
+      </div>
+    </div>
   );
 }

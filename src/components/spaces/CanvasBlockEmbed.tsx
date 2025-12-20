@@ -1,6 +1,4 @@
 import { Block } from '../../types';
-import Box from '@mui/joy@5.0.0-beta.48/Box';
-import Typography from '@mui/joy@5.0.0-beta.48/Typography';
 import * as LucideIcons from 'lucide-react';
 import { 
   Type, 
@@ -119,39 +117,31 @@ export function CanvasBlockEmbed({
         onContextMenu={onContextMenu}
         style={{ cursor, opacity }}
       >
-        <Box
-          sx={{
+        <div
+          style={{
             width: '100%',
             height: '100%',
             border: '2px solid',
-            borderColor: 'divider',
+            borderColor: '#e5e7eb',
             borderRadius: '8px',
-            bgcolor: 'background.level1',
+            backgroundColor: '#f4f4f5',
             display: 'flex',
             flexDirection: 'column',
-            p: 2,
-            gap: 1
+            padding: '16px',
+            gap: '8px'
           }}
         >
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-            <Box
-              sx={{
-                width: 32,
-                height: 32,
-                borderRadius: '8px',
-                bgcolor: 'background.level2',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center'
-              }}
+          <div className="flex items-center gap-2">
+            <div
+              className="w-8 h-8 rounded-md bg-default-200 flex items-center justify-center"
             >
               <TypeIcon size={18} />
-            </Box>
-            <Typography level="title-sm" sx={{ color: 'text.tertiary' }}>
+            </div>
+            <span className="text-small text-default-400">
               Blocco non trovato
-            </Typography>
-          </Box>
-        </Box>
+            </span>
+          </div>
+        </div>
       </foreignObject>
     );
   }
@@ -179,57 +169,38 @@ export function CanvasBlockEmbed({
       onMouseLeave={onMouseLeave}
       style={{ cursor, opacity }}
     >
-      <Box
-        sx={{
+      <div
+        style={{
           width: '100%',
           height: '100%',
           border: '2px solid',
-          borderColor: 'primary.500',
+          borderColor: 'var(--heroui-primary)',
           borderRadius: '8px',
-          bgcolor: 'background.surface',
+          backgroundColor: '#ffffff',
           display: 'flex',
           flexDirection: 'column',
-          p: 1.5,
-          gap: 1,
+          padding: '12px',
+          gap: '8px',
           overflow: 'hidden'
         }}
       >
         {/* Header con icona e info */}
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-          <Box
-            sx={{
-              width: 24,
-              height: 24,
-              borderRadius: '6px',
-              bgcolor: 'primary.softBg',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              flexShrink: 0
-            }}
+        <div className="flex items-center gap-2">
+          <div
+            className="w-6 h-6 rounded-md bg-primary/10 flex items-center justify-center shrink-0"
           >
             <TypeIcon size={14} />
-          </Box>
-          <Typography level="body-xs" sx={{ color: 'text.secondary', flexShrink: 0 }}>
+          </div>
+          <span className="text-xs text-default-500 shrink-0">
             da {sourceSpace.title}
-          </Typography>
-        </Box>
+          </span>
+        </div>
 
         {/* Contenuto del blocco */}
-        <Typography 
-          level="body-sm" 
-          sx={{ 
-            flex: 1,
-            overflow: 'hidden',
-            textOverflow: 'ellipsis',
-            display: '-webkit-box',
-            WebkitLineClamp: 2,
-            WebkitBoxOrient: 'vertical',
-          }}
-        >
+        <p className="text-sm overflow-hidden text-ellipsis line-clamp-2">
           {displayContent || '(vuoto)'}
-        </Typography>
-      </Box>
+        </p>
+      </div>
     </foreignObject>
   );
 }

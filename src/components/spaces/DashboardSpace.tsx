@@ -1,7 +1,5 @@
 import { useState, useCallback } from 'react';
-import Box from '@mui/joy@5.0.0-beta.48/Box';
-import Typography from '@mui/joy@5.0.0-beta.48/Typography';
-import Button from '@mui/joy@5.0.0-beta.48/Button';
+import { Button } from '@heroui/react';
 import { Plus } from 'lucide-react';
 import { Space } from '../../types';
 import { DashboardWidget } from './DashboardWidget';
@@ -80,23 +78,22 @@ export function DashboardSpace({ space, spacesState }: DashboardSpaceProps) {
   }, [widgets, space.id, spacesState]);
 
   return (
-    <Box sx={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' }}>
+    <div className="flex flex-col h-full overflow-hidden bg-background">
       {/* Toolbar */}
-      <Box sx={{ p: 2, borderBottom: '1px solid', borderColor: 'divider' }}>
-        <Button startDecorator={<Plus size={16} />} size="sm" onClick={addWidget}>
+      <div className="p-4 border-b border-divider flex-shrink-0">
+        <Button 
+          startContent={<Plus size={16} />} 
+          size="sm" 
+          color="primary"
+          onPress={addWidget}
+        >
           Add Widget
         </Button>
-      </Box>
+      </div>
 
       {/* Dashboard grid */}
-      <Box sx={{ flex: 1, overflow: 'auto', p: 2 }}>
-        <Box
-          sx={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))',
-            gap: 2
-          }}
-        >
+      <div className="flex-1 overflow-auto p-4 bg-default-50">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 auto-rows-min">
           {widgets.map((widget, index) => (
             <DashboardWidget
               key={widget.id}
@@ -106,8 +103,8 @@ export function DashboardSpace({ space, spacesState }: DashboardSpaceProps) {
               onMove={moveWidget}
             />
           ))}
-        </Box>
-      </Box>
-    </Box>
+        </div>
+      </div>
+    </div>
   );
 }

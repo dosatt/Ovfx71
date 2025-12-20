@@ -1,9 +1,5 @@
 import { useState } from 'react';
-import Box from '@mui/joy@5.0.0-beta.48/Box';
-import Input from '@mui/joy@5.0.0-beta.48/Input';
-import IconButton from '@mui/joy@5.0.0-beta.48/IconButton';
-import Typography from '@mui/joy@5.0.0-beta.48/Typography';
-import Avatar from '@mui/joy@5.0.0-beta.48/Avatar';
+import { Input, Avatar, Button } from '@heroui/react';
 import { Send } from 'lucide-react';
 
 const mockMessages = [
@@ -16,61 +12,54 @@ export function ChatApp() {
   const [message, setMessage] = useState('');
 
   return (
-    <Box sx={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+    <div className="flex flex-col h-full bg-white">
       {/* Chat header */}
-      <Box sx={{ 
-        p: 2, 
-        borderBottom: '1px solid', 
-        borderColor: 'divider',
-        display: 'flex',
-        alignItems: 'center',
-        gap: 2
-      }}>
-        <Avatar size="sm">A</Avatar>
-        <Typography level="title-md">Alice</Typography>
-      </Box>
+      <div className="p-4 border-b border-divider flex items-center gap-3">
+        <Avatar name="A" size="sm" />
+        <h4 className="text-medium font-semibold">Alice</h4>
+      </div>
 
       {/* Messages */}
-      <Box sx={{ flex: 1, overflow: 'auto', p: 2, display: 'flex', flexDirection: 'column', gap: 2 }}>
+      <div className="flex-1 overflow-auto p-4 flex flex-col gap-4">
         {mockMessages.map(msg => (
-          <Box
+          <div
             key={msg.id}
-            sx={{
-              display: 'flex',
-              flexDirection: 'column',
-              alignSelf: msg.isMe ? 'flex-end' : 'flex-start',
-              maxWidth: '70%'
-            }}
+            className={`
+              flex flex-col max-w-[70%]
+              ${msg.isMe ? 'self-end items-end' : 'self-start items-start'}
+            `}
           >
-            <Box
-              sx={{
-                bgcolor: msg.isMe ? 'primary.softBg' : 'background.level1',
-                p: 1.5,
-                borderRadius: '12px'
-              }}
+            <div
+              className={`
+                p-3 rounded-xl text-small
+                ${msg.isMe ? 'bg-primary text-primary-foreground' : 'bg-default-100 text-default-900'}
+              `}
             >
-              <Typography level="body-sm">{msg.message}</Typography>
-            </Box>
-            <Typography level="body-xs" sx={{ color: 'text.tertiary', mt: 0.5 }}>
+              {msg.message}
+            </div>
+            <span className="text-tiny text-default-400 mt-1 px-1">
               {msg.time}
-            </Typography>
-          </Box>
+            </span>
+          </div>
         ))}
-      </Box>
+      </div>
 
       {/* Input */}
-      <Box sx={{ p: 2, borderTop: '1px solid', borderColor: 'divider', display: 'flex', gap: 1 }}>
+      <div className="p-4 border-t border-divider flex gap-2 items-center">
         <Input
           value={message}
-          onChange={(e) => setMessage(e.target.value)}
+          onValueChange={setMessage}
           placeholder="Type a message..."
-          sx={{ flex: 1 }}
+          className="flex-1"
           size="sm"
+          classNames={{
+            inputWrapper: "bg-default-100",
+          }}
         />
-        <IconButton size="sm">
+        <Button isIconOnly size="sm" color="primary">
           <Send size={16} />
-        </IconButton>
-      </Box>
-    </Box>
+        </Button>
+      </div>
+    </div>
   );
 }

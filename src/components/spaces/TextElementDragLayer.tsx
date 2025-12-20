@@ -1,5 +1,4 @@
 import { useDragLayer } from 'react-dnd';
-import { Box } from '@mui/joy@5.0.0-beta.48';
 import { TextElementPreview } from './TextElementPreview';
 import { DragTooltip } from './DragTooltip';
 import { ITEM_TYPE_TEXT_ELEMENT } from '../SpaceTreeItem';
@@ -30,8 +29,8 @@ export function TextElementDragLayer() {
   return (
     <>
       {/* Preview del textElement */}
-      <Box
-        sx={{
+      <div
+        style={{
           position: 'fixed',
           pointerEvents: 'none',
           left: 0,
@@ -45,7 +44,7 @@ export function TextElementDragLayer() {
           content={item.content}
           sourceSpaceName={item.sourceSpaceName}
         />
-      </Box>
+      </div>
 
       {/* Tooltip con scorciatoie */}
       <DragTooltip mode={dragMode} />

@@ -1,9 +1,6 @@
 import { useRef } from 'react';
 import { useDrag, useDrop } from 'react-dnd';
-import Box from '@mui/joy@5.0.0-beta.48/Box';
-import Card from '@mui/joy@5.0.0-beta.48/Card';
-import Typography from '@mui/joy@5.0.0-beta.48/Typography';
-import IconButton from '@mui/joy@5.0.0-beta.48/IconButton';
+import { Card, CardBody, Button } from '@heroui/react';
 import { GripVertical, Trash2 } from 'lucide-react';
 
 interface Widget {
@@ -57,17 +54,17 @@ export function DashboardWidget({ widget, index, onDelete, onMove }: DashboardWi
     switch (widget.type) {
       case 'stats':
         return (
-          <Box sx={{ textAlign: 'center' }}>
-            <Typography level="h2">{widget.content.value}</Typography>
-            <Typography level="body-sm" sx={{ color: 'success.500' }}>
+          <div className="text-center py-4">
+            <h2 className="text-4xl font-bold text-default-900">{widget.content.value}</h2>
+            <p className="text-small font-medium text-success-500 mt-1">
               {widget.content.change}
-            </Typography>
-          </Box>
+            </p>
+          </div>
         );
       case 'text':
-        return <Typography level="body-md">{widget.content.text}</Typography>;
+        return <p className="text-default-600">{widget.content.text}</p>;
       case 'chart':
-        return <Typography level="body-sm">Chart widget coming soon</Typography>;
+        return <p className="text-small text-default-400 italic">Chart widget coming soon</p>;
       default:
         return null;
     }
@@ -76,29 +73,34 @@ export function DashboardWidget({ widget, index, onDelete, onMove }: DashboardWi
   return (
     <Card
       ref={ref}
-      variant="outlined"
-      sx={{
-        opacity: isDragging ? 0.5 : 1,
-        cursor: 'move',
-        border: isOver ? '2px solid' : '1px solid',
-        borderColor: isOver ? 'primary.500' : 'divider'
-      }}
+      className={`
+        transition-all duration-200
+        ${isDragging ? 'opacity-50' : 'opacity-100'}
+        ${isOver ? 'ring-2 ring-primary border-transparent' : 'border border-divider'}
+      `}
+      shadow="sm"
     >
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-          <GripVertical size={16} style={{ cursor: 'grab' }} />
-          <Typography level="title-md">{widget.title}</Typography>
-        </Box>
-        <IconButton
-          size="sm"
-          variant="plain"
-          color="danger"
-          onClick={() => onDelete(widget.id)}
-        >
-          <Trash2 size={14} />
-        </IconButton>
-      </Box>
-      {renderContent()}
+      <CardBody>
+        <div className="flex justify-between items-start mb-4">
+          <div className="flex items-center gap-2">
+            <div className="cursor-grab active:cursor-grabbing text-default-400 hover:text-default-600">
+              <GripVertical size={16} />
+            </div>
+            <h3 className="text-medium font-semibold">{widget.title}</h3>
+          </div>
+          <Button
+            isIconOnly
+            size="sm"
+            variant="light"
+            color="danger"
+            onPress={() => onDelete(widget.id)}
+            className="opacity-50 hover:opacity-100"
+          >
+            <Trash2 size={14} />
+          </Button>
+        </div>
+        {renderContent()}
+      </CardBody>
     </Card>
   );
 }

@@ -1,7 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import Box from '@mui/joy@5.0.0-beta.48/Box';
-import Input from '@mui/joy@5.0.0-beta.48/Input';
-import Typography from '@mui/joy@5.0.0-beta.48/Typography';
+import { Input } from '@heroui/react';
 import { Search } from 'lucide-react';
 import { Space } from '../../types';
 
@@ -12,7 +10,7 @@ interface SpaceLinkAutocompleteProps {
   position: { top: number; left: number };
   selectedIndex?: number;
   onSelectedIndexChange?: (index: number) => void;
-  currentSpaceId?: string; // ID dello space corrente da escludere
+  currentSpaceId?: string;
 }
 
 export function SpaceLinkAutocomplete({
@@ -60,8 +58,8 @@ export function SpaceLinkAutocomplete({
     )
     .sort((a, b) => {
       // Ordina per lastModified, più recenti prima
-      const dateA = a.lastModified ? new Date(a.lastModified).getTime() : 0;
-      const dateB = b.lastModified ? new Date(b.lastModified).getTime() : 0;
+      const dateA = a.updatedAt ? new Date(a.updatedAt).getTime() : 0;
+      const dateB = b.updatedAt ? new Date(b.updatedAt).getTime() : 0;
       return dateB - dateA;
     });
 
@@ -89,12 +87,12 @@ export function SpaceLinkAutocomplete({
     if (e.key === 'ArrowDown') {
       e.preventDefault();
       if (onSelectedIndexChange) {
-        onSelectedIndexChange(prev => Math.min(prev + 1, filteredSpaces.length - 1));
+        onSelectedIndexChange(Math.min(selectedIndex + 1, filteredSpaces.length - 1));
       }
     } else if (e.key === 'ArrowUp') {
       e.preventDefault();
       if (onSelectedIndexChange) {
-        onSelectedIndexChange(prev => Math.max(prev - 1, 0));
+        onSelectedIndexChange(Math.max(selectedIndex - 1, 0));
       }
     } else if (e.key === 'Enter') {
       e.preventDefault();
@@ -141,137 +139,86 @@ export function SpaceLinkAutocomplete({
   return (
     <>
       {/* Overlay per catturare i click fuori dal menu */}
-      <Box
+      <div
         onClick={onClose}
         onMouseDown={(e) => e.preventDefault()} // Previeni che l'overlay prenda il focus
-        sx={{
-          position: 'fixed',
-          top: 0,
-          left: 0,
-          right: 0,
-          bottom: 0,
-          zIndex: 9998
-        }}
+        className="fixed inset-0 z-[9998]"
       />
       
       {/* Menu autocomplete */}
-      <Box
-        sx={{
-          position: 'fixed',
+      <div
+        style={{
           top: `${adjustedPosition.top}px`,
           left: `${adjustedPosition.left}px`,
-          bgcolor: 'background.popup',
-          boxShadow: 'lg',
-          borderRadius: '8px',
-          border: '1px solid',
-          borderColor: 'divider',
-          zIndex: 9999,
-          width: 400,
-          maxHeight: 400,
-          overflow: 'hidden',
-          display: 'flex',
-          flexDirection: 'column'
         }}
+        className="fixed bg-white shadow-lg rounded-lg border border-divider z-[9999] w-[400px] max-h-[400px] flex flex-col overflow-hidden"
       >
         {/* Search input */}
-        <Box sx={{ p: 1.5, borderBottom: '1px solid', borderColor: 'divider' }}>
+        <div className="p-2 border-b border-divider">
           <Input
             value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
+            onValueChange={setSearchQuery}
             onKeyDown={handleKeyDown}
             placeholder="Search spaces..."
-            startDecorator={<Search size={16} />}
+            startContent={<Search size={16} className="text-default-400" />}
             size="sm"
             autoFocus
-            slotProps={{
-              input: {
-                ref: inputRef,
-              }
-            }}
-            sx={{
-              '--Input-focusedThickness': '1px',
+            ref={inputRef}
+            classNames={{
+              input: "text-small",
+              inputWrapper: "h-8",
             }}
           />
-        </Box>
+        </div>
 
         {/* Results list */}
-        <Box
+        <div
           ref={listRef}
-          sx={{
-            overflow: 'auto',
-            flex: 1
-          }}
+          className="flex-1 overflow-auto"
         >
           {filteredSpaces.length > 0 ? (
             filteredSpaces.map((space, index) => (
-              <Box
+              <div
                 key={space.id}
                 onClick={() => onSelect(space)}
-                sx={{
-                  p: 1.5,
-                  cursor: 'pointer',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 1.5,
-                  bgcolor: index === selectedIndex ? 'background.level1' : 'transparent',
-                  '&:hover': {
-                    bgcolor: 'background.level1'
-                  },
-                  transition: 'background-color 0.15s'
-                }}
+                className={`
+                  p-2 cursor-pointer flex items-center gap-3 transition-colors
+                  ${index === selectedIndex ? 'bg-default-100' : 'bg-transparent'}
+                  hover:bg-default-100
+                `}
               >
                 {/* Icon */}
-                <Typography 
-                  level="body-lg"
-                  sx={{ minWidth: 24, textAlign: 'center' }}
-                >
+                <span className="text-lg min-w-[24px] text-center">
                   {getSpaceIcon(space)}
-                </Typography>
+                </span>
 
                 {/* Title and type */}
-                <Box sx={{ flex: 1, minWidth: 0 }}>
-                  <Typography 
-                    level="body-sm"
-                    sx={{ 
-                      overflow: 'hidden',
-                      textOverflow: 'ellipsis',
-                      whiteSpace: 'nowrap'
-                    }}
-                  >
+                <div className="flex-1 min-w-0">
+                  <p className="text-small font-medium truncate">
                     {space.title}
-                  </Typography>
-                  <Typography 
-                    level="body-xs" 
-                    sx={{ color: 'text.tertiary' }}
-                  >
+                  </p>
+                  <p className="text-tiny text-default-400">
                     {getSpaceTypeBadge(space.type)}
-                  </Typography>
-                </Box>
-              </Box>
+                  </p>
+                </div>
+              </div>
             ))
           ) : (
-            <Box sx={{ p: 3, textAlign: 'center' }}>
-              <Typography level="body-sm" sx={{ color: 'text.tertiary' }}>
+            <div className="p-4 text-center">
+              <span className="text-small text-default-400">
                 No spaces found
-              </Typography>
-            </Box>
+              </span>
+            </div>
           )}
-        </Box>
+        </div>
 
         {/* Footer con hint */}
-        <Box 
-          sx={{ 
-            p: 1, 
-            borderTop: '1px solid', 
-            borderColor: 'divider',
-            bgcolor: 'background.level1'
-          }}
-        >
-          <Typography level="body-xs" sx={{ color: 'text.tertiary' }}>
+        <div className="p-2 border-t border-divider bg-default-50">
+          <p className="text-tiny text-default-400 text-center">
             ↑↓ to navigate • Enter to select • Esc to close
-          </Typography>
-        </Box>
-      </Box>
+          </p>
+        </div>
+      </div>
     </>
   );
 }

@@ -1,13 +1,4 @@
-import { useState, useRef, useEffect } from 'react';
-import Box from '@mui/joy@5.0.0-beta.48/Box';
-import Typography from '@mui/joy@5.0.0-beta.48/Typography';
-import Sheet from '@mui/joy@5.0.0-beta.48/Sheet';
-import Checkbox from '@mui/joy@5.0.0-beta.48/Checkbox';
-import List from '@mui/joy@5.0.0-beta.48/List';
-import ListItem from '@mui/joy@5.0.0-beta.48/ListItem';
-import ListItemButton from '@mui/joy@5.0.0-beta.48/ListItemButton';
-import ListItemDecorator from '@mui/joy@5.0.0-beta.48/ListItemDecorator';
-import { 
+import {
   ExternalLink,
   ChevronDown,
   FileText,
@@ -22,6 +13,8 @@ import * as LucideIcons from 'lucide-react';
 import { Space } from '../../types';
 import { RichTextRenderer } from './RichTextRenderer';
 import { useSettings } from '../../hooks/useSettings';
+import { useState, useRef, useEffect } from 'react';
+import { Button, Checkbox } from '@heroui/react';
 
 interface SpaceEmbedProps {
   space: Space;
@@ -83,254 +76,146 @@ export function SpaceEmbed({ space, onNavigate, compact = false, spacesState }: 
       // Mostra TUTTI i blocchi, incluso il titolo incorporato
       const blocks = space.content.blocks;
       return (
-        <Box>
+        <div>
           {/* Titolo incorporato */}
-          <Typography
-            level="h1"
-            sx={{
-              fontSize: '2rem',
-              fontWeight: 'bold',
-              textAlign: 'center',
-              mb: 2,
-              overflow: 'hidden',
-              textOverflow: 'ellipsis',
-              whiteSpace: 'nowrap',
-            }}
-          >
+          <h1 className="text-3xl font-bold text-center mb-4 overflow-hidden text-ellipsis whitespace-nowrap">
             {space.title}
-          </Typography>
+          </h1>
           
           {/* Blocchi */}
           {blocks.map((block: any, index: number) => {
             // Heading 1
             if (block.type === 'heading1') {
               return (
-                <Typography
+                <h2
                   key={index}
-                  level="h2"
-                  sx={{
-                    fontSize: '1.5rem',
-                    fontWeight: 'bold',
-                    textAlign: 'center',
-                    mb: 1,
-                    overflow: 'hidden',
-                    textOverflow: 'ellipsis',
-                    whiteSpace: 'nowrap',
-                  }}
+                  className="text-2xl font-bold text-center mb-2 overflow-hidden text-ellipsis whitespace-nowrap"
                 >
                   {block.content || '(vuoto)'}
-                </Typography>
+                </h2>
               );
             }
 
             // Heading 2
             if (block.type === 'heading2') {
               return (
-                <Typography
+                <h3
                   key={index}
-                  level="h3"
-                  sx={{
-                    fontSize: '1.25rem',
-                    fontWeight: 'bold',
-                    textAlign: 'center',
-                    mb: 0.75,
-                    overflow: 'hidden',
-                    textOverflow: 'ellipsis',
-                    whiteSpace: 'nowrap',
-                  }}
+                  className="text-xl font-bold text-center mb-1.5 overflow-hidden text-ellipsis whitespace-nowrap"
                 >
                   {block.content || '(vuoto)'}
-                </Typography>
+                </h3>
               );
             }
 
             // Heading 3
             if (block.type === 'heading3') {
               return (
-                <Typography
+                <h4
                   key={index}
-                  level="h4"
-                  sx={{
-                    fontSize: '1.1rem',
-                    fontWeight: 'bold',
-                    textAlign: 'center',
-                    mb: 0.5,
-                    overflow: 'hidden',
-                    textOverflow: 'ellipsis',
-                    whiteSpace: 'nowrap',
-                  }}
+                  className="text-lg font-bold text-center mb-1 overflow-hidden text-ellipsis whitespace-nowrap"
                 >
                   {block.content || '(vuoto)'}
-                </Typography>
+                </h4>
               );
             }
 
             // Bullet List
             if (block.type === 'bulletList') {
               return (
-                <Box
+                <div
                   key={index}
-                  sx={{
-                    display: 'flex',
-                    gap: 0.5,
-                    mb: 0.25,
-                    overflow: 'hidden',
-                  }}
+                  className="flex gap-2 mb-1 overflow-hidden"
                 >
-                  <Typography sx={{ flexShrink: 0 }}>•</Typography>
-                  <Typography
-                    sx={{
-                      flex: 1,
-                      overflow: 'hidden',
-                      textOverflow: 'ellipsis',
-                      whiteSpace: 'nowrap',
-                    }}
-                  >
+                  <span className="shrink-0">•</span>
+                  <span className="flex-1 overflow-hidden text-ellipsis whitespace-nowrap">
                     {block.content || '(vuoto)'}
-                  </Typography>
-                </Box>
+                  </span>
+                </div>
               );
             }
 
             // Numbered List
             if (block.type === 'numberedList') {
               return (
-                <Box
+                <div
                   key={index}
-                  sx={{
-                    display: 'flex',
-                    gap: 0.5,
-                    mb: 0.25,
-                    overflow: 'hidden',
-                  }}
+                  className="flex gap-2 mb-1 overflow-hidden"
                 >
-                  <Typography sx={{ flexShrink: 0 }}>{index + 1}.</Typography>
-                  <Typography
-                    sx={{
-                      flex: 1,
-                      overflow: 'hidden',
-                      textOverflow: 'ellipsis',
-                      whiteSpace: 'nowrap',
-                    }}
-                  >
+                  <span className="shrink-0">{index + 1}.</span>
+                  <span className="flex-1 overflow-hidden text-ellipsis whitespace-nowrap">
                     {block.content || '(vuoto)'}
-                  </Typography>
-                </Box>
+                  </span>
+                </div>
               );
             }
 
             // Checkbox
             if (block.type === 'checkbox') {
               return (
-                <Box
+                <div
                   key={index}
-                  sx={{
-                    display: 'flex',
-                    gap: 0.5,
-                    alignItems: 'center',
-                    mb: 0.25,
-                    overflow: 'hidden',
-                  }}
+                  className="flex gap-2 items-center mb-1 overflow-hidden"
                 >
                   <Checkbox
-                    checked={block.checked || false}
+                    isSelected={block.checked || false}
                     size="sm"
-                    sx={{ pointerEvents: 'none' }}
+                    className="pointer-events-none"
                   />
-                  <Typography
-                    sx={{
-                      flex: 1,
-                      overflow: 'hidden',
-                      textOverflow: 'ellipsis',
-                      whiteSpace: 'nowrap',
-                      textDecoration: block.checked ? 'line-through' : 'none',
-                      opacity: block.checked ? 0.6 : 1,
-                    }}
+                  <span
+                    className={`flex-1 overflow-hidden text-ellipsis whitespace-nowrap ${block.checked ? 'line-through opacity-60' : ''}`}
                   >
                     {block.content || '(vuoto)'}
-                  </Typography>
-                </Box>
+                  </span>
+                </div>
               );
             }
 
             // Quote
             if (block.type === 'quote') {
               return (
-                <Box
+                <div
                   key={index}
-                  sx={{
-                    borderLeft: '3px solid',
-                    borderColor: 'neutral.outlinedBorder',
-                    pl: 1.5,
-                    mb: 0.5,
-                    overflow: 'hidden',
-                  }}
+                  className="border-l-4 border-divider pl-4 mb-2 overflow-hidden"
                 >
-                  <Typography
-                    sx={{
-                      fontStyle: 'italic',
-                      overflow: 'hidden',
-                      textOverflow: 'ellipsis',
-                      whiteSpace: 'nowrap',
-                    }}
-                  >
+                  <span className="italic overflow-hidden text-ellipsis whitespace-nowrap block">
                     {block.content || '(vuoto)'}
-                  </Typography>
-                </Box>
+                  </span>
+                </div>
               );
             }
 
             // Divider
             if (block.type === 'divider') {
               return (
-                <Box
+                <div
                   key={index}
-                  sx={{
-                    height: '1px',
-                    bgcolor: 'divider',
-                    my: 1,
-                  }}
+                  className="h-[1px] bg-divider my-4"
                 />
               );
             }
 
             // Text (default)
             return (
-              <Box
+              <div
                 key={index}
-                sx={{
-                  mb: 0.25,
-                  overflow: 'hidden',
-                  textOverflow: 'ellipsis',
-                  whiteSpace: 'nowrap',
-                }}
+                className="mb-1 overflow-hidden text-ellipsis whitespace-nowrap"
               >
                 {block.content.includes('[[') ? (
-                  <RichTextRenderer
-                    content={block.content}
-                    onSpaceLinkClick={onNavigate}
-                    spacesState={spacesState}
-                    sx={{
-                      overflow: 'hidden',
-                      textOverflow: 'ellipsis',
-                      whiteSpace: 'nowrap',
-                    }}
-                  />
+                  <div className="overflow-hidden text-ellipsis whitespace-nowrap">
+                    <RichTextRenderer
+                      content={block.content}
+                    />
+                  </div>
                 ) : (
-                  <Typography
-                    sx={{
-                      overflow: 'hidden',
-                      textOverflow: 'ellipsis',
-                      whiteSpace: 'nowrap',
-                    }}
-                  >
+                  <span className="overflow-hidden text-ellipsis whitespace-nowrap block">
                     {block.content || '(vuoto)'}
-                  </Typography>
+                  </span>
                 )}
-              </Box>
+              </div>
             );
           })}
-        </Box>
+        </div>
       );
     }
 
@@ -338,11 +223,9 @@ export function SpaceEmbed({ space, onNavigate, compact = false, spacesState }: 
       const elements = space.content?.elements || [];
       if (elements.length === 0) {
         return (
-          <Box sx={{ color: 'text.secondary', textAlign: 'center', py: 4 }}>
-            <Typography level="body-sm" sx={{ fontStyle: 'italic' }}>
-              Canvas vuoto
-            </Typography>
-          </Box>
+          <div className="text-default-500 text-center py-8 italic text-small">
+            Canvas vuoto
+          </div>
         );
       }
 
@@ -407,7 +290,7 @@ export function SpaceEmbed({ space, onNavigate, compact = false, spacesState }: 
       const aspectRatio = viewBoxWidth / viewBoxHeight;
 
       return (
-        <Box sx={{ borderRadius: '4px', overflow: 'hidden', bgcolor: 'background.level1' }}>
+        <div className="rounded-md overflow-hidden bg-default-100">
           <svg
             viewBox={`${minX - padding} ${minY - padding} ${viewBoxWidth} ${viewBoxHeight}`}
             style={{
@@ -515,201 +398,122 @@ export function SpaceEmbed({ space, onNavigate, compact = false, spacesState }: 
               return null;
             })}
           </svg>
-        </Box>
+        </div>
       );
     }
 
     return (
-      <Box sx={{ color: 'text.secondary', textAlign: 'center', py: 4 }}>
-        <Typography level="body-sm" sx={{ fontStyle: 'italic' }}>
-          {space.type} space
-        </Typography>
-      </Box>
+      <div className="text-default-500 text-center py-8 italic text-small">
+        {space.type} space
+      </div>
     );
   };
 
   if (compact) {
     return (
-      <Sheet
-        variant="outlined"
-        sx={{
-          p: 1.5,
-          borderRadius: '8px',
-          display: 'flex',
-          alignItems: 'center',
-          gap: 1,
-          cursor: 'pointer',
-          transition: 'all 0.2s',
-          '&:hover': {
-            bgcolor: 'background.level1',
-            borderColor: 'primary.300',
-          },
-        }}
+      <div
+        className="p-3 rounded-lg flex items-center gap-2 cursor-pointer transition-colors border border-divider hover:bg-default-100 hover:border-primary-300"
         onClick={() => onNavigate(space.id)}
       >
-        <Box
-          sx={{
-            width: 32,
-            height: 32,
-            borderRadius: '6px',
-            bgcolor: space.iconColor || 'primary.softBg',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            flexShrink: 0,
-          }}
+        <div
+          className="w-8 h-8 rounded-md flex items-center justify-center shrink-0"
+          style={{ backgroundColor: space.iconColor || 'var(--heroui-primary-100)' }}
         >
           <SpaceIcon size={16} style={{ color: space.iconColor || 'inherit' }} />
-        </Box>
-        <Box sx={{ flex: 1, minWidth: 0 }}>
-          <Typography level="body-sm" sx={{ fontWeight: 600 }}>
+        </div>
+        <div className="flex-1 min-w-0">
+          <p className="text-small font-semibold">
             {space.title}
-          </Typography>
-          <Typography level="body-xs" sx={{ color: 'text.tertiary' }}>
+          </p>
+          <p className="text-tiny text-default-400">
             {space.type}
-          </Typography>
-        </Box>
+          </p>
+        </div>
         <ExternalLink size={14} />
-      </Sheet>
+      </div>
     );
   }
 
   return (
     <>
-      <Sheet
-        variant="outlined"
+      <div
         onDoubleClick={(e) => {
           e.preventDefault();
           e.stopPropagation();
           onNavigate(space.id);
         }}
-        sx={{
-          p: 2,
+        className="p-4 rounded-[12px] border border-divider bg-background relative overflow-visible transition-all cursor-default hover:border-primary hover:shadow-sm"
+        style={{
           borderRadius: settings.previewBorderRadius,
-          border: '1px solid',
-          borderColor: 'neutral.300',
-          bgcolor: 'background.surface',
-          position: 'relative',
-          overflow: 'visible',
-          transition: 'all 0.2s',
-          cursor: 'default',
-          '&:hover': {
-            borderColor: 'primary.500',
-            boxShadow: 'sm',
-          }
         }}
       >
         {/* Badge Preview con dropdown - sempre visibile */}
-        <Box
+        <div
           ref={badgeRef}
           onClick={(e) => {
             e.preventDefault();
             e.stopPropagation();
             setMenuOpen(!menuOpen);
           }}
-          sx={{
-            position: 'absolute',
-            top: -12,
-            right: 40,
-            zIndex: 10,
-            bgcolor: 'primary.solidBg',
-            color: '#ffffff',
-            borderRadius: '4px',
-            px: 0.75,
-            py: 0.25,
-            display: 'flex',
-            alignItems: 'center',
-            gap: 0.5,
-            cursor: 'pointer',
-            boxShadow: 'md',
-            '&:hover': {
-              bgcolor: 'primary.solidHoverBg',
-            }
-          }}
+          className="absolute -top-3 right-10 z-10 bg-primary text-white rounded px-2 py-0.5 flex items-center gap-1 cursor-pointer shadow-md hover:bg-primary-600 transition-colors"
         >
-          <Typography level="body-xs" sx={{ fontWeight: 600, color: '#ffffff', fontSize: '0.7rem', fontStyle: 'italic' }}>
+          <span className="text-[0.7rem] font-semibold italic">
             Preview
-          </Typography>
+          </span>
           <ChevronDown size={10} />
-        </Box>
+        </div>
 
         {/* Anteprima con altezza condizionale */}
-        <Box 
-          sx={{ 
-            width: '100%',
+        <div 
+          className="w-full"
+          style={{ 
             maxHeight: previewHeight === 'reduced' ? '300px' : 'none',
             overflow: previewHeight === 'reduced' ? 'auto' : 'visible'
           }}
         >
           {renderPreview()}
-        </Box>
-      </Sheet>
+        </div>
+      </div>
 
       {/* Dropdown menu custom per impostazioni altezza */}
       {menuOpen && (
-        <Box
+        <div
           ref={menuRef}
-          sx={{
-            position: 'fixed',
+          className="fixed z-[1200] bg-white rounded-lg shadow-lg border border-divider min-w-[200px] overflow-hidden"
+          style={{
             top: badgeRef.current ? badgeRef.current.getBoundingClientRect().bottom + 4 : 0,
             left: badgeRef.current ? badgeRef.current.getBoundingClientRect().left : 0,
-            zIndex: 1200,
-            bgcolor: 'background.surface',
-            borderRadius: '8px',
-            boxShadow: 'lg',
-            border: '1px solid',
-            borderColor: 'neutral.outlinedBorder',
-            minWidth: '200px',
-            overflow: 'hidden',
           }}
         >
-          <List size="sm" sx={{ p: 0 }}>
-            <ListItem sx={{ p: 0 }}>
-              <ListItemButton
-                onClick={() => {
-                  setPreviewHeight('reduced');
-                  setMenuOpen(false);
-                }}
-                selected={previewHeight === 'reduced'}
-                sx={{
-                  py: 1,
-                  px: 1.5,
-                  gap: 1,
-                }}
-              >
-                <ListItemDecorator>
-                  <Minimize2 size={16} />
-                </ListItemDecorator>
-                <Box sx={{ flex: 1 }}>
-                  <Typography level="body-sm">Altezza ridotta (300px)</Typography>
-                </Box>
-                {previewHeight === 'reduced' && <Check size={16} />}
-              </ListItemButton>
-            </ListItem>
-            <ListItem sx={{ p: 0 }}>
-              <ListItemButton
-                onClick={() => {
-                  setPreviewHeight('full');
-                  setMenuOpen(false);
-                }}
-                selected={previewHeight === 'full'}
-                sx={{
-                  py: 1,
-                  px: 1.5,
-                  gap: 1,
-                }}
-              >
-                <ListItemDecorator>
-                  <Maximize2 size={16} />
-                </ListItemDecorator>
-                <Box sx={{ flex: 1 }}>
-                  <Typography level="body-sm">Altezza completa</Typography>
-                </Box>
-                {previewHeight === 'full' && <Check size={16} />}
-              </ListItemButton>
-            </ListItem>
-          </List>
-        </Box>
+          <div className="flex flex-col p-1">
+            <div
+              className={`flex items-center gap-3 px-3 py-2 rounded-md cursor-pointer ${previewHeight === 'reduced' ? 'bg-default-100' : 'hover:bg-default-50'}`}
+              onClick={() => {
+                setPreviewHeight('reduced');
+                setMenuOpen(false);
+              }}
+            >
+              <Minimize2 size={16} />
+              <div className="flex-1">
+                <span className="text-small">Altezza ridotta (300px)</span>
+              </div>
+              {previewHeight === 'reduced' && <Check size={16} />}
+            </div>
+            <div
+              className={`flex items-center gap-3 px-3 py-2 rounded-md cursor-pointer ${previewHeight === 'full' ? 'bg-default-100' : 'hover:bg-default-50'}`}
+              onClick={() => {
+                setPreviewHeight('full');
+                setMenuOpen(false);
+              }}
+            >
+              <Maximize2 size={16} />
+              <div className="flex-1">
+                <span className="text-small">Altezza completa</span>
+              </div>
+              {previewHeight === 'full' && <Check size={16} />}
+            </div>
+          </div>
+        </div>
       )}
     </>
   );

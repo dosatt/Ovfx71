@@ -1,8 +1,4 @@
-import Modal from '@mui/joy@5.0.0-beta.48/Modal';
-import ModalDialog from '@mui/joy@5.0.0-beta.48/ModalDialog';
-import Typography from '@mui/joy@5.0.0-beta.48/Typography';
-import Box from '@mui/joy@5.0.0-beta.48/Box';
-import Button from '@mui/joy@5.0.0-beta.48/Button';
+import { Modal, ModalContent, ModalHeader, ModalBody, Button } from '@heroui/react';
 import { FileText, LayoutDashboard, Database, Pencil } from 'lucide-react';
 import { SpaceType } from '../types';
 
@@ -21,34 +17,30 @@ const spaceTypes = [
 
 export function NewSpaceModal({ open, onClose, onCreate }: NewSpaceModalProps) {
   return (
-    <Modal open={open} onClose={onClose}>
-      <ModalDialog sx={{ minWidth: 400 }}>
-        <Typography level="h4" sx={{ mb: 2 }}>
+    <Modal isOpen={open} onClose={onClose} placement="center">
+      <ModalContent>
+        <ModalHeader className="flex flex-col gap-1">
           Create New Space
-        </Typography>
-        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
-          {spaceTypes.map(({ type, title, icon: Icon, description }) => (
-            <Button
-              key={type}
-              variant="outlined"
-              onClick={() => onCreate(type)}
-              sx={{
-                justifyContent: 'flex-start',
-                p: 2,
-                height: 'auto'
-              }}
-            >
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, width: '100%' }}>
-                <Icon size={24} />
-                <Box sx={{ textAlign: 'left', flex: 1 }}>
-                  <Typography level="title-md">{title}</Typography>
-                  <Typography level="body-sm">{description}</Typography>
-                </Box>
-              </Box>
-            </Button>
-          ))}
-        </Box>
-      </ModalDialog>
+        </ModalHeader>
+        <ModalBody className="pb-6">
+          <div className="flex flex-col gap-2">
+            {spaceTypes.map(({ type, title, icon: Icon, description }) => (
+              <Button
+                key={type}
+                variant="bordered"
+                onPress={() => onCreate(type)}
+                className="h-auto py-3 px-4 flex justify-start items-center gap-4"
+              >
+                <Icon size={24} className="text-default-500" />
+                <div className="flex flex-col items-start gap-0.5">
+                  <span className="font-semibold text-medium">{title}</span>
+                  <span className="text-small text-default-400 font-normal">{description}</span>
+                </div>
+              </Button>
+            ))}
+          </div>
+        </ModalBody>
+      </ModalContent>
     </Modal>
   );
 }

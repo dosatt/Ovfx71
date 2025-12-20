@@ -1,4 +1,3 @@
-import Box from '@mui/joy@5.0.0-beta.48/Box';
 import { ViewportRenderer } from './ViewportRenderer';
 import { Viewport } from '../types';
 import type { Settings } from '../hooks/useSettings';
@@ -15,13 +14,8 @@ interface WorkspaceProps {
 
 export function Workspace({ sidebarOpen, spacesState, viewportsState, settings, getBackgroundStyle, brokenLinks, brokenLinksVersion }: WorkspaceProps) {
   return (
-    <Box
-      sx={{
-        flex: 1,
-        height: '100vh',
-        overflow: 'hidden',
-        p: '4px'
-      }}
+    <div
+      className="flex-1 h-full overflow-hidden p-1"
     >
       <ViewportRenderer
         viewport={viewportsState.rootViewport}
@@ -32,6 +26,6 @@ export function Workspace({ sidebarOpen, spacesState, viewportsState, settings, 
         brokenLinks={brokenLinks}
         brokenLinksVersion={brokenLinksVersion}
       />
-    </Box>
+    </div>
   );
 }

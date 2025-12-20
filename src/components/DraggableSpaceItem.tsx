@@ -1,8 +1,6 @@
 import { useRef, useState } from 'react';
 import { useDrag, useDrop } from 'react-dnd';
-import Box from '@mui/joy@5.0.0-beta.48/Box';
-import IconButton from '@mui/joy@5.0.0-beta.48/IconButton';
-import Typography from '@mui/joy@5.0.0-beta.48/Typography';
+import { Button } from '@heroui/react';
 import {
   ChevronRight,
   ChevronDown,
@@ -79,7 +77,6 @@ export function DraggableSpaceItem({ space, spacesState, onSpaceClick, level = 0
       // Nei favoriti: solo riordino con UN SOLO snap point tra elementi
       if (isFavorite && item.isFavoriteItem) {
         // Ogni elemento gestisce solo la linea "before" (sopra)
-        // In questo modo tra due elementi c'è un solo punto di snap
         if (hoverClientY < hoverHeight * 0.5) {
           setDropIndicator('before');
         } else {
@@ -158,82 +155,47 @@ export function DraggableSpaceItem({ space, spacesState, onSpaceClick, level = 0
 
   return (
     <>
-      <Box sx={{ position: 'relative' }}>
-        {/* Drop indicator before - Posizione assoluta per non spostare gli elementi */}
+      <div className="relative">
+        {/* Drop indicator before */}
         {isOver && dropIndicator === 'before' && (
-          <Box sx={{ 
-            position: 'absolute',
-            top: '-1px',
-            left: level * 2 + 1,
-            right: 0,
-            height: '2px', 
-            bgcolor: 'primary.500',
-            zIndex: 10
-          }} />
+          <div 
+            className="absolute top-[-1px] right-0 h-[2px] bg-primary z-10 pointer-events-none"
+            style={{ left: `${level * 16 + 8}px` }}
+          />
         )}
 
-        <Box
+        <div
           ref={ref}
-          sx={{
-            position: 'relative',
-            display: 'flex',
-            alignItems: 'center',
-            pl: isFavorite ? 0.5 : level * 1.5 + 0.5,
-            pr: 1,
-            py: 0.1,
-            borderRadius: '6px',
-            cursor: 'pointer',
-            opacity: isDragging ? 0.5 : 1,
-            bgcolor: isOver && dropIndicator === 'inside' ? 'primary.softBg' : 'transparent',
-            transition: 'transform 0.15s ease-out, opacity 0.15s ease-out',
-            ...(isFavorite ? {
-              // Favoriti: usa outline per non spostare elementi
-              outline: 'none'
-            } : {
-              // Spaces: usa border per il contorno tratteggiato
-              border: isOver && dropIndicator === 'inside' ? '2px dashed' : '2px solid transparent',
-              borderColor: isOver && dropIndicator === 'inside' ? 'primary.500' : 'transparent'
-            }),
-            '&:hover': {
-              bgcolor: dropIndicator === 'inside' && isOver ? 'primary.softBg' : 'background.level1',
-              '& .menu-button': {
-                opacity: 1
-              }
-            }
-          }}
+          className={`
+            relative flex items-center pr-2 py-0.5 rounded-lg cursor-pointer transition-all duration-150 ease-out group
+            ${isDragging ? 'opacity-50' : 'opacity-100'}
+            ${isOver && dropIndicator === 'inside' ? 'bg-primary/10 border-2 border-dashed border-primary' : 'border-2 border-transparent'}
+            ${!isOver && !isDragging ? 'hover:bg-default-100' : ''}
+          `}
+          style={{ paddingLeft: `${isFavorite ? 4 : level * 12 + 4}px` }}
         >
-          {/* Chevron o spazio vuoto - sempre presente per allineamento */}
+          {/* Chevron o spazio vuoto */}
           {!isFavorite && hasChildren ? (
-            <IconButton
+            <Button
+              isIconOnly
               size="sm"
-              variant="plain"
+              variant="light"
               onClick={(e) => {
                 e.stopPropagation();
                 setExpanded(!expanded);
               }}
-              sx={{ 
-                minWidth: 16, 
-                minHeight: 16,
-                p: 0,
-                mr: isFavorite ? 0 : 0.5
-              }}
+              className="min-w-[16px] w-4 h-4 p-0 mr-1 text-default-500"
             >
               {expanded ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
-            </IconButton>
+            </Button>
           ) : (
-            <Box sx={{ minWidth: 16, minHeight: 16, mr: isFavorite ? 0 : 0.5 }} />
+            <div className={`min-w-[16px] w-4 h-4 ${isFavorite ? 'mr-0' : 'mr-1'}`} />
           )}
 
-          <Box
+          <div
             onClick={() => onSpaceClick(space)}
             onContextMenu={handleContextMenu}
-            sx={{
-              flex: 1,
-              display: 'flex',
-              alignItems: 'center',
-              gap: 0.75,
-              minWidth: 0
-            }}
+            className="flex-1 flex items-center gap-2 min-w-0"
           >
             {(() => {
               let IconComponent = null;
@@ -247,63 +209,45 @@ export function DraggableSpaceItem({ space, spacesState, onSpaceClick, level = 0
               return IconComponent ? (
                 <IconComponent 
                   size={16} 
-                  style={{ 
-                    flexShrink: 0,
-                    color: space.iconColor || 'currentColor' 
-                  }}
+                  className="shrink-0"
+                  style={{ color: space.iconColor || 'currentColor' }}
                 />
               ) : (
-                space.icon && <span style={{ fontSize: '1rem', flexShrink: 0 }}>{space.icon}</span>
+                space.icon && <span className="text-base shrink-0">{space.icon}</span>
               );
             })()}
-            <Typography
-              level="body-sm"
-              sx={{
-                overflow: 'hidden',
-                textOverflow: 'ellipsis',
-                whiteSpace: 'nowrap'
-              }}
-            >
+            <span className="text-small truncate overflow-hidden text-ellipsis whitespace-nowrap">
               {space.title}
-            </Typography>
-          </Box>
+            </span>
+          </div>
 
-          <Box sx={{ display: 'flex', gap: 0.5, alignItems: 'center' }}>
-            <IconButton
+          <div className="flex gap-1 items-center opacity-0 group-hover:opacity-100 transition-opacity">
+            <Button
               ref={buttonRef}
+              isIconOnly
               size="sm"
-              variant="plain"
-              className="menu-button"
+              variant="light"
               onClick={(e) => {
                 e.stopPropagation();
                 setShowMenu(!showMenu);
               }}
-              sx={{ 
-                minWidth: 20, 
-                minHeight: 20,
-                opacity: 0
-              }}
+              className="min-w-[20px] w-5 h-5"
             >
               <MoreVertical size={14} />
-            </IconButton>
-          </Box>
-        </Box>
+            </Button>
+          </div>
+        </div>
 
-        {/* Drop indicator after - Posizione assoluta per non spostare gli elementi */}
+        {/* Drop indicator after */}
         {isOver && dropIndicator === 'after' && (
-          <Box sx={{ 
-            position: 'absolute',
-            bottom: '-1px',
-            left: level * 2 + 1,
-            right: 0,
-            height: '2px', 
-            bgcolor: 'primary.500',
-            zIndex: 10
-          }} />
+          <div 
+            className="absolute bottom-[-1px] right-0 h-[2px] bg-primary z-10 pointer-events-none"
+            style={{ left: `${level * 16 + 8}px` }}
+          />
         )}
 
         {!isFavorite && hasChildren && expanded && (
-          <Box>
+          <div>
             {children.map((child: Space) => (
               <DraggableSpaceItem
                 key={child.id}
@@ -313,11 +257,11 @@ export function DraggableSpaceItem({ space, spacesState, onSpaceClick, level = 0
                 level={level + 1}
               />
             ))}
-          </Box>
+          </div>
         )}
-      </Box>
+      </div>
 
-      {/* Nuovo Context Menu unificato con funzione Rename inline */}
+      {/* Context Menu */}
       {showMenu && (
         <SpaceContextMenu
           space={space}

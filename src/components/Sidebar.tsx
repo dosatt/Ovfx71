@@ -1,10 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
-import Box from '@mui/joy@5.0.0-beta.48/Box';
-import Sheet from '@mui/joy@5.0.0-beta.48/Sheet';
-import Typography from '@mui/joy@5.0.0-beta.48/Typography';
-import IconButton from '@mui/joy@5.0.0-beta.48/IconButton';
-import Input from '@mui/joy@5.0.0-beta.48/Input';
-import Button from '@mui/joy@5.0.0-beta.48/Button';
+import { Button, Input, ScrollShadow } from '@heroui/react';
 import { 
   ChevronLeft,
   ChevronDown,
@@ -28,7 +23,6 @@ import * as LucideIcons from 'lucide-react';
 import { SpaceTree } from './SpaceTree';
 import { DraggableSpaceItem } from './DraggableSpaceItem';
 import { NewSpaceModal } from './NewSpaceModal';
-import { SettingsModal } from './SettingsModal';
 import { Space, AppType } from '../types';
 import type { Settings } from '../hooks/useSettings';
 
@@ -40,6 +34,7 @@ interface SidebarProps {
   settings: Settings;
   onUpdateSettings: (updates: Partial<Settings>) => void;
   onResetSettings: () => void;
+  onOpenSettings: () => void;
 }
 
 const apps = [
@@ -49,9 +44,8 @@ const apps = [
   { type: 'mail' as AppType, title: 'Mail', icon: Mail, color: '#FFBD2E' }
 ];
 
-export function Sidebar({ open, onToggle, spacesState, viewportsState, settings, onUpdateSettings, onResetSettings }: SidebarProps) {
+export function Sidebar({ open, onToggle, spacesState, viewportsState, settings, onUpdateSettings, onResetSettings, onOpenSettings }: SidebarProps) {
   const [newSpaceModalOpen, setNewSpaceModalOpen] = useState(false);
-  const [settingsModalOpen, setSettingsModalOpen] = useState(false);
   const [sidebarWidth, setSidebarWidth] = useState(280);
   const [isResizing, setIsResizing] = useState(false);
   const [favoritesExpanded, setFavoritesExpanded] = useState(true);
@@ -216,194 +210,110 @@ export function Sidebar({ open, onToggle, spacesState, viewportsState, settings,
 
   if (!open) {
     return (
-      <IconButton
+      <Button
+        isIconOnly
+        variant="light"
         onClick={onToggle}
-        sx={{
-          position: 'fixed',
-          left: 0,
-          top: '50%',
-          transform: 'translateY(-50%)',
-          zIndex: 1000,
-          borderRadius: '0 8px 8px 0'
-        }}
+        className="fixed left-0 top-1/2 -translate-y-1/2 z-50 rounded-r-lg bg-background border border-l-0 border-divider shadow-md h-12 w-8 min-w-8"
       >
-        <ChevronLeft style={{ transform: 'rotate(180deg)' }} />
-      </IconButton>
+        <ChevronLeft className="rotate-180" size={20} />
+      </Button>
     );
   }
 
   return (
     <>
-      <Sheet
+      <div
         ref={sidebarRef}
-        sx={{
-          width: sidebarWidth,
-          height: 'calc(100vh - 8px)',
-          display: 'flex',
-          flexDirection: 'column',
-          overflow: 'hidden',
-          position: 'relative',
-          mt: '4px',
-          ml: '4px',
-          borderRadius: '15px',
-          border: '2px solid',
-          borderColor: 'divider',
-          bgcolor: settings.transparency ? 'rgba(255, 255, 255, 0.7)' : 'background.surface',
-          backdropFilter: settings.blur ? 'blur(20px)' : 'none',
-          WebkitBackdropFilter: settings.blur ? 'blur(20px)' : 'none',
-          boxShadow: '0 8px 24px rgba(0, 0, 0, 0.08), 0 2px 6px rgba(0, 0, 0, 0.04)'
-        }}
+        style={{ width: sidebarWidth }}
+        className={`
+          flex flex-col h-[calc(100vh-8px)] overflow-hidden relative mt-1 ml-1 rounded-2xl border-2 border-divider
+          bg-white/70 backdrop-blur-xl shadow-xl transition-all
+          ${settings.transparency ? 'bg-white/70' : 'bg-white'}
+          ${settings.blur ? 'backdrop-blur-xl' : ''}
+        `}
       >
         {/* Header */}
-        <Box sx={{ p: 2, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+        <div className="p-4 flex items-center justify-between">
+          <div className="flex items-center gap-3">
             {/* macOS Traffic Lights */}
-            <Box sx={{ display: 'flex', gap: 0.6 }}>
-              <Box 
-                sx={{ 
-                  width: 12, 
-                  height: 12, 
-                  borderRadius: '50%', 
-                  bgcolor: '#FF5F56',
-                  border: '0.5px solid rgba(0,0,0,0.1)',
-                  cursor: 'pointer',
-                  transition: 'all 0.2s',
-                  '&:hover': {
-                    bgcolor: '#FF3B30'
-                  }
-                }} 
-              />
-              <Box 
-                sx={{ 
-                  width: 12, 
-                  height: 12, 
-                  borderRadius: '50%', 
-                  bgcolor: '#FFBD2E',
-                  border: '0.5px solid rgba(0,0,0,0.1)',
-                  cursor: 'pointer',
-                  transition: 'all 0.2s',
-                  '&:hover': {
-                    bgcolor: '#FFB300'
-                  }
-                }} 
-              />
-              <Box 
-                sx={{ 
-                  width: 12, 
-                  height: 12, 
-                  borderRadius: '50%', 
-                  bgcolor: '#27C93F',
-                  border: '0.5px solid rgba(0,0,0,0.1)',
-                  cursor: 'pointer',
-                  transition: 'all 0.2s',
-                  '&:hover': {
-                    bgcolor: '#00D91A'
-                  }
-                }} 
-              />
-            </Box>
-            <Typography level="h4">OVFX</Typography>
-          </Box>
-          <Box sx={{ display: 'flex', gap: 0.5 }}>
+            <div className="flex gap-1.5">
+              <div className="w-3 h-3 rounded-full bg-[#FF5F56] border border-black/10 hover:bg-[#FF3B30] transition-colors cursor-pointer" />
+              <div className="w-3 h-3 rounded-full bg-[#FFBD2E] border border-black/10 hover:bg-[#FFB300] transition-colors cursor-pointer" />
+              <div className="w-3 h-3 rounded-full bg-[#27C93F] border border-black/10 hover:bg-[#00D91A] transition-colors cursor-pointer" />
+            </div>
+            <h4 className="text-lg font-bold">OVFX</h4>
+          </div>
+          <div className="flex gap-1">
             <Button 
               size="sm" 
-              startDecorator={<Plus size={16} />}
+              color="primary"
+              variant="solid"
+              startContent={<Plus size={16} />}
               onClick={() => setNewSpaceModalOpen(true)}
-              sx={{
-                bgcolor: 'primary.500',
-                color: 'white',
+              className="font-medium"
+              style={{
                 borderRadius: settings.buttonBorderRadius,
-                pt: settings.buttonPaddingTop,
-                pb: settings.buttonPaddingBottom,
-                pl: settings.buttonPaddingLeft,
-                pr: settings.buttonPaddingRight,
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                '&:hover': {
-                  bgcolor: 'primary.600'
-                }
               }}
             >
               Nuovo
             </Button>
-          </Box>
-        </Box>
+          </div>
+        </div>
 
         {/* Search Bar */}
-        <Box sx={{ px: 2, pb: 1 }}>
+        <div className="px-4 pb-2">
           <Input
             ref={searchInputRef}
             placeholder="Cerca spaces..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            startDecorator={<Search size={16} />}
+            startContent={<Search size={16} className="text-default-400" />}
             size="sm"
-            sx={{
-              '--Input-focusedThickness': '2px',
-              '--Input-focusedHighlight': 'var(--joy-palette-primary-500)',
-              bgcolor: 'rgba(255, 255, 255, 0.66)',
-              borderRadius: '999px'
+            variant="flat"
+            radius="full"
+            classNames={{
+              input: "text-small",
+              inputWrapper: "bg-default-100 hover:bg-default-200 group-data-[focus=true]:bg-default-100",
             }}
           />
-        </Box>
+        </div>
 
         {!searchQuery ? (
           <>
             {/* Apps Grid */}
-            <Box sx={{ px: 2, pb: 1 }}>
-              <Box sx={{ 
-                display: 'flex', 
-                gap: 0.75,
-                justifyContent: 'center',
-                px: '12px'
-              }}>
-                {apps.map((app) => {
-                  return (
-                    <IconButton
-                      key={app.type}
-                      size="sm"
-                      variant="plain"
-                      onClick={() => handleAppClick(app.type, app.title)}
-                    >
-                      <app.icon size={18} />
-                    </IconButton>
-                  );
-                })}
-              </Box>
-            </Box>
+            <div className="px-4 pb-2">
+              <div className="flex gap-2 justify-center px-3">
+                {apps.map((app) => (
+                  <Button
+                    key={app.type}
+                    isIconOnly
+                    size="sm"
+                    variant="light"
+                    onClick={() => handleAppClick(app.type, app.title)}
+                    className="text-default-500 hover:text-default-900"
+                  >
+                    <app.icon size={18} />
+                  </Button>
+                ))}
+              </div>
+            </div>
 
             {/* Favorites */}
             {favorites.length > 0 && (
-              <Box sx={{ px: 2, py: 1 }}>
-                <Box
-                  sx={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'space-between',
-                    cursor: 'pointer',
-                    py: 0.5,
-                    px: 1,
-                    borderRadius: '6px',
-                    '&:hover': {
-                      bgcolor: 'background.level1'
-                    }
-                  }}
+              <div className="px-2 py-2">
+                <div
+                  className="flex items-center justify-between cursor-pointer py-1 px-2 rounded-lg hover:bg-default-100 transition-colors"
                   onClick={() => setFavoritesExpanded(!favoritesExpanded)}
                 >
-                  <Typography level="body-sm" sx={{ color: 'text.tertiary', textTransform: 'uppercase', fontSize: '0.75rem' }}>
-                    Preferiti
-                  </Typography>
+                  <span className="text-xs font-semibold text-default-500 uppercase">Preferiti</span>
                   <ChevronDown
                     size={14}
-                    style={{
-                      transform: favoritesExpanded ? 'rotate(0deg)' : 'rotate(-90deg)',
-                      transition: 'transform 0.2s'
-                    }}
+                    className={`text-default-500 transition-transform ${favoritesExpanded ? 'rotate-0' : '-rotate-90'}`}
                   />
-                </Box>
+                </div>
                 {favoritesExpanded && (
-                  <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5, mt: 1 }}>
+                  <div className="flex flex-col gap-1 mt-2">
                     {favorites.map((space: Space) => (
                       <DraggableSpaceItem
                         key={space.id}
@@ -413,49 +323,25 @@ export function Sidebar({ open, onToggle, spacesState, viewportsState, settings,
                         isFavorite={true}
                       />
                     ))}
-                  </Box>
+                  </div>
                 )}
-              </Box>
+              </div>
             )}
 
             {/* File Browser */}
-            <Box sx={{ 
-              flex: 1, 
-              overflow: 'auto', 
-              px: 2,
-              py: 1,
-              '&::-webkit-scrollbar': { display: 'none' },
-              '-ms-overflow-style': 'none',
-              scrollbarWidth: 'none'
-            }}>
-              <Box
-                sx={{ 
-                  display: 'flex', 
-                  alignItems: 'center', 
-                  justifyContent: 'space-between',
-                  cursor: 'pointer',
-                  py: 0.5,
-                  px: 1,
-                  borderRadius: '6px',
-                  '&:hover': {
-                    bgcolor: 'background.level1'
-                  }
-                }}
+            <ScrollShadow className="flex-1 overflow-auto px-2 py-2">
+              <div
+                className="flex items-center justify-between cursor-pointer py-1 px-2 rounded-lg hover:bg-default-100 transition-colors"
                 onClick={() => setSpacesExpanded(!spacesExpanded)}
               >
-                <Typography level="body-sm" sx={{ color: 'text.tertiary', textTransform: 'uppercase', fontSize: '0.75rem' }}>
-                  Spaces
-                </Typography>
+                <span className="text-xs font-semibold text-default-500 uppercase">Spaces</span>
                 <ChevronDown
                   size={14}
-                  style={{ 
-                    transform: spacesExpanded ? 'rotate(0deg)' : 'rotate(-90deg)',
-                    transition: 'transform 0.2s'
-                  }} 
+                  className={`text-default-500 transition-transform ${spacesExpanded ? 'rotate-0' : '-rotate-90'}`}
                 />
-              </Box>
+              </div>
               {spacesExpanded && (
-                <Box sx={{ mt: 1 }}>
+                <div className="mt-2">
                   {filteredSpaces.map(space => (
                     <DraggableSpaceItem
                       key={space.id}
@@ -464,91 +350,49 @@ export function Sidebar({ open, onToggle, spacesState, viewportsState, settings,
                       onSpaceClick={handleSpaceClick}
                     />
                   ))}
-                </Box>
+                </div>
               )}
-            </Box>
+            </ScrollShadow>
 
             {/* Utility Section */}
-            <Box sx={{ px: 2, py: 1 }}>
-              <Typography level="body-sm" sx={{ color: 'text.tertiary', textTransform: 'uppercase', fontSize: '0.75rem', px: 1, py: 0.5 }}>
-                Utility
-              </Typography>
-              <Box sx={{ 
-                display: 'flex', 
-                gap: 0.5,
-                mt: 1,
-                justifyContent: 'space-between',
-                px: 1,
-                flexWrap: 'wrap'
-              }}>
-                <IconButton
-                  size="sm"
-                  variant="plain"
-                  onClick={() => handleUtilityClick('clock', 'Clock')}
-                >
+            <div className="px-4 py-2 mt-auto border-t border-divider">
+              <span className="text-xs font-semibold text-default-500 uppercase px-2 py-1 block">Utility</span>
+              <div className="flex gap-1 mt-2 justify-between px-2 flex-wrap">
+                <Button isIconOnly size="sm" variant="light" onClick={() => handleUtilityClick('clock', 'Clock')}>
                   <Clock size={18} />
-                </IconButton>
-                <IconButton
-                  size="sm"
-                  variant="plain"
-                  onClick={() => handleUtilityClick('archive', 'Archive')}
-                >
+                </Button>
+                <Button isIconOnly size="sm" variant="light" onClick={() => handleUtilityClick('archive', 'Archive')}>
                   <Archive size={18} />
-                </IconButton>
-                <IconButton
-                  size="sm"
-                  variant="plain"
-                  onClick={() => handleUtilityClick('notifications', 'Notifications')}
-                >
+                </Button>
+                <Button isIconOnly size="sm" variant="light" onClick={() => handleUtilityClick('notifications', 'Notifications')}>
                   <Bell size={18} />
-                </IconButton>
-                <IconButton
-                  size="sm"
-                  variant="plain"
-                  onClick={() => setSettingsModalOpen(true)}
-                >
+                </Button>
+                <Button isIconOnly size="sm" variant="light" onClick={onOpenSettings}>
                   <SettingsIcon size={18} />
-                </IconButton>
-                <IconButton
-                  size="sm"
-                  variant="plain"
-                  color="danger"
-                  onClick={() => handleUtilityClick('trash', 'Trash')}
-                >
+                </Button>
+                <Button isIconOnly size="sm" variant="light" color="danger" onClick={() => handleUtilityClick('trash', 'Trash')}>
                   <Trash2 size={18} />
-                </IconButton>
-                <IconButton
-                  size="sm"
-                  variant="plain"
-                  onClick={onToggle}
-                >
+                </Button>
+                <Button isIconOnly size="sm" variant="light" onClick={onToggle}>
                   <ChevronLeft size={18} />
-                </IconButton>
-              </Box>
-            </Box>
+                </Button>
+              </div>
+            </div>
           </>
         ) : (
           // Search Results View
-          <Box sx={{ 
-            flex: 1, 
-            overflow: 'auto', 
-            px: 2,
-            py: 1,
-            '&::-webkit-scrollbar': { display: 'none' },
-            '-ms-overflow-style': 'none',
-            scrollbarWidth: 'none'
-          }}>
-            <Typography level="body-sm" sx={{ color: 'text.tertiary', textTransform: 'uppercase', fontSize: '0.75rem', px: 1, py: 0.5 }}>
+          <ScrollShadow className="flex-1 overflow-auto px-2 py-2">
+            <span className="text-xs font-semibold text-default-500 uppercase px-2 py-1 block">
               Risultati ({filteredFavorites.length + filteredSpaces.length})
-            </Typography>
-            <Box sx={{ mt: 1, display: 'flex', flexDirection: 'column', gap: 0.5 }}>
+            </span>
+            <div className="mt-2 flex flex-col gap-1">
               {filteredFavorites.map(space => {
                 let IconComponent = null;
                 if (space.icon) {
                   IconComponent = (LucideIcons as any)[space.icon];
                 }
                 if (!IconComponent) {
-                  const defaultIcons = {
+                  const defaultIcons: any = {
                     page: FileText,
                     canvas: Pencil,
                     database: Database,
@@ -558,45 +402,22 @@ export function Sidebar({ open, onToggle, spacesState, viewportsState, settings,
                 }
                 
                 return (
-                  <Box
+                  <div
                     key={space.id}
                     onClick={() => handleSpaceClick(space)}
-                    sx={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: 0.75,
-                      py: 0.5,
-                      px: 1,
-                      borderRadius: '6px',
-                      cursor: 'pointer',
-                      minWidth: 0,
-                      '&:hover': {
-                        bgcolor: 'background.level1'
-                      }
-                    }}
+                    className="flex items-center gap-2 py-1.5 px-2 rounded-lg cursor-pointer hover:bg-default-100 transition-colors"
                   >
                     {IconComponent ? (
                       <IconComponent 
                         size={16} 
-                        style={{ 
-                          flexShrink: 0,
-                          color: space.iconColor || 'currentColor' 
-                        }}
+                        className="shrink-0"
+                        style={{ color: space.iconColor || 'currentColor' }}
                       />
                     ) : (
-                      space.icon && <span style={{ fontSize: '1rem', flexShrink: 0 }}>{space.icon}</span>
+                      space.icon && <span className="text-base shrink-0">{space.icon}</span>
                     )}
-                    <Typography
-                      level="body-sm"
-                      sx={{
-                        overflow: 'hidden',
-                        textOverflow: 'ellipsis',
-                        whiteSpace: 'nowrap'
-                      }}
-                    >
-                      {space.title}
-                    </Typography>
-                  </Box>
+                    <span className="text-sm truncate">{space.title}</span>
+                  </div>
                 );
               })}
               {filteredSpaces.length > 0 && (
@@ -606,29 +427,16 @@ export function Sidebar({ open, onToggle, spacesState, viewportsState, settings,
                   onSpaceClick={handleSpaceClick}
                 />
               )}
-            </Box>
-          </Box>
+            </div>
+          </ScrollShadow>
         )}
 
         {/* Resize handle */}
-        <Box
+        <div
           onMouseDown={() => setIsResizing(true)}
-          sx={{
-            position: 'absolute',
-            right: 0,
-            top: 0,
-            bottom: 0,
-            width: '8px',
-            cursor: 'col-resize',
-            bgcolor: isResizing ? 'primary.softBg' : 'transparent',
-            transition: 'background-color 0.2s',
-            '&:hover': {
-              bgcolor: 'primary.softBg'
-            },
-            zIndex: 1000
-          }}
+          className={`absolute right-0 top-0 bottom-0 w-2 cursor-col-resize hover:bg-primary/20 transition-colors z-50 ${isResizing ? 'bg-primary/20' : 'bg-transparent'}`}
         />
-      </Sheet>
+      </div>
 
       <NewSpaceModal
         open={newSpaceModalOpen}
@@ -638,16 +446,6 @@ export function Sidebar({ open, onToggle, spacesState, viewportsState, settings,
           setNewSpaceModalOpen(false);
           handleSpaceClick(newSpace);
         }}
-      />
-
-      <SettingsModal
-        open={settingsModalOpen}
-        onClose={() => setSettingsModalOpen(false)}
-        settings={settings}
-        onUpdateSettings={onUpdateSettings}
-        onResetSettings={onResetSettings}
-        spacesState={spacesState}
-        viewportsState={viewportsState}
       />
     </>
   );

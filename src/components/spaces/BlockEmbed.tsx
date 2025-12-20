@@ -1,21 +1,19 @@
-import Box from '@mui/joy@5.0.0-beta.48/Box';
-import Typography from '@mui/joy@5.0.0-beta.48/Typography';
-import Sheet from '@mui/joy@5.0.0-beta.48/Sheet';
-import IconButton from '@mui/joy@5.0.0-beta.48/IconButton';
+import { Block } from '../../types';
+import * as LucideIcons from 'lucide-react';
 import { 
-  ExternalLink,
-  Type,
-  Heading1,
-  Heading2,
-  Heading3,
-  List,
-  ListOrdered,
-  CheckSquare,
-  Quote,
+  Type, 
+  Heading1, 
+  Heading2, 
+  Heading3, 
+  List as ListIcon, 
+  ListOrdered, 
+  CheckSquare, 
+  Quote, 
   Code,
   AlertCircle,
+  ExternalLink
 } from 'lucide-react';
-import { Block } from '../../types';
+import { Button } from '@heroui/react';
 
 interface BlockEmbedProps {
   block: Block;
@@ -34,7 +32,7 @@ export function BlockEmbed({ block, sourceSpaceName, onNavigate, sourceSpaceId }
       case 'heading3':
         return Heading3;
       case 'bulletList':
-        return List;
+        return ListIcon;
       case 'numberedList':
         return ListOrdered;
       case 'checkbox':
@@ -56,150 +54,111 @@ export function BlockEmbed({ block, sourceSpaceName, onNavigate, sourceSpaceId }
     switch (block.type) {
       case 'heading1':
         return (
-          <Typography level="h2" sx={{ fontWeight: 'bold', textAlign: 'center' }}>
+          <h2 className="text-2xl font-bold text-center">
             {block.content || '(vuoto)'}
-          </Typography>
+          </h2>
         );
       case 'heading2':
         return (
-          <Typography level="h3" sx={{ fontWeight: 'bold', textAlign: 'center' }}>
+          <h3 className="text-xl font-bold text-center">
             {block.content || '(vuoto)'}
-          </Typography>
+          </h3>
         );
       case 'heading3':
         return (
-          <Typography level="h4" sx={{ fontWeight: 'bold', textAlign: 'center' }}>
+          <h4 className="text-lg font-bold text-center">
             {block.content || '(vuoto)'}
-          </Typography>
+          </h4>
         );
       case 'bulletList':
         return (
-          <Box sx={{ display: 'flex', gap: 1, alignItems: 'flex-start' }}>
-            <Typography>•</Typography>
-            <Typography>{block.content || '(vuoto)'}</Typography>
-          </Box>
+          <div className="flex gap-2 items-start">
+            <span>•</span>
+            <span>{block.content || '(vuoto)'}</span>
+          </div>
         );
       case 'numberedList':
         return (
-          <Box sx={{ display: 'flex', gap: 1, alignItems: 'flex-start' }}>
-            <Typography>1.</Typography>
-            <Typography>{block.content || '(vuoto)'}</Typography>
-          </Box>
+          <div className="flex gap-2 items-start">
+            <span>1.</span>
+            <span>{block.content || '(vuoto)'}</span>
+          </div>
         );
       case 'checkbox':
         return (
-          <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
+          <div className="flex gap-2 items-center">
             <CheckSquare size={16} />
-            <Typography
-              sx={{
-                textDecoration: block.checked ? 'line-through' : 'none',
-                opacity: block.checked ? 0.6 : 1,
-              }}
+            <span
+              className={`${block.checked ? 'line-through opacity-60' : ''}`}
             >
               {block.content || '(vuoto)'}
-            </Typography>
-          </Box>
+            </span>
+          </div>
         );
       case 'quote':
         return (
-          <Box sx={{ borderLeft: '3px solid', borderColor: 'divider', pl: 2 }}>
-            <Typography sx={{ fontStyle: 'italic' }}>{block.content || '(vuoto)'}</Typography>
-          </Box>
+          <div className="border-l-4 border-divider pl-4">
+            <span className="italic">{block.content || '(vuoto)'}</span>
+          </div>
         );
       case 'code':
         return (
-          <Box
-            sx={{
-              fontFamily: 'monospace',
-              bgcolor: 'background.level1',
-              p: 1.5,
-              borderRadius: '6px',
-              fontSize: '0.875rem',
-            }}
-          >
-            <Typography sx={{ fontFamily: 'monospace' }}>
+          <div className="font-mono bg-default-100 p-3 rounded-md text-sm">
+            <span className="font-mono">
               {block.content || '(vuoto)'}
-            </Typography>
-          </Box>
+            </span>
+          </div>
         );
       case 'callout':
         const calloutColor = block.calloutColor || 'default';
-        const colorMap: Record<string, string> = {
-          default: 'background.level1',
-          blue: '#E3F2FD',
-          green: '#E8F5E9',
-          yellow: '#FFF9C4',
-          red: '#FFEBEE',
-          purple: '#F3E5F5',
+        const colorClassMap: Record<string, string> = {
+          default: 'bg-default-100',
+          blue: 'bg-blue-50',
+          green: 'bg-green-50',
+          yellow: 'bg-yellow-50',
+          red: 'bg-red-50',
+          purple: 'bg-purple-50',
         };
         return (
-          <Box
-            sx={{
-              display: 'flex',
-              gap: 1,
-              bgcolor: colorMap[calloutColor],
-              p: 1.5,
-              borderRadius: '6px',
-            }}
+          <div
+            className={`flex gap-2 p-3 rounded-md ${colorClassMap[calloutColor] || 'bg-default-100'}`}
           >
-            <AlertCircle size={16} style={{ flexShrink: 0, marginTop: 2 }} />
-            <Typography>{block.content || '(vuoto)'}</Typography>
-          </Box>
+            <AlertCircle size={16} className="shrink-0 mt-0.5" />
+            <span>{block.content || '(vuoto)'}</span>
+          </div>
         );
       default:
-        return <Typography>{block.content || '(vuoto)'}</Typography>;
+        return <span>{block.content || '(vuoto)'}</span>;
     }
   };
 
   return (
-    <Sheet
-      variant="outlined"
-      sx={{
-        p: 2,
-        borderRadius: '8px',
-        borderColor: 'neutral.300',
-        bgcolor: 'background.surface',
-      }}
-    >
-      <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 1.5, mb: 1.5 }}>
-        <Box
-          sx={{
-            width: 32,
-            height: 32,
-            borderRadius: '6px',
-            bgcolor: 'neutral.softBg',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            flexShrink: 0,
-          }}
-        >
+    <div className="p-4 rounded-lg border border-neutral-300 bg-white shadow-sm">
+      <div className="flex items-start gap-3 mb-3">
+        <div className="w-8 h-8 rounded-md bg-default-100 flex items-center justify-center shrink-0">
           <BlockIcon size={16} />
-        </Box>
-        <Box sx={{ flex: 1, minWidth: 0 }}>
-          <Typography level="body-sm" sx={{ fontWeight: 600, color: 'text.secondary' }}>
+        </div>
+        <div className="flex-1 min-w-0">
+          <p className="text-sm font-semibold text-default-700">
             Blocco da {sourceSpaceName || 'altra pagina'}
-          </Typography>
-          <Typography level="body-xs" sx={{ color: 'text.tertiary' }}>
+          </p>
+          <p className="text-xs text-default-400">
             {block.type}
-          </Typography>
-        </Box>
+          </p>
+        </div>
         {onNavigate && sourceSpaceId && (
-          <IconButton
+          <Button
+            isIconOnly
             size="sm"
-            variant="plain"
-            onClick={() => onNavigate(sourceSpaceId)}
-            sx={{
-              '&:hover': {
-                bgcolor: 'neutral.softBg',
-              },
-            }}
+            variant="light"
+            onPress={() => onNavigate(sourceSpaceId)}
+            className="hover:bg-default-100"
           >
             <ExternalLink size={14} />
-          </IconButton>
+          </Button>
         )}
-      </Box>
-      <Box sx={{ pl: 5 }}>{renderBlockContent()}</Box>
-    </Sheet>
+      </div>
+      <div className="pl-11">{renderBlockContent()}</div>
+    </div>
   );
 }

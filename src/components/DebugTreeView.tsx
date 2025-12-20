@@ -1,7 +1,5 @@
 import { useState } from 'react';
-import Box from '@mui/joy@5.0.0-beta.48/Box';
-import Typography from '@mui/joy@5.0.0-beta.48/Typography';
-import IconButton from '@mui/joy@5.0.0-beta.48/IconButton';
+import { Button } from '@heroui/react';
 import {
   ChevronDown,
   ChevronRight,
@@ -54,99 +52,62 @@ function TreeNode({ space, children, allSpaces, depth }: TreeNodeProps) {
   };
 
   return (
-    <Box>
-      <Box
-        sx={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: 1,
-          py: 0.5,
-          px: 1,
-          ml: depth * 2,
-          borderRadius: 'sm',
-          cursor: 'pointer',
-          '&:hover': {
-            bgcolor: 'background.level2',
-          },
-        }}
+    <div>
+      <div
+        className="flex items-center gap-2 py-1 px-2 rounded-sm cursor-pointer hover:bg-default-100"
+        style={{ marginLeft: `${depth * 8}px` }}
         onClick={() => setExpanded(!expanded)}
       >
         {hasChildren ? (
-          <IconButton
+          <Button
+            isIconOnly
             size="sm"
-            variant="plain"
-            sx={{ minWidth: 20, minHeight: 20 }}
+            variant="light"
+            className="min-w-5 w-5 h-5"
             onClick={(e) => {
               e.stopPropagation();
               setExpanded(!expanded);
             }}
           >
             {expanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
-          </IconButton>
+          </Button>
         ) : (
-          <Box sx={{ width: 28 }} />
+          <div className="w-7" />
         )}
 
         {FolderIcon && (
-          <Box
-            sx={{
-              width: 20,
-              height: 20,
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              color: 'warning.500',
-            }}
-          >
+          <div className="w-5 h-5 flex items-center justify-center text-warning">
             <FolderIcon size={16} />
-          </Box>
+          </div>
         )}
 
-        <Box
-          sx={{
-            width: 20,
-            height: 20,
-            borderRadius: 'xs',
-            bgcolor: space.iconColor || 'primary.softBg',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            flexShrink: 0,
-          }}
+        <div
+          className="w-5 h-5 rounded-sm flex items-center justify-center flex-shrink-0"
+          style={{ backgroundColor: space.iconColor || 'var(--heroui-primary-100)' }}
         >
           <SpaceIcon size={12} style={{ color: space.iconColor || 'inherit' }} />
-        </Box>
+        </div>
 
-        <Box sx={{ flex: 1, minWidth: 0 }}>
-          <Typography level="body-sm" sx={{ fontWeight: 500 }}>
+        <div className="flex-1 min-w-0">
+          <span className="text-small font-medium">
             {space.title}
-          </Typography>
-        </Box>
+          </span>
+        </div>
 
-        <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
+        <div className="flex gap-2 items-center">
           {getContentCount() && (
-            <Typography level="body-xs" sx={{ color: 'text.tertiary' }}>
+            <span className="text-tiny text-default-400">
               {getContentCount()}
-            </Typography>
+            </span>
           )}
-          <Typography
-            level="body-xs"
-            sx={{
-              px: 0.75,
-              py: 0.25,
-              bgcolor: 'neutral.softBg',
-              color: 'text.secondary',
-              borderRadius: 'xs',
-              fontSize: '0.65rem',
-            }}
-          >
+          <span className="px-1.5 py-0.5 bg-default-100 text-default-500 rounded-sm text-[0.65rem]">
             {space.type}
-          </Typography>
-        </Box>
-      </Box>
+          </span>
+        </div>
+      </div>
 
       {expanded && hasChildren && (
-        <Box>
+        <div>
           {children.map((child) => (
             <TreeNode
               key={child.id}
@@ -156,9 +117,9 @@ function TreeNode({ space, children, allSpaces, depth }: TreeNodeProps) {
               depth={depth + 1}
             />
           ))}
-        </Box>
+        </div>
       )}
-    </Box>
+    </div>
   );
 }
 
@@ -167,24 +128,16 @@ export function DebugTreeView({ spaces }: DebugTreeViewProps) {
   const rootSpaces = spaces.filter((s) => !s.parentId);
 
   return (
-    <Box
-      sx={{
-        bgcolor: 'background.level1',
-        borderRadius: 'md',
-        p: 1,
-        maxHeight: 600,
-        overflow: 'auto',
-      }}
-    >
-      <Typography level="body-sm" sx={{ px: 1, py: 0.5, color: 'text.tertiary', fontSize: '0.7rem' }}>
+    <div className="bg-default-50 rounded-md p-2 max-h-[600px] overflow-auto">
+      <span className="block px-2 py-1 text-default-400 text-[0.7rem]">
         {spaces.length} spaces totali
-      </Typography>
+      </span>
       {rootSpaces.length === 0 ? (
-        <Box sx={{ p: 4, textAlign: 'center' }}>
-          <Typography level="body-sm" sx={{ color: 'text.tertiary' }}>
+        <div className="p-8 text-center">
+          <span className="text-small text-default-400">
             Nessuno space disponibile
-          </Typography>
-        </Box>
+          </span>
+        </div>
       ) : (
         rootSpaces.map((space) => (
           <TreeNode
@@ -196,6 +149,6 @@ export function DebugTreeView({ spaces }: DebugTreeViewProps) {
           />
         ))
       )}
-    </Box>
+    </div>
   );
 }

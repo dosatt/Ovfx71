@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import Box from '@mui/joy@5.0.0-beta.48/Box';
-import IconButton from '@mui/joy@5.0.0-beta.48/IconButton';
+import { Button } from '@heroui/react';
 import { Bold, Italic, Underline, Strikethrough } from 'lucide-react';
 
 interface TextSelectionToolbarProps {
@@ -35,8 +34,6 @@ export function TextSelectionToolbar({ onApplyStyle }: TextSelectionToolbarProps
           setPosition(null);
           return;
         }
-        
-        const rect = range.getBoundingClientRect();
         
         // Posiziona al centro orizzontalmente e a 3/4 dell'altezza (1/4 dal basso)
         const left = window.innerWidth / 2;
@@ -73,72 +70,48 @@ export function TextSelectionToolbar({ onApplyStyle }: TextSelectionToolbarProps
   }
 
   return createPortal(
-    <Box
-      sx={{
-        position: 'fixed',
+    <div
+      style={{
         top: `${position.top}px`,
         left: `${position.left}px`,
         transform: 'translateX(-50%)',
-        zIndex: 9999,
-        bgcolor: 'background.popup',
-        boxShadow: '0 4px 20px rgba(0, 0, 0, 0.15)',
-        borderRadius: '8px',
-        p: 0.5,
-        display: 'flex',
-        gap: 0.5,
-        border: '1px solid',
-        borderColor: 'divider'
+        zIndex: 9999
       }}
+      className="fixed bg-white shadow-lg rounded-lg p-1 flex gap-1 border border-divider"
     >
-      <IconButton
+      <Button
+        isIconOnly
         size="sm"
-        variant="plain"
-        onClick={() => handleStyleClick('bold')}
-        sx={{
-          '&:hover': {
-            bgcolor: 'primary.softHoverBg'
-          }
-        }}
+        variant="light"
+        onPress={() => handleStyleClick('bold')}
       >
         <Bold size={16} />
-      </IconButton>
-      <IconButton
+      </Button>
+      <Button
+        isIconOnly
         size="sm"
-        variant="plain"
-        onClick={() => handleStyleClick('italic')}
-        sx={{
-          '&:hover': {
-            bgcolor: 'primary.softHoverBg'
-          }
-        }}
+        variant="light"
+        onPress={() => handleStyleClick('italic')}
       >
         <Italic size={16} />
-      </IconButton>
-      <IconButton
+      </Button>
+      <Button
+        isIconOnly
         size="sm"
-        variant="plain"
-        onClick={() => handleStyleClick('underline')}
-        sx={{
-          '&:hover': {
-            bgcolor: 'primary.softHoverBg'
-          }
-        }}
+        variant="light"
+        onPress={() => handleStyleClick('underline')}
       >
         <Underline size={16} />
-      </IconButton>
-      <IconButton
+      </Button>
+      <Button
+        isIconOnly
         size="sm"
-        variant="plain"
-        onClick={() => handleStyleClick('strikethrough')}
-        sx={{
-          '&:hover': {
-            bgcolor: 'primary.softHoverBg'
-          }
-        }}
+        variant="light"
+        onPress={() => handleStyleClick('strikethrough')}
       >
         <Strikethrough size={16} />
-      </IconButton>
-    </Box>,
+      </Button>
+    </div>,
     document.body
   );
 }

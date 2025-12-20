@@ -1,17 +1,18 @@
 import { useState } from 'react';
-import Modal from '@mui/joy@5.0.0-beta.48/Modal';
-import ModalDialog from '@mui/joy@5.0.0-beta.48/ModalDialog';
-import ModalClose from '@mui/joy@5.0.0-beta.48/ModalClose';
-import Typography from '@mui/joy@5.0.0-beta.48/Typography';
-import Box from '@mui/joy@5.0.0-beta.48/Box';
-import Button from '@mui/joy@5.0.0-beta.48/Button';
-import Switch from '@mui/joy@5.0.0-beta.48/Switch';
-import Radio from '@mui/joy@5.0.0-beta.48/Radio';
-import RadioGroup from '@mui/joy@5.0.0-beta.48/RadioGroup';
-import Input from '@mui/joy@5.0.0-beta.48/Input';
-import Slider from '@mui/joy@5.0.0-beta.48/Slider';
-import FormControl from '@mui/joy@5.0.0-beta.48/FormControl';
-import FormLabel from '@mui/joy@5.0.0-beta.48/FormLabel';
+import {
+  Modal,
+  ModalContent,
+  ModalHeader,
+  ModalBody,
+  Button,
+  Switch,
+  RadioGroup,
+  Radio,
+  Input,
+  Slider,
+  Tabs,
+  Tab
+} from '@heroui/react';
 import { DebugTreeView } from './DebugTreeView';
 import type { Settings } from '../hooks/useSettings';
 
@@ -49,778 +50,384 @@ export function SettingsModal({
   spacesState,
   viewportsState
 }: SettingsModalProps) {
-  const [activeTab, setActiveTab] = useState<'appearance' | 'ui' | 'background' | 'debug'>('appearance');
   const [debugView, setDebugView] = useState<'json' | 'tree'>('json');
 
   return (
-    <Modal open={open} onClose={onClose}>
-      <ModalDialog
-        sx={{
-          maxWidth: 600,
-          width: '90vw',
-          maxHeight: '85vh',
-          overflow: 'auto'
-        }}
-      >
-        <ModalClose />
-        <Typography level="h4" sx={{ mb: 2 }}>
-          Impostazioni
-        </Typography>
-
-        {/* Custom Tab Navigation */}
-        <Box sx={{ display: 'flex', gap: 1, mb: 2, borderBottom: '1px solid', borderColor: 'divider' }}>
-          <Button
-            variant={activeTab === 'appearance' ? 'soft' : 'plain'}
-            onClick={() => setActiveTab('appearance')}
-            sx={{ flex: 1, borderRadius: 0, borderBottom: '2px solid', borderColor: activeTab === 'appearance' ? 'primary.500' : 'transparent' }}
-          >
-            Aspetto
-          </Button>
-          <Button
-            variant={activeTab === 'ui' ? 'soft' : 'plain'}
-            onClick={() => setActiveTab('ui')}
-            sx={{ flex: 1, borderRadius: 0, borderBottom: '2px solid', borderColor: activeTab === 'ui' ? 'primary.500' : 'transparent' }}
-          >
-            UI
-          </Button>
-          <Button
-            variant={activeTab === 'background' ? 'soft' : 'plain'}
-            onClick={() => setActiveTab('background')}
-            sx={{ flex: 1, borderRadius: 0, borderBottom: '2px solid', borderColor: activeTab === 'background' ? 'primary.500' : 'transparent' }}
-          >
-            Sfondo
-          </Button>
-          <Button
-            variant={activeTab === 'debug' ? 'soft' : 'plain'}
-            onClick={() => setActiveTab('debug')}
-            sx={{ flex: 1, borderRadius: 0, borderBottom: '2px solid', borderColor: activeTab === 'debug' ? 'primary.500' : 'transparent' }}
-          >
-            Debug
-          </Button>
-        </Box>
-
-        {/* Appearance Tab Content */}
-        {activeTab === 'appearance' && (
-          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3, p: 2 }}>
-            {/* Sidebar Section */}
-            <Box>
-              <Typography level="title-sm" sx={{ mb: 2, color: 'primary.500' }}>
-                Sidebar
-              </Typography>
-              
-              {/* Transparency */}
-              <FormControl sx={{ mb: 2 }}>
-                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <Box>
-                    <FormLabel>Trasparenza</FormLabel>
-                    <Typography level="body-sm" sx={{ color: 'text.tertiary' }}>
-                      Rende la sidebar semi-trasparente
-                    </Typography>
-                  </Box>
-                  <Switch
-                    checked={settings.transparency}
-                    onChange={(e) => onUpdateSettings({ transparency: e.target.checked })}
-                  />
-                </Box>
-              </FormControl>
-
-              {/* Blur */}
-              <FormControl>
-                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <Box>
-                    <FormLabel>Effetto Sfocatura</FormLabel>
-                    <Typography level="body-sm" sx={{ color: 'text.tertiary' }}>
-                      Applica un effetto blur alla sidebar
-                    </Typography>
-                  </Box>
-                  <Switch
-                    checked={settings.blur}
-                    onChange={(e) => onUpdateSettings({ blur: e.target.checked })}
-                  />
-                </Box>
-              </FormControl>
-            </Box>
-
-            {/* Viewport Section */}
-            <Box>
-              <Typography level="title-sm" sx={{ mb: 2, color: 'primary.500' }}>
-                Viewport
-              </Typography>
-              
-              {/* Viewport Transparency */}
-              <FormControl sx={{ mb: 2 }}>
-                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <Box>
-                    <FormLabel>Trasparenza Viewport</FormLabel>
-                    <Typography level="body-sm" sx={{ color: 'text.tertiary' }}>
-                      Rende i viewport semi-trasparenti
-                    </Typography>
-                  </Box>
-                  <Switch
-                    checked={settings.viewportTransparency}
-                    onChange={(e) => onUpdateSettings({ viewportTransparency: e.target.checked })}
-                  />
-                </Box>
-              </FormControl>
-
-              {/* Viewport Blur */}
-              <FormControl>
-                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <Box>
-                    <FormLabel>Effetto Sfocatura Viewport</FormLabel>
-                    <Typography level="body-sm" sx={{ color: 'text.tertiary' }}>
-                      Applica un effetto blur ai viewport
-                    </Typography>
-                  </Box>
-                  <Switch
-                    checked={settings.viewportBlur}
-                    onChange={(e) => onUpdateSettings({ viewportBlur: e.target.checked })}
-                  />
-                </Box>
-              </FormControl>
-            </Box>
-          </Box>
-        )}
-
-        {/* UI Tab Content */}
-        {activeTab === 'ui' && (
-          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3, p: 2 }}>
-            {/* UI Elements Section */}
-            <Box>
-              <Typography level="title-sm" sx={{ mb: 2, color: 'primary.500' }}>
-                Elementi UI
-              </Typography>
-              
-              {/* Button Border Radius */}
-              <FormControl sx={{ mb: 2 }}>
-                <FormLabel>Arrotondamento Pulsante "Nuovo"</FormLabel>
-                <Typography level="body-sm" sx={{ color: 'text.tertiary', mb: 1 }}>
-                  Controlla quanto sono arrotondati gli angoli del pulsante
-                </Typography>
-                <Box sx={{ display: 'flex', gap: 1, mb: 1 }}>
-                  <Button
-                    size="sm"
-                    variant={settings.buttonBorderRadius === '4px' ? 'soft' : 'outlined'}
-                    onClick={() => onUpdateSettings({ buttonBorderRadius: '4px' })}
-                    sx={{ flex: 1 }}
-                  >
-                    Quadrato
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant={settings.buttonBorderRadius === '8px' ? 'soft' : 'outlined'}
-                    onClick={() => onUpdateSettings({ buttonBorderRadius: '8px' })}
-                    sx={{ flex: 1 }}
-                  >
-                    Medio
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant={settings.buttonBorderRadius === '999px' ? 'soft' : 'outlined'}
-                    onClick={() => onUpdateSettings({ buttonBorderRadius: '999px' })}
-                    sx={{ flex: 1 }}
-                  >
-                    Pillola
-                  </Button>
-                </Box>
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mt: 1, p: 2, bgcolor: 'background.level1', borderRadius: 'sm' }}>
-                  <Typography level="body-sm">Anteprima:</Typography>
-                  <Button
-                    size="sm"
-                    sx={{ borderRadius: settings.buttonBorderRadius }}
-                  >
-                    Nuovo
-                  </Button>
-                </Box>
-              </FormControl>
-
-              {/* Tab Border Radius */}
-              <FormControl>
-                <FormLabel>Arrotondamento Tabs Viewport</FormLabel>
-                <Typography level="body-sm" sx={{ color: 'text.tertiary', mb: 1 }}>
-                  Controlla quanto sono arrotondate le tabs nei viewport
-                </Typography>
-                <Box sx={{ display: 'flex', gap: 1, mb: 1 }}>
-                  <Button
-                    size="sm"
-                    variant={settings.tabBorderRadius === '4px' ? 'soft' : 'outlined'}
-                    onClick={() => onUpdateSettings({ tabBorderRadius: '4px' })}
-                    sx={{ flex: 1 }}
-                  >
-                    Quadrato
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant={settings.tabBorderRadius === '8px' ? 'soft' : 'outlined'}
-                    onClick={() => onUpdateSettings({ tabBorderRadius: '8px' })}
-                    sx={{ flex: 1 }}
-                  >
-                    Medio
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant={settings.tabBorderRadius === '999px' ? 'soft' : 'outlined'}
-                    onClick={() => onUpdateSettings({ tabBorderRadius: '999px' })}
-                    sx={{ flex: 1 }}
-                  >
-                    Pillola
-                  </Button>
-                </Box>
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mt: 1, p: 2, bgcolor: 'background.level1', borderRadius: 'sm' }}>
-                  <Typography level="body-sm">Anteprima:</Typography>
-                  <Button
-                    size="sm"
-                    variant="soft"
-                    sx={{ borderRadius: settings.tabBorderRadius }}
-                  >
-                    Tab 1
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant="plain"
-                    sx={{ borderRadius: settings.tabBorderRadius }}
-                  >
-                    Tab 2
-                  </Button>
-                </Box>
-              </FormControl>
-              
-              {/* Preview Border Radius */}
-              <FormControl sx={{ mb: 2 }}>
-                <FormLabel>Arrotondamento Anteprime Space</FormLabel>
-                <Typography level="body-sm" sx={{ color: 'text.tertiary', mb: 1 }}>
-                  Controlla quanto sono arrotondati gli angoli delle anteprime
-                </Typography>
-                <Box sx={{ display: 'flex', gap: 1, mb: 1 }}>
-                  <Button
-                    size="sm"
-                    variant={settings.previewBorderRadius === '4px' ? 'soft' : 'outlined'}
-                    onClick={() => onUpdateSettings({ previewBorderRadius: '4px' })}
-                    sx={{ flex: 1 }}
-                  >
-                    Quadrato
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant={settings.previewBorderRadius === '8px' ? 'soft' : 'outlined'}
-                    onClick={() => onUpdateSettings({ previewBorderRadius: '8px' })}
-                    sx={{ flex: 1 }}
-                  >
-                    Piccolo
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant={settings.previewBorderRadius === '12px' ? 'soft' : 'outlined'}
-                    onClick={() => onUpdateSettings({ previewBorderRadius: '12px' })}
-                    sx={{ flex: 1 }}
-                  >
-                    Medio
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant={settings.previewBorderRadius === '16px' ? 'soft' : 'outlined'}
-                    onClick={() => onUpdateSettings({ previewBorderRadius: '16px' })}
-                    sx={{ flex: 1 }}
-                  >
-                    Grande
-                  </Button>
-                </Box>
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mt: 1, p: 2, bgcolor: 'background.level1', borderRadius: 'sm' }}>
-                  <Typography level="body-sm">Anteprima:</Typography>
-                  <Box
-                    sx={{
-                      width: 80,
-                      height: 40,
-                      bgcolor: 'background.surface',
-                      border: '1px solid',
-                      borderColor: 'neutral.300',
-                      borderRadius: settings.previewBorderRadius,
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center'
-                    }}
-                  >
-                    <Typography level="body-xs">Preview</Typography>
-                  </Box>
-                </Box>
-              </FormControl>
-            </Box>
-
-            {/* Padding Section */}
-            <Box>
-              <Typography level="title-sm" sx={{ mb: 2, color: 'primary.500' }}>
-                Padding Pulsante "Nuovo"
-              </Typography>
-              
-              {/* Button Padding Top */}
-              <FormControl sx={{ mb: 2 }}>
-                <FormLabel>Padding Superiore: {settings.buttonPaddingTop.toFixed(2)}</FormLabel>
-                <Typography level="body-sm" sx={{ color: 'text.tertiary', mb: 1 }}>
-                  Spazio interno dall&apos;alto del pulsante
-                </Typography>
-                <Slider
-                  value={settings.buttonPaddingTop}
-                  onChange={(_, value) => onUpdateSettings({ buttonPaddingTop: value as number })}
-                  min={0}
-                  max={3}
-                  step={0.125}
-                  valueLabelDisplay="auto"
-                  valueLabelFormat={(value) => value.toFixed(2)}
-                />
-              </FormControl>
-
-              {/* Button Padding Bottom */}
-              <FormControl sx={{ mb: 2 }}>
-                <FormLabel>Padding Inferiore: {settings.buttonPaddingBottom.toFixed(2)}</FormLabel>
-                <Typography level="body-sm" sx={{ color: 'text.tertiary', mb: 1 }}>
-                  Spazio interno dal basso del pulsante
-                </Typography>
-                <Slider
-                  value={settings.buttonPaddingBottom}
-                  onChange={(_, value) => onUpdateSettings({ buttonPaddingBottom: value as number })}
-                  min={0}
-                  max={3}
-                  step={0.125}
-                  valueLabelDisplay="auto"
-                  valueLabelFormat={(value) => value.toFixed(2)}
-                />
-              </FormControl>
-
-              {/* Button Padding Left */}
-              <FormControl sx={{ mb: 2 }}>
-                <FormLabel>Padding Sinistro: {settings.buttonPaddingLeft.toFixed(2)}</FormLabel>
-                <Typography level="body-sm" sx={{ color: 'text.tertiary', mb: 1 }}>
-                  Spazio interno da sinistra del pulsante
-                </Typography>
-                <Slider
-                  value={settings.buttonPaddingLeft}
-                  onChange={(_, value) => onUpdateSettings({ buttonPaddingLeft: value as number })}
-                  min={0}
-                  max={5}
-                  step={0.125}
-                  valueLabelDisplay="auto"
-                  valueLabelFormat={(value) => value.toFixed(2)}
-                />
-              </FormControl>
-
-              {/* Button Padding Right */}
-              <FormControl sx={{ mb: 3 }}>
-                <FormLabel>Padding Destro: {settings.buttonPaddingRight.toFixed(2)}</FormLabel>
-                <Typography level="body-sm" sx={{ color: 'text.tertiary', mb: 1 }}>
-                  Spazio interno da destra del pulsante
-                </Typography>
-                <Slider
-                  value={settings.buttonPaddingRight}
-                  onChange={(_, value) => onUpdateSettings({ buttonPaddingRight: value as number })}
-                  min={0}
-                  max={5}
-                  step={0.125}
-                  valueLabelDisplay="auto"
-                  valueLabelFormat={(value) => value.toFixed(2)}
-                />
-              </FormControl>
-
-              {/* Button Preview */}
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 4, p: 2, bgcolor: 'background.level1', borderRadius: 'sm' }}>
-                <Typography level="body-sm">Anteprima Pulsante:</Typography>
-                <Button
-                  size="sm"
-                  sx={{ 
-                    borderRadius: settings.buttonBorderRadius,
-                    pt: settings.buttonPaddingTop,
-                    pb: settings.buttonPaddingBottom,
-                    pl: settings.buttonPaddingLeft,
-                    pr: settings.buttonPaddingRight
-                  }}
-                >
-                  Nuovo
-                </Button>
-              </Box>
-
-              <Typography level="title-sm" sx={{ mb: 2, color: 'primary.500' }}>
-                Padding Tabs Viewport
-              </Typography>
-
-              {/* Tab Padding Top */}
-              <FormControl sx={{ mb: 2 }}>
-                <FormLabel>Padding Superiore: {settings.tabPaddingTop.toFixed(2)}</FormLabel>
-                <Typography level="body-sm" sx={{ color: 'text.tertiary', mb: 1 }}>
-                  Spazio interno dall&apos;alto delle tabs
-                </Typography>
-                <Slider
-                  value={settings.tabPaddingTop}
-                  onChange={(_, value) => onUpdateSettings({ tabPaddingTop: value as number })}
-                  min={0}
-                  max={2.5}
-                  step={0.125}
-                  valueLabelDisplay="auto"
-                  valueLabelFormat={(value) => value.toFixed(2)}
-                />
-              </FormControl>
-
-              {/* Tab Padding Bottom */}
-              <FormControl sx={{ mb: 2 }}>
-                <FormLabel>Padding Inferiore: {settings.tabPaddingBottom.toFixed(2)}</FormLabel>
-                <Typography level="body-sm" sx={{ color: 'text.tertiary', mb: 1 }}>
-                  Spazio interno dal basso delle tabs
-                </Typography>
-                <Slider
-                  value={settings.tabPaddingBottom}
-                  onChange={(_, value) => onUpdateSettings({ tabPaddingBottom: value as number })}
-                  min={0}
-                  max={2.5}
-                  step={0.125}
-                  valueLabelDisplay="auto"
-                  valueLabelFormat={(value) => value.toFixed(2)}
-                />
-              </FormControl>
-
-              {/* Tab Padding Left */}
-              <FormControl sx={{ mb: 2 }}>
-                <FormLabel>Padding Sinistro: {settings.tabPaddingLeft.toFixed(2)}</FormLabel>
-                <Typography level="body-sm" sx={{ color: 'text.tertiary', mb: 1 }}>
-                  Spazio interno da sinistra delle tabs
-                </Typography>
-                <Slider
-                  value={settings.tabPaddingLeft}
-                  onChange={(_, value) => onUpdateSettings({ tabPaddingLeft: value as number })}
-                  min={0}
-                  max={4}
-                  step={0.125}
-                  valueLabelDisplay="auto"
-                  valueLabelFormat={(value) => value.toFixed(2)}
-                />
-              </FormControl>
-
-              {/* Tab Padding Right */}
-              <FormControl sx={{ mb: 3 }}>
-                <FormLabel>Padding Destro: {settings.tabPaddingRight.toFixed(2)}</FormLabel>
-                <Typography level="body-sm" sx={{ color: 'text.tertiary', mb: 1 }}>
-                  Spazio interno da destra delle tabs
-                </Typography>
-                <Slider
-                  value={settings.tabPaddingRight}
-                  onChange={(_, value) => onUpdateSettings({ tabPaddingRight: value as number })}
-                  min={0}
-                  max={4}
-                  step={0.125}
-                  valueLabelDisplay="auto"
-                  valueLabelFormat={(value) => value.toFixed(2)}
-                />
-              </FormControl>
-
-              {/* Tab Preview */}
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, p: 2, bgcolor: 'background.level1', borderRadius: 'sm', flexWrap: 'wrap' }}>
-                <Typography level="body-sm">Anteprima Tabs:</Typography>
-                <Box sx={{ display: 'flex', gap: 0.5 }}>
-                  <Button
-                    size="sm"
-                    variant="soft"
-                    sx={{ 
-                      borderRadius: settings.tabBorderRadius,
-                      pt: settings.tabPaddingTop,
-                      pb: settings.tabPaddingBottom,
-                      pl: settings.tabPaddingLeft,
-                      pr: settings.tabPaddingRight
-                    }}
-                  >
-                    Tab 1
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant="plain"
-                    sx={{ 
-                      borderRadius: settings.tabBorderRadius,
-                      pt: settings.tabPaddingTop,
-                      pb: settings.tabPaddingBottom,
-                      pl: settings.tabPaddingLeft,
-                      pr: settings.tabPaddingRight
-                    }}
-                  >
-                    Tab 2
-                  </Button>
-                </Box>
-              </Box>
-            </Box>
-          </Box>
-        )}
-
-        {/* Background Tab Content */}
-        {activeTab === 'background' && (
-          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3, p: 2 }}>
-            {/* Background Type */}
-            <FormControl>
-              <FormLabel>Tipo di Sfondo</FormLabel>
-              <RadioGroup
-                value={settings.backgroundType}
-                onChange={(e) => onUpdateSettings({ backgroundType: e.target.value as 'solid' | 'gradient' })}
-              >
-                <Radio value="solid" label="Colore Solido" />
-                <Radio value="gradient" label="Gradiente" />
-              </RadioGroup>
-            </FormControl>
-
-            {/* Solid Color */}
-            {settings.backgroundType === 'solid' && (
-              <FormControl>
-                <FormLabel>Colore</FormLabel>
-                <Box sx={{ display: 'flex', gap: 1, mb: 1 }}>
-                  <Input
-                    type="color"
-                    value={settings.backgroundColor}
-                    onChange={(e) => onUpdateSettings({ backgroundColor: e.target.value })}
-                    sx={{ width: 80 }}
-                  />
-                  <Input
-                    value={settings.backgroundColor}
-                    onChange={(e) => onUpdateSettings({ backgroundColor: e.target.value })}
-                    sx={{ flex: 1 }}
-                  />
-                </Box>
-                <Typography level="body-sm" sx={{ mb: 1, color: 'text.tertiary' }}>
-                  Preset:
-                </Typography>
-                <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(6, 1fr)', gap: 1 }}>
-                  {PRESET_COLORS.map(color => (
-                    <Box
-                      key={color}
-                      onClick={() => onUpdateSettings({ backgroundColor: color })}
-                      sx={{
-                        width: '100%',
-                        aspectRatio: '1',
-                        bgcolor: color,
-                        borderRadius: 'sm',
-                        border: '2px solid',
-                        borderColor: settings.backgroundColor === color ? 'primary.500' : 'divider',
-                        cursor: 'pointer',
-                        transition: 'all 0.2s',
-                        '&:hover': {
-                          transform: 'scale(1.1)',
-                          boxShadow: 'sm'
-                        }
-                      }}
+    <Modal 
+      isOpen={open} 
+      onClose={onClose} 
+      scrollBehavior="inside"
+      size="2xl"
+    >
+      <ModalContent>
+        <ModalHeader className="flex flex-col gap-1">Impostazioni</ModalHeader>
+        <ModalBody>
+          <Tabs aria-label="Settings Options">
+            <Tab key="appearance" title="Aspetto">
+              <div className="flex flex-col gap-6 py-4">
+                {/* Sidebar Section */}
+                <div className="flex flex-col gap-4">
+                  <h3 className="text-primary font-semibold text-small uppercase tracking-wider">Sidebar</h3>
+                  
+                  <div className="flex justify-between items-center">
+                    <div>
+                      <p className="text-small font-medium">Trasparenza</p>
+                      <p className="text-tiny text-default-400">Rende la sidebar semi-trasparente</p>
+                    </div>
+                    <Switch
+                      isSelected={settings.transparency}
+                      onValueChange={(isSelected) => onUpdateSettings({ transparency: isSelected })}
                     />
-                  ))}
-                </Box>
-              </FormControl>
-            )}
+                  </div>
 
-            {/* Gradient */}
-            {settings.backgroundType === 'gradient' && (
-              <>
-                <FormControl>
-                  <FormLabel>Colore Iniziale</FormLabel>
-                  <Box sx={{ display: 'flex', gap: 1 }}>
-                    <Input
-                      type="color"
-                      value={settings.gradientStart}
-                      onChange={(e) => onUpdateSettings({ gradientStart: e.target.value })}
-                      sx={{ width: 80 }}
+                  <div className="flex justify-between items-center">
+                    <div>
+                      <p className="text-small font-medium">Effetto Sfocatura</p>
+                      <p className="text-tiny text-default-400">Applica un effetto blur alla sidebar</p>
+                    </div>
+                    <Switch
+                      isSelected={settings.blur}
+                      onValueChange={(isSelected) => onUpdateSettings({ blur: isSelected })}
                     />
-                    <Input
-                      value={settings.gradientStart}
-                      onChange={(e) => onUpdateSettings({ gradientStart: e.target.value })}
-                      sx={{ flex: 1 }}
-                    />
-                  </Box>
-                </FormControl>
+                  </div>
+                </div>
 
-                <FormControl>
-                  <FormLabel>Colore Finale</FormLabel>
-                  <Box sx={{ display: 'flex', gap: 1 }}>
-                    <Input
-                      type="color"
-                      value={settings.gradientEnd}
-                      onChange={(e) => onUpdateSettings({ gradientEnd: e.target.value })}
-                      sx={{ width: 80 }}
+                {/* Viewport Section */}
+                <div className="flex flex-col gap-4">
+                  <h3 className="text-primary font-semibold text-small uppercase tracking-wider">Viewport</h3>
+                  
+                  <div className="flex justify-between items-center">
+                    <div>
+                      <p className="text-small font-medium">Trasparenza Viewport</p>
+                      <p className="text-tiny text-default-400">Rende i viewport semi-trasparenti</p>
+                    </div>
+                    <Switch
+                      isSelected={settings.viewportTransparency}
+                      onValueChange={(isSelected) => onUpdateSettings({ viewportTransparency: isSelected })}
                     />
-                    <Input
-                      value={settings.gradientEnd}
-                      onChange={(e) => onUpdateSettings({ gradientEnd: e.target.value })}
-                      sx={{ flex: 1 }}
+                  </div>
+
+                  <div className="flex justify-between items-center">
+                    <div>
+                      <p className="text-small font-medium">Effetto Sfocatura Viewport</p>
+                      <p className="text-tiny text-default-400">Applica un effetto blur ai viewport</p>
+                    </div>
+                    <Switch
+                      isSelected={settings.viewportBlur}
+                      onValueChange={(isSelected) => onUpdateSettings({ viewportBlur: isSelected })}
                     />
-                  </Box>
-                </FormControl>
+                  </div>
+                </div>
+              </div>
+            </Tab>
 
-                <FormControl>
-                  <FormLabel>Angolo: {settings.gradientAngle}°</FormLabel>
-                  <Slider
-                    value={settings.gradientAngle}
-                    onChange={(_, value) => onUpdateSettings({ gradientAngle: value as number })}
-                    min={0}
-                    max={360}
-                    step={15}
-                    marks
-                    valueLabelDisplay="auto"
-                  />
-                </FormControl>
-
-                <FormControl>
-                  <FormLabel>Preset Gradienti</FormLabel>
-                  <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 1 }}>
-                    {PRESET_GRADIENTS.map(preset => (
-                      <Box
-                        key={preset.name}
-                        onClick={() => onUpdateSettings({
-                          gradientStart: preset.start,
-                          gradientEnd: preset.end,
-                          gradientAngle: preset.angle
-                        })}
-                        sx={{
-                          height: 60,
-                          background: `linear-gradient(${preset.angle}deg, ${preset.start} 0%, ${preset.end} 100%)`,
-                          borderRadius: 'sm',
-                          border: '2px solid',
-                          borderColor: 'divider',
-                          cursor: 'pointer',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          transition: 'all 0.2s',
-                          '&:hover': {
-                            transform: 'scale(1.05)',
-                            boxShadow: 'md'
-                          }
-                        }}
+            <Tab key="ui" title="UI">
+              <div className="flex flex-col gap-6 py-4">
+                {/* UI Elements Section */}
+                <div className="flex flex-col gap-4">
+                  <h3 className="text-primary font-semibold text-small uppercase tracking-wider">Elementi UI</h3>
+                  
+                  {/* Button Border Radius */}
+                  <div className="flex flex-col gap-2">
+                    <p className="text-small font-medium">Arrotondamento Pulsante "Nuovo"</p>
+                    <p className="text-tiny text-default-400 mb-2">Controlla quanto sono arrotondati gli angoli del pulsante</p>
+                    <div className="flex gap-2">
+                      <Button
+                        size="sm"
+                        variant={settings.buttonBorderRadius === '4px' ? 'solid' : 'bordered'}
+                        onPress={() => onUpdateSettings({ buttonBorderRadius: '4px' })}
+                        className="flex-1"
                       >
-                        <Typography
-                          level="body-sm"
-                          sx={{
-                            color: 'white',
-                            textShadow: '0 1px 3px rgba(0,0,0,0.5)',
-                            fontWeight: 'bold'
-                          }}
+                        Quadrato
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant={settings.buttonBorderRadius === '8px' ? 'solid' : 'bordered'}
+                        onPress={() => onUpdateSettings({ buttonBorderRadius: '8px' })}
+                        className="flex-1"
+                      >
+                        Medio
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant={settings.buttonBorderRadius === '999px' ? 'solid' : 'bordered'}
+                        onPress={() => onUpdateSettings({ buttonBorderRadius: '999px' })}
+                        className="flex-1"
+                      >
+                        Pillola
+                      </Button>
+                    </div>
+                    <div className="flex items-center gap-2 mt-2 p-4 bg-default-100 rounded-medium">
+                      <p className="text-small">Anteprima:</p>
+                      <Button
+                        size="sm"
+                        color="primary"
+                        style={{ borderRadius: settings.buttonBorderRadius }}
+                      >
+                        Nuovo
+                      </Button>
+                    </div>
+                  </div>
+
+                  {/* Tab Border Radius */}
+                  <div className="flex flex-col gap-2">
+                    <p className="text-small font-medium">Arrotondamento Tabs Viewport</p>
+                    <div className="flex gap-2">
+                      <Button
+                        size="sm"
+                        variant={settings.tabBorderRadius === '4px' ? 'solid' : 'bordered'}
+                        onPress={() => onUpdateSettings({ tabBorderRadius: '4px' })}
+                        className="flex-1"
+                      >
+                        Quadrato
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant={settings.tabBorderRadius === '8px' ? 'solid' : 'bordered'}
+                        onPress={() => onUpdateSettings({ tabBorderRadius: '8px' })}
+                        className="flex-1"
+                      >
+                        Medio
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant={settings.tabBorderRadius === '999px' ? 'solid' : 'bordered'}
+                        onPress={() => onUpdateSettings({ tabBorderRadius: '999px' })}
+                        className="flex-1"
+                      >
+                        Pillola
+                      </Button>
+                    </div>
+                  </div>
+                  
+                  {/* Preview Border Radius */}
+                  <div className="flex flex-col gap-2">
+                    <p className="text-small font-medium">Arrotondamento Anteprime Space</p>
+                    <div className="flex gap-2">
+                      {['4px', '8px', '12px', '16px'].map((radius) => (
+                        <Button
+                          key={radius}
+                          size="sm"
+                          variant={settings.previewBorderRadius === radius ? 'solid' : 'bordered'}
+                          onPress={() => onUpdateSettings({ previewBorderRadius: radius })}
+                          className="flex-1"
                         >
-                          {preset.name}
-                        </Typography>
-                      </Box>
-                    ))}
-                  </Box>
-                </FormControl>
-              </>
-            )}
+                          {radius === '4px' ? 'Quadrato' : radius === '8px' ? 'Piccolo' : radius === '12px' ? 'Medio' : 'Grande'}
+                        </Button>
+                      ))}
+                    </div>
+                  </div>
+                </div>
 
-            {/* Preview */}
-            <FormControl>
-              <FormLabel>Anteprima</FormLabel>
-              <Box
-                sx={{
-                  height: 120,
-                  borderRadius: 'md',
-                  background: settings.backgroundType === 'solid'
-                    ? settings.backgroundColor
-                    : `linear-gradient(${settings.gradientAngle}deg, ${settings.gradientStart} 0%, ${settings.gradientEnd} 100%)`,
-                  border: '1px solid',
-                  borderColor: 'divider'
-                }}
-              />
-            </FormControl>
-          </Box>
-        )}
+                {/* Padding Section */}
+                <div className="flex flex-col gap-4">
+                  <h3 className="text-primary font-semibold text-small uppercase tracking-wider">Padding Pulsante "Nuovo"</h3>
+                  
+                  {[
+                    { label: 'Superiore', key: 'buttonPaddingTop' as const, max: 3 },
+                    { label: 'Inferiore', key: 'buttonPaddingBottom' as const, max: 3 },
+                    { label: 'Sinistro', key: 'buttonPaddingLeft' as const, max: 5 },
+                    { label: 'Destro', key: 'buttonPaddingRight' as const, max: 5 },
+                  ].map((item) => (
+                    <div key={item.key} className="flex flex-col gap-1">
+                      <div className="flex justify-between">
+                        <p className="text-small font-medium">Padding {item.label}</p>
+                        <p className="text-tiny text-default-400">{settings[item.key].toFixed(2)}</p>
+                      </div>
+                      <Slider
+                        size="sm"
+                        step={0.125}
+                        maxValue={item.max}
+                        minValue={0}
+                        value={settings[item.key]}
+                        onChange={(value) => onUpdateSettings({ [item.key]: value as number })}
+                      />
+                    </div>
+                  ))}
 
-        {/* Debug Tab Content */}
-        {activeTab === 'debug' && (
-          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, p: 2 }}>
-            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <Typography level="title-sm">Database Tree</Typography>
-              <Box sx={{ display: 'flex', gap: 0.5, bgcolor: 'background.level1', borderRadius: 'md', p: 0.5 }}>
-                <Box
-                  onClick={() => setDebugView('json')}
-                  sx={{
-                    px: 2,
-                    py: 0.5,
-                    borderRadius: 'sm',
-                    cursor: 'pointer',
-                    bgcolor: debugView === 'json' ? 'primary.softBg' : 'transparent',
-                    color: debugView === 'json' ? 'primary.500' : 'text.secondary',
-                    '&:hover': {
-                      bgcolor: debugView === 'json' ? 'primary.softBg' : 'background.level2',
-                    },
-                  }}
+                  <div className="flex items-center gap-2 mt-2 p-4 bg-default-100 rounded-medium">
+                    <p className="text-small">Anteprima Pulsante:</p>
+                    <Button
+                      size="sm"
+                      color="primary"
+                      style={{ 
+                        borderRadius: settings.buttonBorderRadius,
+                        paddingTop: `${settings.buttonPaddingTop * 0.25}rem`,
+                        paddingBottom: `${settings.buttonPaddingBottom * 0.25}rem`,
+                        paddingLeft: `${settings.buttonPaddingLeft * 0.25}rem`,
+                        paddingRight: `${settings.buttonPaddingRight * 0.25}rem`
+                      }}
+                    >
+                      Nuovo
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            </Tab>
+
+            <Tab key="background" title="Sfondo">
+              <div className="flex flex-col gap-6 py-4">
+                <RadioGroup
+                  label="Tipo di Sfondo"
+                  value={settings.backgroundType}
+                  onValueChange={(value) => onUpdateSettings({ backgroundType: value as 'solid' | 'gradient' })}
                 >
-                  <Typography level="body-sm">JSON</Typography>
-                </Box>
-                <Box
-                  onClick={() => setDebugView('tree')}
-                  sx={{
-                    px: 2,
-                    py: 0.5,
-                    borderRadius: 'sm',
-                    cursor: 'pointer',
-                    bgcolor: debugView === 'tree' ? 'primary.softBg' : 'transparent',
-                    color: debugView === 'tree' ? 'primary.500' : 'text.secondary',
-                    '&:hover': {
-                      bgcolor: debugView === 'tree' ? 'primary.softBg' : 'background.level2',
-                    },
-                  }}
-                >
-                  <Typography level="body-sm">Tree</Typography>
-                </Box>
-              </Box>
-            </Box>
-            
-            {debugView === 'json' ? (
-              <>
-                {/* Spaces */}
-                <Box>
-                  <Typography level="title-sm" sx={{ mb: 1, color: 'primary.500' }}>Spaces ({spacesState?.spaces?.length || 0})</Typography>
-                  <Box
-                    sx={{
-                      fontFamily: 'monospace',
-                      fontSize: '0.75rem',
-                      bgcolor: 'background.level1',
-                      p: 2,
-                      borderRadius: 'md',
-                      maxHeight: 300,
-                      overflow: 'auto',
-                      whiteSpace: 'pre-wrap',
-                      wordBreak: 'break-all'
-                    }}
-                  >
-                    {JSON.stringify(spacesState?.spaces || [], null, 2)}
-                  </Box>
-                </Box>
+                  <Radio value="solid">Colore Solido</Radio>
+                  <Radio value="gradient">Gradiente</Radio>
+                </RadioGroup>
 
-                {/* Viewports */}
-                <Box>
-                  <Typography level="title-sm" sx={{ mb: 1, color: 'primary.500' }}>Viewports</Typography>
-                  <Box
-                    sx={{
-                      fontFamily: 'monospace',
-                      fontSize: '0.75rem',
-                      bgcolor: 'background.level1',
-                      p: 2,
-                      borderRadius: 'md',
-                      maxHeight: 300,
-                      overflow: 'auto',
-                      whiteSpace: 'pre-wrap',
-                      wordBreak: 'break-all'
-                    }}
-                  >
-                    {JSON.stringify(viewportsState?.root || {}, null, 2)}
-                  </Box>
-                </Box>
-              </>
-            ) : (
-              <DebugTreeView
-                spaces={spacesState?.spaces || []}
-                viewports={viewportsState?.root}
-                settings={settings}
-              />
-            )}
-          </Box>
-        )}
+                {settings.backgroundType === 'solid' && (
+                  <div className="flex flex-col gap-4">
+                    <p className="text-small font-medium">Colore</p>
+                    <div className="flex gap-2">
+                      <Input
+                        type="color"
+                        value={settings.backgroundColor}
+                        onChange={(e) => onUpdateSettings({ backgroundColor: e.target.value })}
+                        className="w-20"
+                        classNames={{ input: "h-10 p-1" }}
+                      />
+                      <Input
+                        value={settings.backgroundColor}
+                        onChange={(e) => onUpdateSettings({ backgroundColor: e.target.value })}
+                        className="flex-1"
+                      />
+                    </div>
+                    
+                    <p className="text-tiny text-default-400">Preset:</p>
+                    <div className="grid grid-cols-6 gap-2">
+                      {PRESET_COLORS.map(color => (
+                        <div
+                          key={color}
+                          onClick={() => onUpdateSettings({ backgroundColor: color })}
+                          className={`
+                            w-full aspect-square rounded-md border-2 cursor-pointer transition-transform hover:scale-110
+                            ${settings.backgroundColor === color ? 'border-primary' : 'border-divider'}
+                          `}
+                          style={{ backgroundColor: color }}
+                        />
+                      ))}
+                    </div>
+                  </div>
+                )}
 
-        {/* Actions */}
-        <Box sx={{ display: 'flex', gap: 1, justifyContent: 'flex-end', mt: 2, pt: 2, borderTop: '1px solid', borderColor: 'divider' }}>
-          <Button variant="plain" color="neutral" onClick={onResetSettings}>
-            Ripristina
-          </Button>
-          <Button onClick={onClose}>
-            Chiudi
-          </Button>
-        </Box>
-      </ModalDialog>
+                {settings.backgroundType === 'gradient' && (
+                  <div className="flex flex-col gap-4">
+                    <div className="flex flex-col gap-2">
+                      <p className="text-small font-medium">Colore Iniziale</p>
+                      <div className="flex gap-2">
+                        <Input
+                          type="color"
+                          value={settings.gradientStart}
+                          onChange={(e) => onUpdateSettings({ gradientStart: e.target.value })}
+                          className="w-20"
+                          classNames={{ input: "h-10 p-1" }}
+                        />
+                        <Input
+                          value={settings.gradientStart}
+                          onChange={(e) => onUpdateSettings({ gradientStart: e.target.value })}
+                          className="flex-1"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="flex flex-col gap-2">
+                      <p className="text-small font-medium">Colore Finale</p>
+                      <div className="flex gap-2">
+                        <Input
+                          type="color"
+                          value={settings.gradientEnd}
+                          onChange={(e) => onUpdateSettings({ gradientEnd: e.target.value })}
+                          className="w-20"
+                          classNames={{ input: "h-10 p-1" }}
+                        />
+                        <Input
+                          value={settings.gradientEnd}
+                          onChange={(e) => onUpdateSettings({ gradientEnd: e.target.value })}
+                          className="flex-1"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="flex flex-col gap-2">
+                      <p className="text-small font-medium">Angolo: {settings.gradientAngle}°</p>
+                      <Slider
+                        size="sm"
+                        step={15}
+                        maxValue={360}
+                        minValue={0}
+                        value={settings.gradientAngle}
+                        onChange={(value) => onUpdateSettings({ gradientAngle: value as number })}
+                      />
+                    </div>
+
+                    <p className="text-tiny text-default-400">Preset Gradienti:</p>
+                    <div className="grid grid-cols-2 gap-2">
+                      {PRESET_GRADIENTS.map(preset => (
+                        <div
+                          key={preset.name}
+                          onClick={() => onUpdateSettings({
+                            gradientStart: preset.start,
+                            gradientEnd: preset.end,
+                            gradientAngle: preset.angle
+                          })}
+                          className={`
+                            p-3 rounded-md border-2 cursor-pointer flex justify-between items-center
+                            ${settings.gradientStart === preset.start && settings.gradientEnd === preset.end ? 'border-primary' : 'border-divider'}
+                          `}
+                        >
+                          <span className="text-small">{preset.name}</span>
+                          <div 
+                            className="w-6 h-6 rounded-full"
+                            style={{ background: `linear-gradient(${preset.angle}deg, ${preset.start}, ${preset.end})` }}
+                          />
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            </Tab>
+
+            <Tab key="debug" title="Debug">
+              <div className="flex flex-col gap-4 py-4">
+                <div className="flex gap-2">
+                  <Button
+                    size="sm"
+                    variant={debugView === 'json' ? 'solid' : 'bordered'}
+                    onPress={() => setDebugView('json')}
+                    className="flex-1"
+                  >
+                    JSON
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant={debugView === 'tree' ? 'solid' : 'bordered'}
+                    onPress={() => setDebugView('tree')}
+                    className="flex-1"
+                  >
+                    Tree
+                  </Button>
+                </div>
+                
+                <div className="h-[400px] overflow-auto border border-divider rounded-md p-4 bg-default-50">
+                  {debugView === 'json' ? (
+                    <pre className="text-xs font-mono whitespace-pre-wrap">
+                      {JSON.stringify({ spaces: spacesState?.spaces, viewports: viewportsState?.rootViewport }, null, 2)}
+                    </pre>
+                  ) : (
+                    <DebugTreeView spaces={spacesState?.spaces || []} viewports={viewportsState?.rootViewport} />
+                  )}
+                </div>
+                
+                <Button color="danger" onPress={onResetSettings}>
+                  Reset Impostazioni
+                </Button>
+              </div>
+            </Tab>
+          </Tabs>
+        </ModalBody>
+      </ModalContent>
     </Modal>
   );
 }

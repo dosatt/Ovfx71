@@ -1,6 +1,4 @@
-import Box from '@mui/joy@5.0.0-beta.48/Box';
-import Typography from '@mui/joy@5.0.0-beta.48/Typography';
-import Button from '@mui/joy@5.0.0-beta.48/Button';
+import { Button } from '@heroui/react';
 import { Plus, Inbox, Send, Archive, Trash2 } from 'lucide-react';
 
 const mockEmails = [
@@ -11,64 +9,48 @@ const mockEmails = [
 
 export function MailApp() {
   return (
-    <Box sx={{ display: 'flex', height: '100%' }}>
+    <div className="flex h-full bg-white">
       {/* Sidebar */}
-      <Box sx={{ 
-        width: 200, 
-        borderRight: '1px solid', 
-        borderColor: 'divider',
-        p: 2,
-        display: 'flex',
-        flexDirection: 'column',
-        gap: 1
-      }}>
-        <Button startDecorator={<Plus size={16} />} size="sm" fullWidth>
+      <div className="w-[200px] border-r border-divider p-4 flex flex-col gap-2">
+        <Button startContent={<Plus size={16} />} size="sm" color="primary" className="w-full">
           Compose
         </Button>
-        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5, mt: 2 }}>
-          <Button variant="soft" size="sm" startDecorator={<Inbox size={16} />} sx={{ justifyContent: 'flex-start' }}>
+        <div className="flex flex-col gap-1 mt-4">
+          <Button variant="flat" size="sm" startContent={<Inbox size={16} />} className="justify-start">
             Inbox
           </Button>
-          <Button variant="plain" size="sm" startDecorator={<Send size={16} />} sx={{ justifyContent: 'flex-start' }}>
+          <Button variant="light" size="sm" startContent={<Send size={16} />} className="justify-start">
             Sent
           </Button>
-          <Button variant="plain" size="sm" startDecorator={<Archive size={16} />} sx={{ justifyContent: 'flex-start' }}>
+          <Button variant="light" size="sm" startContent={<Archive size={16} />} className="justify-start">
             Archive
           </Button>
-          <Button variant="plain" size="sm" startDecorator={<Trash2 size={16} />} sx={{ justifyContent: 'flex-start' }}>
+          <Button variant="light" size="sm" color="danger" startContent={<Trash2 size={16} />} className="justify-start">
             Trash
           </Button>
-        </Box>
-      </Box>
+        </div>
+      </div>
 
       {/* Email list */}
-      <Box sx={{ flex: 1, overflow: 'auto' }}>
+      <div className="flex-1 overflow-auto">
         {mockEmails.map(email => (
-          <Box
+          <div
             key={email.id}
-            sx={{
-              p: 2,
-              borderBottom: '1px solid',
-              borderColor: 'divider',
-              cursor: 'pointer',
-              '&:hover': {
-                bgcolor: 'background.level1'
-              }
-            }}
+            className="p-4 border-b border-divider cursor-pointer hover:bg-default-50 transition-colors"
           >
-            <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 0.5 }}>
-              <Typography level="title-sm">{email.from}</Typography>
-              <Typography level="body-xs" sx={{ color: 'text.tertiary' }}>
+            <div className="flex justify-between mb-1">
+              <span className="text-small font-semibold">{email.from}</span>
+              <span className="text-tiny text-default-400">
                 {email.time}
-              </Typography>
-            </Box>
-            <Typography level="body-sm" sx={{ mb: 0.5 }}>{email.subject}</Typography>
-            <Typography level="body-xs" sx={{ color: 'text.tertiary' }}>
+              </span>
+            </div>
+            <p className="text-small font-medium mb-1 text-default-900">{email.subject}</p>
+            <p className="text-small text-default-500 truncate">
               {email.preview}
-            </Typography>
-          </Box>
+            </p>
+          </div>
         ))}
-      </Box>
-    </Box>
+      </div>
+    </div>
   );
 }

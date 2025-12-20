@@ -1,12 +1,9 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef } from 'react';
 import { createPortal } from 'react-dom';
-import Box from '@mui/joy@5.0.0-beta.48/Box';
-import Typography from '@mui/joy@5.0.0-beta.48/Typography';
-import Input from '@mui/joy@5.0.0-beta.48/Input';
-import Button from '@mui/joy@5.0.0-beta.48/Button';
-import { 
-  Edit2, 
-  Star, 
+import { Input, Button } from '@heroui/react';
+import {
+  Edit2,
+  Star,
   Trash2,
   FolderInput,
   ChevronRight,
@@ -26,13 +23,12 @@ interface SpaceContextMenuProps {
   onRename?: () => void;
 }
 
-export function SpaceContextMenu({ 
-  space, 
-  spacesState, 
-  position, 
+export function SpaceContextMenu({
+  space,
+  spacesState,
+  position,
   anchorRef,
   onClose,
-  onRename
 }: SpaceContextMenuProps) {
   const [showIconPicker, setShowIconPicker] = useState(false);
   const [showMoveMenu, setShowMoveMenu] = useState(false);
@@ -171,151 +167,71 @@ export function SpaceContextMenu({
     <>
       {/* Main Menu */}
       {!showIconPicker && !showMoveMenu && (
-        <Box
+        <div
           ref={menuRef}
-          sx={{
-            position: 'fixed',
-            bgcolor: 'background.popup',
-            boxShadow: 'md',
-            borderRadius: '8px',
-            p: 0.5,
-            zIndex: 1000,
-            minWidth: 200,
-            maxWidth: 250,
+          className="fixed bg-white shadow-lg rounded-lg p-1 z-[1000] border border-divider min-w-[200px] max-w-[250px]"
+          style={{
             top: `${menuPosition.top}px`,
             left: `${menuPosition.left}px`
           }}
         >
-          <Box
+          <div
             onClick={handleToggleFavorite}
-            sx={{
-              p: 1,
-              borderRadius: '6px',
-              cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              gap: 1,
-              whiteSpace: 'nowrap',
-              overflow: 'hidden',
-              '&:hover': {
-                bgcolor: 'background.level1'
-              }
-            }}
+            className="p-2 rounded-md cursor-pointer flex items-center gap-2 hover:bg-default-100 transition-colors overflow-hidden"
           >
-            <Star size={14} style={{ flexShrink: 0 }} />
-            <Typography level="body-sm" sx={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>
+            <Star size={14} className="shrink-0" />
+            <span className="text-small truncate">
               {space.isFavorite ? 'Remove from favorites' : 'Add to favorites'}
-            </Typography>
-          </Box>
+            </span>
+          </div>
 
-          <Box
+          <div
             onClick={handleShowMoveMenu}
-            sx={{
-              p: 1,
-              borderRadius: '6px',
-              cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              gap: 1,
-              whiteSpace: 'nowrap',
-              overflow: 'hidden',
-              '&:hover': {
-                bgcolor: 'background.level1'
-              }
-            }}
+            className="p-2 rounded-md cursor-pointer flex items-center gap-2 hover:bg-default-100 transition-colors overflow-hidden"
           >
-            <FolderInput size={14} style={{ flexShrink: 0 }} />
-            <Typography level="body-sm" sx={{ overflow: 'hidden', textOverflow: 'ellipsis', flex: 1 }}>
-              Move to
-            </Typography>
-            <ChevronRight size={12} style={{ flexShrink: 0 }} />
-          </Box>
+            <FolderInput size={14} className="shrink-0" />
+            <span className="text-small truncate flex-1">Move to</span>
+            <ChevronRight size={12} className="shrink-0" />
+          </div>
 
-          <Box
+          <div
             onClick={handleShowIconPicker}
-            sx={{
-              p: 1,
-              borderRadius: '6px',
-              cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              gap: 1,
-              whiteSpace: 'nowrap',
-              overflow: 'hidden',
-              '&:hover': {
-                bgcolor: 'background.level1'
-              }
-            }}
+            className="p-2 rounded-md cursor-pointer flex items-center gap-2 hover:bg-default-100 transition-colors overflow-hidden"
           >
-            <Smile size={14} style={{ flexShrink: 0 }} />
-            <Typography level="body-sm" sx={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>
-              Change icon
-            </Typography>
-          </Box>
+            <Smile size={14} className="shrink-0" />
+            <span className="text-small truncate">Change icon</span>
+          </div>
 
-          <Box
+          <div
             onClick={handleDeleteClick}
-            sx={{
-              p: 1,
-              borderRadius: '6px',
-              cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              gap: 1,
-              color: 'danger.500',
-              whiteSpace: 'nowrap',
-              overflow: 'hidden',
-              '&:hover': {
-                bgcolor: 'danger.softBg'
-              }
-            }}
+            className="p-2 rounded-md cursor-pointer flex items-center gap-2 text-danger hover:bg-danger-50 transition-colors overflow-hidden"
           >
-            <Trash2 size={14} style={{ flexShrink: 0 }} />
-            <Typography level="body-sm" sx={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>
-              Delete
-            </Typography>
-          </Box>
-        </Box>
+            <Trash2 size={14} className="shrink-0" />
+            <span className="text-small truncate">Delete</span>
+          </div>
+        </div>
       )}
 
       {/* Icon Picker Dropdown */}
       {showIconPicker && (
-        <Box
+        <div
           ref={iconPickerRef}
-          sx={{
-            position: 'fixed',
-            bgcolor: 'background.popup',
-            boxShadow: 'md',
-            borderRadius: '8px',
-            p: 1.5,
-            zIndex: 1001,
-            width: 340,
+          className="fixed bg-white shadow-lg rounded-lg p-3 z-[1001] border border-divider w-[340px]"
+          style={{
             top: `${menuPosition.top}px`,
             left: `${menuPosition.left}px`
           }}
         >
           {/* Header con pulsante Back */}
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1.5 }}>
-            <Box
+          <div className="flex items-center gap-2 mb-3">
+            <div
               onClick={() => setShowIconPicker(false)}
-              sx={{
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                cursor: 'pointer',
-                p: 0.5,
-                borderRadius: '6px',
-                '&:hover': {
-                  bgcolor: 'background.level1'
-                }
-              }}
+              className="flex items-center justify-center cursor-pointer p-1 rounded-md hover:bg-default-100 transition-colors"
             >
               <ArrowLeft size={16} />
-            </Box>
-            <Typography level="title-sm">
-              Change Icon
-            </Typography>
-          </Box>
+            </div>
+            <span className="text-small font-semibold">Change Icon</span>
+          </div>
           
           <IconPicker
             currentIcon={tempIcon}
@@ -323,22 +239,23 @@ export function SpaceContextMenu({
             onIconChange={setTempIcon}
             onColorChange={setTempColor}
           />
-          <Box sx={{ display: 'flex', gap: 1, justifyContent: 'flex-end', mt: 1.5 }}>
+          <div className="flex gap-2 justify-end mt-3">
             <Button 
               size="sm" 
-              variant="plain" 
-              onClick={() => setShowIconPicker(false)}
+              variant="light" 
+              onPress={() => setShowIconPicker(false)}
             >
               Cancel
             </Button>
             <Button 
               size="sm" 
-              onClick={handleConfirmIcon}
+              color="primary"
+              onPress={handleConfirmIcon}
             >
               OK
             </Button>
-          </Box>
-        </Box>
+          </div>
+        </div>
       )}
 
       {/* Move Menu Dropdown */}
@@ -349,93 +266,49 @@ export function SpaceContextMenu({
         );
 
         return (
-          <Box
+          <div
             ref={moveMenuRef}
-            sx={{
-              position: 'fixed',
-              bgcolor: 'background.popup',
-              boxShadow: 'md',
-              borderRadius: '8px',
-              p: 1,
-              zIndex: 1001,
-              minWidth: 250,
-              maxWidth: 300,
+            className="fixed bg-white shadow-lg rounded-lg p-2 z-[1001] border border-divider min-w-[250px] max-w-[300px] flex flex-col max-h-[350px]"
+            style={{
               top: `${menuPosition.top}px`,
-              left: `${menuPosition.left}px`,
-              maxHeight: '350px',
-              display: 'flex',
-              flexDirection: 'column'
+              left: `${menuPosition.left}px`
             }}
           >
             {/* Header con pulsante Back */}
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
-              <Box
+            <div className="flex items-center gap-2 mb-2">
+              <div
                 onClick={() => setShowMoveMenu(false)}
-                sx={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  cursor: 'pointer',
-                  p: 0.5,
-                  borderRadius: '6px',
-                  '&:hover': {
-                    bgcolor: 'background.level1'
-                  }
-                }}
+                className="flex items-center justify-center cursor-pointer p-1 rounded-md hover:bg-default-100 transition-colors"
               >
                 <ArrowLeft size={16} />
-              </Box>
-              <Typography level="title-sm">
-                Move to
-              </Typography>
-            </Box>
+              </div>
+              <span className="text-small font-semibold">Move to</span>
+            </div>
             
             <Input
               size="sm"
               placeholder="Search spaces..."
               value={moveSearch}
-              onChange={(e) => setMoveSearch(e.target.value)}
-              sx={{ mb: 1 }}
+              onValueChange={setMoveSearch}
+              variant="bordered"
+              className="mb-2"
             />
-            <Box sx={{ overflowY: 'auto', flex: 1 }}>
+            <div className="overflow-y-auto flex-1 flex flex-col">
               {filteredSpaces.length === 0 ? (
-                <Typography level="body-sm" sx={{ p: 1, textAlign: 'center', color: 'text.tertiary' }}>
-                  No spaces available
-                </Typography>
+                <span className="text-small text-default-400 p-2 text-center">No spaces available</span>
               ) : (
                 filteredSpaces.map((s) => (
-                  <Box
+                  <div
                     key={s.id}
                     onClick={() => handleMoveToSpace(s.id)}
-                    sx={{
-                      p: 1,
-                      borderRadius: '6px',
-                      cursor: 'pointer',
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: 1,
-                      whiteSpace: 'nowrap',
-                      overflow: 'hidden',
-                      '&:hover': {
-                        bgcolor: 'background.level1'
-                      }
-                    }}
+                    className="p-2 rounded-md cursor-pointer flex items-center gap-2 hover:bg-default-100 transition-colors"
                   >
-                    <Typography 
-                      level="body-sm" 
-                      sx={{ 
-                        overflow: 'hidden', 
-                        textOverflow: 'ellipsis',
-                        whiteSpace: 'nowrap'
-                      }}
-                    >
-                      {s.title}
-                    </Typography>
-                  </Box>
+                    <span className="text-small truncate">{s.title}</span>
+                  </div>
                 ))
               )}
-            </Box>
-          </Box>
+            </div>
+          </div>
         );
       })()}
 
@@ -451,16 +324,9 @@ export function SpaceContextMenu({
       )}
 
       {/* Backdrop */}
-      <Box
+      <div
         onClick={onClose}
-        sx={{
-          position: 'fixed',
-          top: 0,
-          left: 0,
-          right: 0,
-          bottom: 0,
-          zIndex: 999
-        }}
+        className="fixed inset-0 z-[999]"
       />
     </>,
     document.body

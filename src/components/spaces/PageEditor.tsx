@@ -1,10 +1,7 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import { useDrop } from 'react-dnd';
-import Box from '@mui/joy@5.0.0-beta.48/Box';
-import Textarea from '@mui/joy@5.0.0-beta.48/Textarea';
-import Button from '@mui/joy@5.0.0-beta.48/Button';
-import Typography from '@mui/joy@5.0.0-beta.48/Typography';
+import { Button, Input, Textarea, Tooltip } from '@heroui/react';
 import {
   Plus,
   Type,
@@ -21,7 +18,9 @@ import {
   Image as ImageIcon,
   File as FileIcon,
   Link2,
-  Globe
+  Globe,
+  Trash2,
+  GripVertical
 } from 'lucide-react';
 import { Space, Block, BlockType, PageContent } from '../../types';
 import { PageBlock } from './PageBlock';
@@ -53,7 +52,12 @@ const blockTypeConfig: Record<BlockType, { icon: any; label: string; placeholder
   image: { icon: ImageIcon, label: 'Image', placeholder: 'Insert image' },
   file: { icon: FileIcon, label: 'File', placeholder: 'Insert file' },
   embed: { icon: Globe, label: 'Embed', placeholder: 'Paste iframe or code' },
-  pageLink: { icon: Link2, label: 'Space Link', placeholder: 'Link to space' }
+  pageLink: { icon: Link2, label: 'Space Link', placeholder: 'Link to space' },
+  spaceEmbed: { icon: Globe, label: 'Space Embed', placeholder: 'Embed a space' },
+  blockEmbed: { icon: Link2, label: 'Block Embed', placeholder: 'Embed a block' },
+  elementEmbed: { icon: Link2, label: 'Element Embed', placeholder: 'Embed an element' },
+  video: { icon: FileIcon, label: 'Video', placeholder: 'Insert video' },
+  audio: { icon: FileIcon, label: 'Audio', placeholder: 'Insert audio' }
 };
 
 export function PageEditor({ space, spacesState, viewportsState, viewportId, tabId, brokenLinks, brokenLinksVersion }: PageEditorProps) {
@@ -655,7 +659,7 @@ export function PageEditor({ space, spacesState, viewportsState, viewportId, tab
         blockElement.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
         // Highlight animation
         blockElement.animate([
-          { backgroundColor: 'var(--joy-palette-primary-softBg)' },
+          { backgroundColor: 'var(--heroui-primary-100)' },
           { backgroundColor: 'transparent' }
         ], {
           duration: 600,
@@ -666,76 +670,33 @@ export function PageEditor({ space, spacesState, viewportsState, viewportId, tab
   };
 
   return (
-    <Box 
+    <div 
       ref={dropRef}
-      sx={{ 
-        maxWidth: 700, 
-        mx: 'auto', 
-        p: 4, 
-        position: 'relative',
-        minHeight: '100vh',
-      }}
+      className="max-w-[700px] mx-auto p-4 relative min-h-screen"
     >
       {/* Page title - allineato con i text blocks */}
-      <Box sx={{ display: 'flex', gap: 1, alignItems: 'flex-start', mb: 4 }}>
+      <div className="flex gap-2 items-start mb-4">
         {/* Spazio per allineare con il drag handle dei blocchi - 24px (handle width) */}
-        <Box sx={{ width: 24, flexShrink: 0 }} />
+        <div className="w-6 shrink-0" />
         
         {/* Textarea del titolo - con flex: 1 come i blocchi */}
         <Textarea
           value={space.title}
           onChange={(e) => handleTitleChange(e.target.value)}
           placeholder="Untitled"
-          variant="plain"
           minRows={1}
-          sx={{
-            flex: 1,
-            fontSize: '2.5rem',
-            fontWeight: 'bold',
-            p: 0,
-            border: 'none',
-            outline: 'none !important',
-            boxShadow: 'none !important',
-            '--Textarea-focusedThickness': '0px',
-            '&:focus-within': {
-              outline: 'none !important',
-              boxShadow: 'none !important',
-              border: 'none !important',
-            },
-            '&:focus': {
-              outline: 'none !important',
-              boxShadow: 'none !important',
-              border: 'none !important',
-            },
-            '& textarea': {
-              border: 'none !important',
-              outline: 'none !important',
-              boxShadow: 'none !important',
-              textAlign: 'center',
-            },
-            '& textarea:focus': {
-              outline: 'none !important',
-              boxShadow: 'none !important',
-              border: 'none !important',
-              textAlign: 'center',
-            },
-            '& textarea:focus-visible': {
-              outline: 'none !important',
-              boxShadow: 'none !important',
-              textAlign: 'center',
-            }
+          classNames={{
+            base: "flex-1",
+            input: "text-[2.5rem] font-bold p-0 border-none outline-none shadow-none text-center bg-transparent focus:outline-none focus:ring-0 focus:border-none",
+            inputWrapper: "bg-transparent shadow-none hover:bg-transparent data-[focus=true]:bg-transparent border-none p-0 !outline-none !ring-0",
           }}
-          slotProps={{
-            textarea: {
-              ref: titleInputRef as any,
-              onKeyDown: handleTitleKeyDown
-            }
-          }}
+          onKeyDown={handleTitleKeyDown}
+          ref={titleInputRef as any}
         />
-      </Box>
+      </div>
 
       {/* Blocks */}
-      <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
+      <div className="flex flex-col gap-0">
         {blocks.map((block, index) => {
           const isHeader = block.type === 'heading1' || block.type === 'heading2' || block.type === 'heading3';
           const isCollapsed = isHeader ? collapsedHeaders.has(block.id) : false;
@@ -753,7 +714,7 @@ export function PageEditor({ space, spacesState, viewportsState, viewportId, tab
               onAddBefore={addBlockBefore}
               onMove={moveBlock}
               onConvertBlock={convertBlock}
-              config={blockTypeConfig[block.type]}
+              config={blockTypeConfig[block.type] || blockTypeConfig['text']}
               createNextBlock={createNextBlock}
               toggleHeaderCollapse={toggleHeaderCollapse}
               isBlockCollapsed={isBlockCollapsed}
@@ -768,198 +729,24 @@ export function PageEditor({ space, spacesState, viewportsState, viewportId, tab
               viewportsState={viewportsState}
               brokenLinks={brokenLinks}
               brokenLinksVersion={brokenLinksVersion}
-              onEditEnd={block.id === temporaryBlockId ? (blockId) => {
-                // Quando il blocco temporaneo perde il focus, resettiamo lo stato
-                setTemporaryBlockId(null);
-              } : undefined}
             />
           );
         })}
-
-        {/* Add block button at the end */}
-        {!temporaryBlockId && (
-          <Box sx={{ display: 'flex', gap: 1, alignItems: 'flex-start' }}>
-            {/* Spazio per allineare con il drag handle dei blocchi - 24px (handle width) */}
-            <Box sx={{ width: 24, flexShrink: 0 }} />
-            
-            {/* Quando non c'è scrittura, mostra entrambi i pulsanti sulla stessa riga */}
-            <Box sx={{ flex: 1, display: 'flex', flexDirection: 'row', gap: 1.5, alignItems: 'center' }}>
-              <Typography 
-                level="body-sm" 
-                sx={{ 
-                  color: 'text.tertiary',
-                  cursor: 'pointer',
-                  '&:hover': {
-                    color: 'text.primary'
-                  }
-                }}
-                onClick={() => {
-                  // Crea un nuovo blocco text e focus su di esso
-                  const newBlock: Block = {
-                    id: `block_${Date.now()}_${Math.random()}`,
-                    type: 'text',
-                    content: '',
-                  };
-                  setTemporaryBlockId(newBlock.id);
-                  updateContent([...blocks, newBlock]);
-                  
-                  // Focus sul nuovo blocco dopo un breve delay
-                  setTimeout(() => {
-                    const newBlockElement = document.querySelector(`[data-block-id="${newBlock.id}"]`);
-                    if (newBlockElement) {
-                      const input = newBlockElement.querySelector('input, textarea');
-                      if (input) {
-                        (input as HTMLElement).focus();
-                      } else {
-                        // Cerca contentEditable per RichTextEditor
-                        const contentEditable = newBlockElement.querySelector('[contenteditable="true"]');
-                        if (contentEditable) {
-                          (contentEditable as HTMLElement).focus();
-                        }
-                      }
-                    }
-                  }, 50);
-                }}
-              >
-                Start writing
-              </Typography>
-              <Typography level="body-sm" sx={{ color: 'text.tertiary' }}>
-                or
-              </Typography>
-              <Button
-                variant="plain"
-                startDecorator={<Plus size={16} />}
-                onClick={(e) => {
-                  const lastBlock = blocks[blocks.length - 1];
-                  setMenuAnchor({ anchor: e.currentTarget, afterBlockId: lastBlock?.id });
-                }}
-                sx={{ justifyContent: 'flex-start', color: 'text.tertiary', p: 0 }}
-              >
-                add an element
-              </Button>
-            </Box>
-          </Box>
-        )}
-      </Box>
-
-      {/* Block type menu */}
-      {menuAnchor && menuAnchor.anchor && createPortal(
-        (() => {
-          const rect = menuAnchor.anchor.getBoundingClientRect();
-          const menuWidth = 450;
-          const menuHeight = 300;
-          
-          let top = rect.bottom + 4;
-          let left = rect.left;
-          
-          // Trova il contenitore viewport
-          const viewportContent = menuAnchor.anchor.closest('[data-viewport-content]');
-          const viewportRect = viewportContent?.getBoundingClientRect() || {
-            top: 0,
-            left: 0,
-            right: window.innerWidth,
-            bottom: window.innerHeight
-          };
-          
-          // Controlla se esce dal bordo destro
-          if (left + menuWidth > viewportRect.right) {
-            left = viewportRect.right - menuWidth - 8;
+      </div>
+      
+      {/* Area vuota sotto i blocchi per aggiungere facilmente un nuovo blocco cliccando */}
+      <div 
+        className="flex-1 min-h-[200px] cursor-text"
+        onClick={() => {
+          // Se non ci sono blocchi, aggiungine uno
+          if (blocks.length === 0) {
+            addBlock('text');
+          } else {
+            // Altrimenti focalizza l'ultimo blocco
+            focusBlockByIndex(blocks.length - 1, 'end');
           }
-          
-          // Controlla se esce dal bordo sinistro
-          if (left < viewportRect.left) {
-            left = viewportRect.left + 8;
-          }
-          
-          // Controlla se esce dal bordo inferiore
-          if (top + menuHeight > viewportRect.bottom) {
-            top = rect.top - menuHeight - 4;
-          }
-          
-          // Controlla se esce dal bordo superiore
-          if (top < viewportRect.top) {
-            top = viewportRect.top + 8;
-          }
-          
-          // Ordine per colonne: dall'alto verso il basso, partendo da sinistra
-          // Colonna 1: Text, Heading 1, Heading 2, Heading 3, Image
-          // Colonna 2: Numbered List, Bullet List, Checkbox, Callout, File
-          // Colonna 3: Divider, Embed, Space Link, Quote, Code
-          const orderedTypes: BlockType[] = [
-            'text', 'numberedList', 'divider',
-            'heading1', 'bulletList', 'embed',
-            'heading2', 'checkbox', 'pageLink',
-            'heading3', 'callout', 'quote',
-            'image', 'file', 'code'
-          ];
-          
-          return (
-            <>
-              <Box
-                onClick={() => setMenuAnchor(null)}
-                sx={{
-                  position: 'fixed',
-                  top: 0,
-                  left: 0,
-                  right: 0,
-                  bottom: 0,
-                  zIndex: 999
-                }}
-              />
-              <Box
-                sx={{
-                  position: 'fixed',
-                  bgcolor: 'background.popup',
-                  boxShadow: 'md',
-                  borderRadius: '8px',
-                  p: 1,
-                  zIndex: 1000,
-                  width: menuWidth,
-                  maxHeight: menuHeight,
-                  overflow: 'auto',
-                  top: `${top}px`,
-                  left: `${left}px`,
-                  border: '1px solid',
-                  borderColor: 'divider',
-                  display: 'grid',
-                  gridTemplateColumns: 'repeat(3, 1fr)',
-                  gap: 0.5
-                }}
-              >
-                {orderedTypes.map((type) => {
-                  const config = blockTypeConfig[type];
-                  return (
-                    <Box
-                      key={type}
-                      onClick={() => {
-                        addBlock(type, menuAnchor?.afterBlockId);
-                        setMenuAnchor(null);
-                      }}
-                      sx={{
-                        px: 1,
-                        py: 0.75,
-                        borderRadius: '6px',
-                        cursor: 'pointer',
-                        display: 'flex',
-                        flexDirection: 'row',
-                        alignItems: 'center',
-                        gap: 0.75,
-                        '&:hover': {
-                          bgcolor: 'background.level1'
-                        }
-                      }}
-                    >
-                      <config.icon size={16} style={{ flexShrink: 0 }} />
-                      <Typography level="body-xs" sx={{ fontSize: '1rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{config.label}</Typography>
-                    </Box>
-                  );
-                })}
-              </Box>
-            </>
-          );
-        })(),
-        document.body
-      )}
-    </Box>
+        }}
+      />
+    </div>
   );
 }

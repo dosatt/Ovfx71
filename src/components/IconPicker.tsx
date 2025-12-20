@@ -1,7 +1,5 @@
 import { useState } from 'react';
-import Box from '@mui/joy@5.0.0-beta.48/Box';
-import Input from '@mui/joy@5.0.0-beta.48/Input';
-import Typography from '@mui/joy@5.0.0-beta.48/Typography';
+import { Input, ScrollShadow } from '@heroui/react';
 import * as LucideIcons from 'lucide-react';
 import { Check } from 'lucide-react';
 
@@ -67,104 +65,57 @@ export function IconPicker({ currentIcon, currentColor, onIconChange, onColorCha
   };
 
   return (
-    <Box sx={{ width: '100%' }}>
+    <div className="w-full">
       <Input
         placeholder="Cerca icona..."
         value={search}
-        onChange={(e) => setSearch(e.target.value)}
+        onValueChange={setSearch}
         size="sm"
-        sx={{ mb: 1.5 }}
+        className="mb-3"
       />
-      <Box
-        sx={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(7, 1fr)',
-          gridAutoRows: '40px',
-          gap: 0.5,
-          height: 200,
-          overflowY: 'auto',
-          overflowX: 'hidden',
-          p: 0.5,
-          '&::-webkit-scrollbar': {
-            width: '8px'
-          },
-          '&::-webkit-scrollbar-thumb': {
-            bgcolor: 'divider',
-            borderRadius: '4px'
-          }
-        }}
-      >
-        {filteredIcons.map((iconName) => {
-          const IconComponent = (LucideIcons as any)[iconName];
-          if (!IconComponent) return null;
-          
-          return (
-            <Box
-              key={iconName}
-              onClick={() => handleIconSelect(iconName)}
-              sx={{
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                width: '100%',
-                height: '100%',
-                borderRadius: 'sm',
-                cursor: 'pointer',
-                transition: 'all 0.2s',
-                bgcolor: currentIcon === iconName ? 'primary.softBg' : 'transparent',
-                outline: currentIcon === iconName ? '2px solid' : 'none',
-                outlineColor: 'primary.solidBg',
-                outlineOffset: '-2px',
-                '&:hover': {
-                  bgcolor: 'primary.softBg',
-                  color: 'primary.solidBg'
-                }
-              }}
-            >
-              <IconComponent size={20} />
-            </Box>
-          );
-        })}
-      </Box>
-      {filteredIcons.length === 0 && (
-        <Typography level="body-sm" sx={{ textAlign: 'center', color: 'text.tertiary', py: 2 }}>
-          Nessuna icona trovata
-        </Typography>
-      )}
+      <ScrollShadow className="h-[200px] w-full p-1 border border-divider rounded-medium">
+        <div className="grid grid-cols-7 gap-1">
+          {filteredIcons.map((iconName) => {
+            const IconComponent = (LucideIcons as any)[iconName];
+            if (!IconComponent) return null;
+            
+            return (
+              <div
+                key={iconName}
+                onClick={() => handleIconSelect(iconName)}
+                className={`
+                  flex items-center justify-center aspect-square rounded-small cursor-pointer transition-all
+                  hover:bg-primary/20 hover:text-primary
+                  ${currentIcon === iconName ? 'bg-primary/20 ring-2 ring-primary ring-offset-0 text-primary' : 'text-default-500'}
+                `}
+              >
+                <IconComponent size={20} />
+              </div>
+            );
+          })}
+        </div>
+        {filteredIcons.length === 0 && (
+          <p className="text-center text-tiny text-default-400 py-4">
+            Nessuna icona trovata
+          </p>
+        )}
+      </ScrollShadow>
       
       {onColorChange && (
         <>
-          <Typography level="body-sm" sx={{ mb: 1, mt: 1.5 }}>
+          <p className="text-small text-default-500 mb-2 mt-3">
             Colore
-          </Typography>
-          <Box
-            sx={{
-              display: 'grid',
-              gridTemplateColumns: 'repeat(6, 1fr)',
-              gridTemplateRows: 'repeat(2, 36px)',
-              gap: 0.75
-            }}
-          >
+          </p>
+          <div className="grid grid-cols-6 gap-2">
             {colorPresets.map((color) => (
-              <Box
+              <div
                 key={color.name}
                 onClick={() => handleColorSelect(color.value)}
-                sx={{
-                  position: 'relative',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  borderRadius: 'sm',
-                  cursor: 'pointer',
-                  transition: 'all 0.2s',
-                  bgcolor: color.value || 'neutral.softBg',
-                  outline: currentColor === color.value ? '3px solid' : 'none',
-                  outlineColor: 'primary.solidBg',
-                  outlineOffset: '-3px',
-                  '&:hover': {
-                    transform: 'scale(1.05)'
-                  }
-                }}
+                className={`
+                  relative flex items-center justify-center aspect-square rounded-small cursor-pointer transition-transform hover:scale-105 border border-divider
+                  ${currentColor === color.value ? 'ring-2 ring-primary ring-offset-1' : ''}
+                `}
+                style={{ backgroundColor: color.value }}
                 title={color.name}
               >
                 {currentColor === color.value && (
@@ -176,11 +127,11 @@ export function IconPicker({ currentIcon, currentColor, onIconChange, onColorCha
                     }} 
                   />
                 )}
-              </Box>
+              </div>
             ))}
-          </Box>
+          </div>
         </>
       )}
-    </Box>
+    </div>
   );
 }

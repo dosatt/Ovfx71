@@ -1,14 +1,6 @@
 import { useState } from 'react';
-import Box from '@mui/joy@5.0.0-beta.48/Box';
-import Button from '@mui/joy@5.0.0-beta.48/Button';
-import IconButton from '@mui/joy@5.0.0-beta.48/IconButton';
-import Input from '@mui/joy@5.0.0-beta.48/Input';
-import Checkbox from '@mui/joy@5.0.0-beta.48/Checkbox';
-import Modal from '@mui/joy@5.0.0-beta.48/Modal';
-import ModalDialog from '@mui/joy@5.0.0-beta.48/ModalDialog';
-import Typography from '@mui/joy@5.0.0-beta.48/Typography';
-import Card from '@mui/joy@5.0.0-beta.48/Card';
-import { Plus, Trash2, Settings, Table, LayoutGrid, Calendar, ListOrdered } from 'lucide-react';
+import { Button, Input, Checkbox, Modal, ModalContent, ModalHeader, ModalBody, ModalFooter, Card, CardBody, Select, SelectItem } from '@heroui/react';
+import { Plus, Trash2, Settings, Table, LayoutGrid, Calendar, ListOrdered, X } from 'lucide-react';
 import { Space } from '../../types';
 
 interface Column {
@@ -138,9 +130,13 @@ export function DatabaseSpace({ space, spacesState }: DatabaseSpaceProps) {
           <Input
             value={value || ''}
             onChange={(e) => updateCell(row.id, column.id, e.target.value)}
-            variant="plain"
+            variant="flat"
             size="sm"
-            sx={{ minWidth: 150 }}
+            className="min-w-[150px]"
+            classNames={{
+              input: "bg-transparent",
+              inputWrapper: "bg-transparent shadow-none hover:bg-default-100"
+            }}
           />
         );
       case 'number':
@@ -149,9 +145,13 @@ export function DatabaseSpace({ space, spacesState }: DatabaseSpaceProps) {
             type="number"
             value={value || ''}
             onChange={(e) => updateCell(row.id, column.id, e.target.value)}
-            variant="plain"
+            variant="flat"
             size="sm"
-            sx={{ minWidth: 100 }}
+            className="min-w-[100px]"
+            classNames={{
+              input: "bg-transparent",
+              inputWrapper: "bg-transparent shadow-none hover:bg-default-100"
+            }}
           />
         );
       case 'date':
@@ -160,16 +160,20 @@ export function DatabaseSpace({ space, spacesState }: DatabaseSpaceProps) {
             type="date"
             value={value || ''}
             onChange={(e) => updateCell(row.id, column.id, e.target.value)}
-            variant="plain"
+            variant="flat"
             size="sm"
-            sx={{ minWidth: 150 }}
+            className="min-w-[150px]"
+            classNames={{
+              input: "bg-transparent",
+              inputWrapper: "bg-transparent shadow-none hover:bg-default-100"
+            }}
           />
         );
       case 'checkbox':
         return (
           <Checkbox
-            checked={value || false}
-            onChange={(e) => updateCell(row.id, column.id, e.target.checked)}
+            isSelected={value || false}
+            onValueChange={(checked) => updateCell(row.id, column.id, checked)}
           />
         );
       case 'select':
@@ -177,15 +181,7 @@ export function DatabaseSpace({ space, spacesState }: DatabaseSpaceProps) {
           <select
             value={value || ''}
             onChange={(e) => updateCell(row.id, column.id, e.target.value)}
-            style={{
-              border: 'none',
-              outline: 'none',
-              backgroundColor: 'transparent',
-              fontSize: '0.875rem',
-              minWidth: '150px',
-              padding: '4px',
-              cursor: 'pointer'
-            }}
+            className="w-full min-w-[150px] bg-transparent border-none outline-none text-small p-1 cursor-pointer hover:bg-default-100 rounded"
           >
             <option value="">Select...</option>
             {column.options?.map(option => (
@@ -201,86 +197,60 @@ export function DatabaseSpace({ space, spacesState }: DatabaseSpaceProps) {
   };
 
   const renderTableView = () => (
-    <Box sx={{ flex: 1, overflow: 'auto' }}>
-      <Box sx={{ minWidth: 'max-content' }}>
+    <div className="flex-1 overflow-auto">
+      <div className="min-w-max">
         {/* Header */}
-        <Box
-          sx={{
-            display: 'flex',
-            borderBottom: '2px solid',
-            borderColor: 'divider',
-            bgcolor: 'background.level1',
-            position: 'sticky',
-            top: 0,
-            zIndex: 1
-          }}
-        >
+        <div className="flex border-b-2 border-divider bg-default-50 sticky top-0 z-10">
           {visibleColumns.map(column => (
-            <Box
+            <div
               key={column.id}
-              sx={{
-                p: 2,
-                minWidth: 150,
-                fontWeight: 'bold',
-                borderRight: '1px solid',
-                borderColor: 'divider'
-              }}
+              className="p-3 min-w-[150px] font-bold border-r border-divider text-small text-default-600"
             >
               {column.name}
-            </Box>
+            </div>
           ))}
-          <Box sx={{ p: 2, minWidth: 60 }} />
-        </Box>
+          <div className="p-3 min-w-[60px]" />
+        </div>
 
         {/* Rows */}
         {rows.map(row => (
-          <Box
+          <div
             key={row.id}
-            sx={{
-              display: 'flex',
-              borderBottom: '1px solid',
-              borderColor: 'divider',
-              '&:hover': {
-                bgcolor: 'background.level1'
-              }
-            }}
+            className="flex border-b border-divider hover:bg-default-50 group transition-colors"
           >
             {visibleColumns.map(column => (
-              <Box
+              <div
                 key={column.id}
-                sx={{
-                  p: 2,
-                  minWidth: 150,
-                  borderRight: '1px solid',
-                  borderColor: 'divider'
-                }}
+                className="p-2 min-w-[150px] border-r border-divider flex items-center"
               >
                 {renderCell(row, column)}
-              </Box>
+              </div>
             ))}
-            <Box sx={{ p: 2, display: 'flex', gap: 1 }}>
-              <IconButton
+            <div className="p-2 flex gap-1 items-center justify-center min-w-[60px]">
+              <Button
+                isIconOnly
                 size="sm"
-                variant="plain"
+                variant="light"
                 color="danger"
-                onClick={() => deleteRow(row.id)}
+                onPress={() => deleteRow(row.id)}
+                className="opacity-0 group-hover:opacity-100 transition-opacity"
               >
                 <Trash2 size={14} />
-              </IconButton>
-            </Box>
-          </Box>
+              </Button>
+            </div>
+          </div>
         ))}
-      </Box>
-    </Box>
+      </div>
+    </div>
   );
 
   const renderKanbanView = () => {
     const statusColumn = columns.find(c => c.type === 'select');
     if (!statusColumn) {
       return (
-        <Box sx={{ p: 4, textAlign: 'center', color: 'text.tertiary' }}>
+        <div className="p-8 text-center text-default-400">
           Add a Select column to use Kanban view
-        </Box>
+        </div>
       );
     }
 
@@ -291,151 +261,173 @@ export function DatabaseSpace({ space, spacesState }: DatabaseSpaceProps) {
     }, {} as Record<string, Row[]>);
 
     return (
-      <Box sx={{ flex: 1, overflow: 'auto', p: 2 }}>
-        <Box sx={{ display: 'flex', gap: 2, minHeight: '100%' }}>
+      <div className="flex-1 overflow-auto p-4 bg-default-50">
+        <div className="flex gap-4 min-h-full">
           {statuses.map(status => (
-            <Box key={status} sx={{ minWidth: 300, maxWidth: 350 }}>
-              <Box sx={{ mb: 2, p: 1, bgcolor: 'background.level1', borderRadius: '8px' }}>
-                <Typography level="title-md">{status}</Typography>
-                <Typography level="body-xs">
-                  {groupedRows[status]?.length || 0} items
-                </Typography>
-              </Box>
-              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+            <div key={status} className="min-w-[300px] max-w-[350px] flex flex-col gap-3">
+              <div className="flex items-center justify-between px-2">
+                <div className="flex items-center gap-2">
+                  <span className="font-semibold text-default-700">{status}</span>
+                  <span className="bg-default-200 text-default-600 text-tiny px-2 py-0.5 rounded-full">
+                    {groupedRows[status]?.length || 0}
+                  </span>
+                </div>
+              </div>
+              <div className="flex flex-col gap-2">
                 {groupedRows[status]?.map(row => (
-                  <Card key={row.id} variant="outlined" sx={{ p: 2 }}>
-                    <Typography level="title-sm">{row.data.col1}</Typography>
-                    {visibleColumns.slice(1).map(col => (
-                      <Typography key={col.id} level="body-xs" sx={{ mt: 0.5 }}>
-                        {col.name}: {String(row.data[col.id] || '-')}
-                      </Typography>
-                    ))}
+                  <Card key={row.id} shadow="sm" className="hover:shadow-md transition-shadow">
+                    <CardBody className="p-3">
+                      <p className="font-medium text-small mb-2">{row.data.col1}</p>
+                      <div className="space-y-1">
+                        {visibleColumns.slice(1).map(col => (
+                          <p key={col.id} className="text-tiny text-default-500">
+                            <span className="font-semibold">{col.name}:</span> {String(row.data[col.id] || '-')}
+                          </p>
+                        ))}
+                      </div>
+                    </CardBody>
                   </Card>
                 ))}
-              </Box>
-            </Box>
+              </div>
+            </div>
           ))}
-        </Box>
-      </Box>
+        </div>
+      </div>
     );
   };
 
   const renderListView = () => (
-    <Box sx={{ flex: 1, overflow: 'auto', p: 2 }}>
-      <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+    <div className="flex-1 overflow-auto p-4 bg-default-50">
+      <div className="flex flex-col gap-2 max-w-4xl mx-auto">
         {rows.map(row => (
-          <Card key={row.id} variant="outlined" sx={{ p: 2 }}>
-            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <Box sx={{ flex: 1 }}>
-                <Typography level="title-md">{row.data.col1}</Typography>
-                <Box sx={{ display: 'flex', gap: 2, mt: 1, flexWrap: 'wrap' }}>
+          <Card key={row.id} shadow="sm" className="hover:shadow-md transition-shadow">
+            <CardBody className="p-4 flex flex-row justify-between items-center gap-4">
+              <div className="flex-1">
+                <p className="text-medium font-semibold mb-2">{row.data.col1}</p>
+                <div className="flex gap-4 flex-wrap">
                   {visibleColumns.slice(1).map(col => (
-                    <Typography key={col.id} level="body-sm">
-                      <strong>{col.name}:</strong> {String(row.data[col.id] || '-')}
-                    </Typography>
+                    <p key={col.id} className="text-small text-default-500">
+                      <span className="font-semibold text-default-700">{col.name}:</span> {String(row.data[col.id] || '-')}
+                    </p>
                   ))}
-                </Box>
-              </Box>
-              <IconButton
+                </div>
+              </div>
+              <Button
+                isIconOnly
                 size="sm"
-                variant="plain"
+                variant="light"
                 color="danger"
-                onClick={() => deleteRow(row.id)}
+                onPress={() => deleteRow(row.id)}
               >
-                <Trash2 size={14} />
-              </IconButton>
-            </Box>
+                <Trash2 size={16} />
+              </Button>
+            </CardBody>
           </Card>
         ))}
-      </Box>
-    </Box>
+      </div>
+    </div>
   );
 
   const renderCalendarView = () => {
     const dateColumn = columns.find(c => c.type === 'date');
     if (!dateColumn) {
       return (
-        <Box sx={{ p: 4, textAlign: 'center', color: 'text.tertiary' }}>
+        <div className="p-8 text-center text-default-400">
           Add a Date column to use Calendar view
-        </Box>
+        </div>
       );
     }
 
     return (
-      <Box sx={{ flex: 1, overflow: 'auto', p: 2 }}>
-        <Typography level="title-md" sx={{ mb: 2 }}>Calendar View</Typography>
-        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+      <div className="flex-1 overflow-auto p-4 bg-default-50">
+        <h3 className="text-lg font-semibold mb-4 px-2">Calendar View</h3>
+        <div className="flex flex-col gap-2 max-w-4xl mx-auto">
           {rows
             .filter(r => r.data[dateColumn.id])
             .sort((a, b) => new Date(a.data[dateColumn.id]).getTime() - new Date(b.data[dateColumn.id]).getTime())
             .map(row => (
-              <Card key={row.id} variant="outlined" sx={{ p: 2 }}>
-                <Box sx={{ display: 'flex', gap: 2, alignItems: 'center' }}>
-                  <Box sx={{ minWidth: 100 }}>
-                    <Typography level="body-sm" sx={{ fontWeight: 'bold' }}>
-                      {new Date(row.data[dateColumn.id]).toLocaleDateString()}
-                    </Typography>
-                  </Box>
-                  <Box sx={{ flex: 1 }}>
-                    <Typography level="title-sm">{row.data.col1}</Typography>
-                  </Box>
-                </Box>
+              <Card key={row.id} shadow="sm">
+                <CardBody className="p-3 flex items-center gap-4">
+                  <div className="min-w-[100px] font-semibold text-primary">
+                    {new Date(row.data[dateColumn.id]).toLocaleDateString()}
+                  </div>
+                  <div className="flex-1">
+                    <p className="font-medium">{row.data.col1}</p>
+                  </div>
+                </CardBody>
               </Card>
             ))}
-        </Box>
-      </Box>
+        </div>
+      </div>
     );
   };
 
   return (
-    <Box sx={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' }}>
+    <div className="flex flex-col h-full overflow-hidden bg-background">
       {/* Toolbar */}
-      <Box sx={{ p: 2, borderBottom: '1px solid', borderColor: 'divider', display: 'flex', gap: 1, alignItems: 'center' }}>
-        <Button startDecorator={<Plus size={16} />} size="sm" onClick={addRow}>
+      <div className="p-2 border-b border-divider flex gap-2 items-center bg-background">
+        <Button 
+          startContent={<Plus size={16} />} 
+          size="sm" 
+          color="primary"
+          onPress={addRow}
+        >
           New Row
         </Button>
         <Button
-          variant="outlined"
+          variant="bordered"
           size="sm"
-          startDecorator={<Settings size={16} />}
-          onClick={() => setColumnModalOpen(true)}
+          startContent={<Settings size={16} />}
+          onPress={() => setColumnModalOpen(true)}
         >
           Columns
         </Button>
-        <Box sx={{ flex: 1 }} />
+        <div className="flex-1" />
         
         {/* View switcher */}
-        <Box sx={{ display: 'flex', gap: 0.5 }}>
-          <IconButton
+        <div className="flex gap-1 bg-default-100 p-1 rounded-lg">
+          <Button
+            isIconOnly
             size="sm"
-            variant={currentView === 'table' ? 'solid' : 'plain'}
-            onClick={() => setCurrentView('table')}
+            variant={currentView === 'table' ? 'solid' : 'light'}
+            color={currentView === 'table' ? "primary" : "default"}
+            onPress={() => setCurrentView('table')}
+            title="Table View"
           >
             <Table size={16} />
-          </IconButton>
-          <IconButton
+          </Button>
+          <Button
+            isIconOnly
             size="sm"
-            variant={currentView === 'kanban' ? 'solid' : 'plain'}
-            onClick={() => setCurrentView('kanban')}
+            variant={currentView === 'kanban' ? 'solid' : 'light'}
+            color={currentView === 'kanban' ? "primary" : "default"}
+            onPress={() => setCurrentView('kanban')}
+            title="Kanban View"
           >
             <LayoutGrid size={16} />
-          </IconButton>
-          <IconButton
+          </Button>
+          <Button
+            isIconOnly
             size="sm"
-            variant={currentView === 'list' ? 'solid' : 'plain'}
-            onClick={() => setCurrentView('list')}
+            variant={currentView === 'list' ? 'solid' : 'light'}
+            color={currentView === 'list' ? "primary" : "default"}
+            onPress={() => setCurrentView('list')}
+            title="List View"
           >
             <ListOrdered size={16} />
-          </IconButton>
-          <IconButton
+          </Button>
+          <Button
+            isIconOnly
             size="sm"
-            variant={currentView === 'calendar' ? 'solid' : 'plain'}
-            onClick={() => setCurrentView('calendar')}
+            variant={currentView === 'calendar' ? 'solid' : 'light'}
+            color={currentView === 'calendar' ? "primary" : "default"}
+            onPress={() => setCurrentView('calendar')}
+            title="Calendar View"
           >
             <Calendar size={16} />
-          </IconButton>
-        </Box>
-      </Box>
+          </Button>
+        </div>
+      </div>
 
       {/* Views */}
       {currentView === 'table' && renderTableView()}
@@ -444,47 +436,60 @@ export function DatabaseSpace({ space, spacesState }: DatabaseSpaceProps) {
       {currentView === 'calendar' && renderCalendarView()}
 
       {/* Column Management Modal */}
-      <Modal open={columnModalOpen} onClose={() => setColumnModalOpen(false)}>
-        <ModalDialog sx={{ minWidth: 500 }}>
-          <Typography level="h4" sx={{ mb: 2 }}>
-            Manage Columns
-          </Typography>
-          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1, mb: 2 }}>
-            {columns.map(column => (
-              <Box
-                key={column.id}
-                sx={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 1,
-                  p: 1,
-                  borderRadius: '6px',
-                  '&:hover': { bgcolor: 'background.level1' }
-                }}
-              >
-                <Checkbox
-                  checked={column.visible !== false}
-                  onChange={() => toggleColumnVisibility(column.id)}
-                />
-                <Typography level="body-sm" sx={{ flex: 1 }}>
-                  {column.name} ({column.type})
-                </Typography>
-                <IconButton
-                  size="sm"
-                  variant="plain"
-                  color="danger"
-                  onClick={() => deleteColumn(column.id)}
+      <Modal 
+        isOpen={columnModalOpen} 
+        onClose={() => setColumnModalOpen(false)}
+        size="md"
+      >
+        <ModalContent>
+          {(onClose) => (
+            <>
+              <ModalHeader className="flex flex-col gap-1">Manage Columns</ModalHeader>
+              <ModalBody>
+                <div className="flex flex-col gap-2 mb-4">
+                  {columns.map(column => (
+                    <div
+                      key={column.id}
+                      className="flex items-center gap-3 p-2 rounded-lg hover:bg-default-100 transition-colors"
+                    >
+                      <Checkbox
+                        isSelected={column.visible !== false}
+                        onValueChange={() => toggleColumnVisibility(column.id)}
+                      />
+                      <div className="flex-1">
+                        <span className="text-small font-medium">{column.name}</span>
+                        <span className="text-tiny text-default-400 ml-2 uppercase border border-default-200 rounded px-1">{column.type}</span>
+                      </div>
+                      <Button
+                        isIconOnly
+                        size="sm"
+                        variant="light"
+                        color="danger"
+                        onPress={() => deleteColumn(column.id)}
+                      >
+                        <Trash2 size={14} />
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+                <Button 
+                  startContent={<Plus size={16} />} 
+                  variant="flat" 
+                  onPress={addColumn}
+                  className="w-full"
                 >
-                  <Trash2 size={14} />
-                </IconButton>
-              </Box>
-            ))}
-          </Box>
-          <Button startDecorator={<Plus size={16} />} onClick={addColumn}>
-            Add Column
-          </Button>
-        </ModalDialog>
+                  Add Column
+                </Button>
+              </ModalBody>
+              <ModalFooter>
+                <Button color="primary" onPress={onClose}>
+                  Done
+                </Button>
+              </ModalFooter>
+            </>
+          )}
+        </ModalContent>
       </Modal>
-    </Box>
+    </div>
   );
 }

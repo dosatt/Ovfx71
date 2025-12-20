@@ -1,16 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { useDrop } from 'react-dnd';
-import Box from '@mui/joy@5.0.0-beta.48/Box';
-import IconButton from '@mui/joy@5.0.0-beta.48/IconButton';
-import Button from '@mui/joy@5.0.0-beta.48/Button';
-import Input from '@mui/joy@5.0.0-beta.48/Input';
-import Slider from '@mui/joy@5.0.0-beta.48/Slider';
-import Typography from '@mui/joy@5.0.0-beta.48/Typography';
-import List from '@mui/joy@5.0.0-beta.48/List';
-import ListItemButton from '@mui/joy@5.0.0-beta.48/ListItemButton';
-import ListItemDecorator from '@mui/joy@5.0.0-beta.48/ListItemDecorator';
-import ListDivider from '@mui/joy@5.0.0-beta.48/ListDivider';
-import Sheet from '@mui/joy@5.0.0-beta.48/Sheet';
+import { Button, Input, Slider, Divider } from '@heroui/react';
 import {
   Pencil,
   Square,
@@ -115,9 +105,9 @@ export function CanvasSpace({ space, spacesState, onNavigateToSpace }: CanvasSpa
   const [resizeHandle, setResizeHandle] = useState<'nw' | 'ne' | 'sw' | 'se' | 'n' | 's' | 'e' | 'w' | null>(null);
   const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
   const [elementStartBounds, setElementStartBounds] = useState<{ x: number; y: number; width: number; height: number } | null>(null);
-  const [drawingMenuAnchor, setDrawingMenuAnchor] = useState<HTMLElement | null>(null);
-  const [colorMenuAnchor, setColorMenuAnchor] = useState<HTMLElement | null>(null);
-  const [strokeMenuAnchor, setStrokeMenuAnchor] = useState<HTMLElement | null>(null);
+  const [drawingMenuOpen, setDrawingMenuOpen] = useState(false);
+  const [colorMenuOpen, setColorMenuOpen] = useState(false);
+  const [strokeMenuOpen, setStrokeMenuOpen] = useState(false);
   const [editingTextId, setEditingTextId] = useState<string | null>(null);
   const [editingTextValue, setEditingTextValue] = useState<string>('');
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -415,20 +405,21 @@ export function CanvasSpace({ space, spacesState, onNavigateToSpace }: CanvasSpa
     const handleClickOutside = (e: MouseEvent) => {
       const target = e.target as HTMLElement;
       // Controlla se il click è fuori dai menu
-      if (colorMenuAnchor && !colorMenuAnchor.contains(target) && !target.closest('[role="menu"]')) {
-        setColorMenuAnchor(null);
+      // In Hero UI dropdowns handle outside clicks automatically, but custom dropdowns need this
+      if (drawingMenuOpen && drawingMenuButtonRef.current && !drawingMenuButtonRef.current.contains(target) && !target.closest('.custom-dropdown')) {
+        setDrawingMenuOpen(false);
       }
-      if (strokeMenuAnchor && !strokeMenuAnchor.contains(target) && !target.closest('[role="menu"]')) {
-        setStrokeMenuAnchor(null);
+      if (colorMenuOpen && colorMenuButtonRef.current && !colorMenuButtonRef.current.contains(target) && !target.closest('.custom-dropdown')) {
+        setColorMenuOpen(false);
       }
-      if (drawingMenuAnchor && !drawingMenuAnchor.contains(target) && !target.closest('[role="menu"]')) {
-        setDrawingMenuAnchor(null);
+      if (strokeMenuOpen && strokeMenuButtonRef.current && !strokeMenuButtonRef.current.contains(target) && !target.closest('.custom-dropdown')) {
+        setStrokeMenuOpen(false);
       }
     };
 
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, [colorMenuAnchor, strokeMenuAnchor, drawingMenuAnchor]);
+  }, [drawingMenuOpen, colorMenuOpen, strokeMenuOpen]);
 
   const getMousePos = (e: React.MouseEvent<SVGSVGElement>) => {
     const svg = svgRef.current;
@@ -1302,6 +1293,7 @@ export function CanvasSpace({ space, spacesState, onNavigateToSpace }: CanvasSpa
 
     // Ottieni le dimensioni del SVG container
     const svg = svgRef.current;
+    if (!svg) return;
     const rect = svg.getBoundingClientRect();
     
     // Verifica che le dimensioni siano valide
@@ -1878,350 +1870,255 @@ export function CanvasSpace({ space, spacesState, onNavigateToSpace }: CanvasSpa
   };
 
   return (
-    <div ref={drop} style={{ display: 'flex', flexDirection: 'column', height: '100%', position: 'relative', overflow: 'hidden' }}>
+    <div ref={drop} className="flex flex-col h-full relative overflow-hidden">
       {isOver && (
-        <Box
-          sx={{
-            position: 'absolute',
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            bgcolor: 'primary.500',
-            opacity: 0.1,
-            zIndex: 999,
-            pointerEvents: 'none',
-            border: '4px dashed',
-            borderColor: 'primary.500'
-          }}
-        />
+        <div className="absolute inset-0 bg-primary-500 opacity-10 z-[999] pointer-events-none border-4 border-dashed border-primary-500" />
       )}
       
-      {/* Toolbar - tutto in un'unica riga */}
-      <Box sx={{ p: 1, borderBottom: '1px solid', borderColor: 'divider', display: 'flex', gap: 1, alignItems: 'center', overflow: 'hidden', flexWrap: 'nowrap', position: 'relative', flexShrink: 0 }}>
+      {/* Toolbar */}
+      <div className="p-2 border-b border-divider flex gap-2 items-center overflow-hidden flex-nowrap relative shrink-0 bg-background">
         {/* Tools */}
-        <Box sx={{ display: 'flex', gap: 0.5, alignItems: 'center', position: 'relative' }}>
-          <Typography level="body-xs" sx={{ mr: 0.5, whiteSpace: 'nowrap', color: 'text.secondary' }}>
+        <div className="flex gap-1 items-center relative">
+          <span className="text-xs text-default-500 mr-1 whitespace-nowrap">
             Tools:
-          </Typography>
-          <IconButton size="sm" variant={tool === 'select' ? 'solid' : 'plain'} onClick={() => setTool('select')} title="Select">
+          </span>
+          <Button isIconOnly size="sm" variant={tool === 'select' ? 'solid' : 'light'} onPress={() => setTool('select')} title="Select" color={tool === 'select' ? "primary" : "default"}>
             <MousePointer size={16} />
-          </IconButton>
+          </Button>
           
           {/* Dropdown per strumenti di disegno */}
-          <Box sx={{ position: 'relative' }}>
-            <IconButton
+          <div className="relative custom-dropdown">
+            <Button
               ref={drawingMenuButtonRef}
+              isIconOnly
               size="sm"
-              variant={['pen', 'rectangle', 'circle', 'line'].includes(tool) ? 'solid' : 'plain'}
-              onClick={(e) => setDrawingMenuAnchor(drawingMenuAnchor ? null : e.currentTarget)}
+              variant={['pen', 'rectangle', 'circle', 'line'].includes(tool) ? 'solid' : 'light'}
+              color={['pen', 'rectangle', 'circle', 'line'].includes(tool) ? "primary" : "default"}
+              onPress={() => setDrawingMenuOpen(!drawingMenuOpen)}
               title="Strumenti di disegno"
+              className="min-w-8"
             >
-              {tool === 'pen' && <Pencil size={16} />}
-              {tool === 'rectangle' && <Square size={16} />}
-              {tool === 'circle' && <Circle size={16} />}
-              {tool === 'line' && <Minus size={16} />}
-              {!['pen', 'rectangle', 'circle', 'line'].includes(tool) && <Pencil size={16} />}
-              <ChevronDown size={12} style={{ marginLeft: 2 }} />
-            </IconButton>
-          </Box>
-          
-          {/* Dropdown menu personalizzato - position fixed */}
-          {drawingMenuAnchor && (
-            <Box
-              role="menu"
-              sx={{
-                position: 'fixed',
-                top: drawingMenuButtonRef.current ? drawingMenuButtonRef.current.getBoundingClientRect().bottom + 4 : 0,
-                left: drawingMenuButtonRef.current ? drawingMenuButtonRef.current.getBoundingClientRect().left : 0,
-                bgcolor: 'background.surface',
-                boxShadow: 'md',
-                borderRadius: 'sm',
-                zIndex: 10000,
-                minWidth: 150,
-                overflow: 'hidden'
-              }}
-            >
-              <List size="sm">
-                <ListItemButton onClick={() => { setTool('pen'); setDrawingMenuAnchor(null); }}>
-                  <Pencil size={14} style={{ marginRight: 8 }} />
-                  Matita
-                </ListItemButton>
-                <ListItemButton onClick={() => { setTool('rectangle'); setDrawingMenuAnchor(null); }}>
-                  <Square size={14} style={{ marginRight: 8 }} />
-                  Rettangolo
-                </ListItemButton>
-                <ListItemButton onClick={() => { setTool('circle'); setDrawingMenuAnchor(null); }}>
-                  <Circle size={14} style={{ marginRight: 8 }} />
-                  Cerchio
-                </ListItemButton>
-                <ListItemButton onClick={() => { setTool('line'); setDrawingMenuAnchor(null); }}>
-                  <Minus size={14} style={{ marginRight: 8 }} />
-                  Linea
-                </ListItemButton>
-              </List>
-            </Box>
-          )}
+              <div className="flex items-center">
+                {tool === 'pen' && <Pencil size={16} />}
+                {tool === 'rectangle' && <Square size={16} />}
+                {tool === 'circle' && <Circle size={16} />}
+                {tool === 'line' && <Minus size={16} />}
+                {!['pen', 'rectangle', 'circle', 'line'].includes(tool) && <Pencil size={16} />}
+                <ChevronDown size={12} className="ml-0.5" />
+              </div>
+            </Button>
+            
+            {drawingMenuOpen && (
+              <div className="absolute top-full left-0 z-50 mt-1 min-w-[150px] bg-white rounded-lg shadow-lg border border-divider p-1">
+                <div 
+                  className="flex items-center gap-2 px-3 py-2 text-sm rounded hover:bg-default-100 cursor-pointer"
+                  onClick={() => { setTool('pen'); setDrawingMenuOpen(false); }}
+                >
+                  <Pencil size={14} />
+                  <span>Matita</span>
+                </div>
+                <div 
+                  className="flex items-center gap-2 px-3 py-2 text-sm rounded hover:bg-default-100 cursor-pointer"
+                  onClick={() => { setTool('rectangle'); setDrawingMenuOpen(false); }}
+                >
+                  <Square size={14} />
+                  <span>Rettangolo</span>
+                </div>
+                <div 
+                  className="flex items-center gap-2 px-3 py-2 text-sm rounded hover:bg-default-100 cursor-pointer"
+                  onClick={() => { setTool('circle'); setDrawingMenuOpen(false); }}
+                >
+                  <Circle size={14} />
+                  <span>Cerchio</span>
+                </div>
+                <div 
+                  className="flex items-center gap-2 px-3 py-2 text-sm rounded hover:bg-default-100 cursor-pointer"
+                  onClick={() => { setTool('line'); setDrawingMenuOpen(false); }}
+                >
+                  <Minus size={14} />
+                  <span>Linea</span>
+                </div>
+              </div>
+            )}
+          </div>
 
-          <IconButton size="sm" variant={tool === 'arrow' ? 'solid' : 'plain'} onClick={() => setTool('arrow')} title="Arrow">
+          <Button isIconOnly size="sm" variant={tool === 'arrow' ? 'solid' : 'light'} color={tool === 'arrow' ? "primary" : "default"} onPress={() => setTool('arrow')} title="Arrow">
             <ArrowRight size={16} />
-          </IconButton>
-          <IconButton size="sm" variant={tool === 'text' ? 'solid' : 'plain'} onClick={() => setTool('text')} title="Text">
+          </Button>
+          <Button isIconOnly size="sm" variant={tool === 'text' ? 'solid' : 'light'} color={tool === 'text' ? "primary" : "default"} onPress={() => setTool('text')} title="Text">
             <Type size={16} />
-          </IconButton>
-        </Box>
+          </Button>
+        </div>
         
-        <Box sx={{ width: 1, height: 20, bgcolor: 'divider' }} />
+        <div className="w-[1px] h-5 bg-divider" />
         
         {/* Color picker with presets */}
-        <Box sx={{ position: 'relative' }}>
-          <Box sx={{ display: 'flex', gap: 0.5, alignItems: 'center' }}>
-            <Typography level="body-xs" sx={{ whiteSpace: 'nowrap', color: 'text.secondary' }}>
+        <div className="relative custom-dropdown">
+          <div className="flex gap-1 items-center">
+            <span className="text-xs text-default-500 whitespace-nowrap">
               Color:
-            </Typography>
-            <IconButton
+            </span>
+            <Button
               ref={colorMenuButtonRef}
+              isIconOnly
               size="sm"
-              variant="plain"
-              onClick={(e) => setColorMenuAnchor(colorMenuAnchor ? null : e.currentTarget)}
-              sx={{
-                bgcolor: color,
-                border: '2px solid',
-                borderColor: 'divider',
-                minWidth: 32,
-                minHeight: 24,
-                '&:hover': {
-                  bgcolor: color,
-                  opacity: 0.8
-                }
-              }}
+              variant="light"
+              onPress={() => setColorMenuOpen(!colorMenuOpen)}
+              className="min-w-8 min-h-6 border-2 border-divider"
+              style={{ backgroundColor: color }}
               title={`Color: ${color}`}
             >
               <Palette size={14} style={{ color: color === '#FFFFFF' || color === '#F8D501' ? '#000' : '#fff' }} />
-            </IconButton>
-          </Box>
-        </Box>
-        
-        {/* Color menu dropdown - position fixed */}
-        {colorMenuAnchor && (
-          <Box
-            role="menu"
-            sx={{
-              position: 'fixed',
-              top: colorMenuButtonRef.current ? colorMenuButtonRef.current.getBoundingClientRect().bottom + 4 : 0,
-              left: colorMenuButtonRef.current ? colorMenuButtonRef.current.getBoundingClientRect().left : 0,
-              bgcolor: 'background.surface',
-              boxShadow: 'md',
-              borderRadius: 'sm',
-              zIndex: 10000,
-              minWidth: 220,
-              p: 1.5
-            }}
-          >
-            <Typography level="body-xs" sx={{ mb: 1, fontWeight: 'bold' }}>
-              Colori predefiniti
-            </Typography>
-            <Box
-              sx={{
-                display: 'grid',
-                gridTemplateColumns: 'repeat(6, 1fr)',
-                gap: 0.75,
-                mb: 1.5
-              }}
-            >
-              {COLOR_PRESETS.map((preset) => (
-                <Box
-                  key={preset.name}
-                  onClick={() => {
-                    setColor(preset.value);
-                    setColorMenuAnchor(null);
-                  }}
-                  sx={{
-                    position: 'relative',
-                    width: 30,
-                    height: 30,
-                    borderRadius: 'sm',
-                    cursor: 'pointer',
-                    transition: 'all 0.2s',
-                    bgcolor: preset.value,
-                    border: '2px solid',
-                    borderColor: 'divider',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    '&:hover': {
-                      transform: 'scale(1.1)',
-                      borderColor: 'primary.solidBg'
-                    }
-                  }}
-                  title={preset.name}
-                >
-                  {color === preset.value && (
-                    <Check 
-                      size={14} 
-                      style={{ 
-                        color: preset.value === '#FFFFFF' || preset.value === '#F8D501' ? '#000' : '#fff',
-                        filter: 'drop-shadow(0 1px 2px rgba(0,0,0,0.3))'
-                      }} 
-                    />
-                  )}
-                </Box>
-              ))}
-            </Box>
-            <Typography level="body-xs" sx={{ mb: 0.5, fontWeight: 'bold' }}>
-              Colore personalizzato
-            </Typography>
-            <Input 
-              type="color" 
-              value={color} 
-              onChange={(e) => setColor(e.target.value)} 
-              sx={{ width: '100%' }} 
-              size="sm" 
-            />
-          </Box>
-        )}
+            </Button>
+          </div>
+          
+          {/* Color menu dropdown */}
+          {colorMenuOpen && (
+            <div className="absolute top-full left-0 z-50 mt-1 min-w-[220px] bg-white rounded-lg shadow-lg border border-divider p-3">
+              <p className="text-xs font-bold mb-2">Colori predefiniti</p>
+              <div className="grid grid-cols-6 gap-2 mb-3">
+                {COLOR_PRESETS.map((preset) => (
+                  <div
+                    key={preset.name}
+                    onClick={() => {
+                      setColor(preset.value);
+                      setColorMenuOpen(false);
+                    }}
+                    className="relative w-7 h-7 rounded cursor-pointer border border-divider flex items-center justify-center hover:scale-110 transition-transform"
+                    style={{ backgroundColor: preset.value }}
+                    title={preset.name}
+                  >
+                    {color === preset.value && (
+                      <Check 
+                        size={14} 
+                        style={{ 
+                          color: preset.value === '#FFFFFF' || preset.value === '#F8D501' ? '#000' : '#fff',
+                          filter: 'drop-shadow(0 1px 2px rgba(0,0,0,0.3))'
+                        }} 
+                      />
+                    )}
+                  </div>
+                ))}
+              </div>
+              <p className="text-xs font-bold mb-1">Colore personalizzato</p>
+              <Input 
+                type="color" 
+                value={color} 
+                onChange={(e) => setColor(e.target.value)} 
+                className="w-full"
+                size="sm"
+              />
+            </div>
+          )}
+        </div>
         
         {/* Stroke width picker with presets */}
-        <Box sx={{ position: 'relative' }}>
-          <Box sx={{ display: 'flex', gap: 0.5, alignItems: 'center' }}>
-            <Typography level="body-xs" sx={{ whiteSpace: 'nowrap', color: 'text.secondary' }}>
+        <div className="relative custom-dropdown">
+          <div className="flex gap-1 items-center">
+            <span className="text-xs text-default-500 whitespace-nowrap">
               Stroke:
-            </Typography>
-            <IconButton
+            </span>
+            <Button
               ref={strokeMenuButtonRef}
               size="sm"
-              variant="plain"
-              onClick={(e) => setStrokeMenuAnchor(strokeMenuAnchor ? null : e.currentTarget)}
-              sx={{
-                minWidth: 40,
-                fontSize: '0.75rem',
-                fontWeight: 'bold'
-              }}
+              variant="light"
+              onPress={() => setStrokeMenuOpen(!strokeMenuOpen)}
+              className="min-w-10 text-xs font-bold"
               title={`Stroke width: ${strokeWidth}px`}
             >
               {strokeWidth}px
-            </IconButton>
-          </Box>
-        </Box>
-        
-        {/* Stroke menu dropdown - position fixed */}
-        {strokeMenuAnchor && (
-          <Box
-            role="menu"
-            sx={{
-              position: 'fixed',
-              top: strokeMenuButtonRef.current ? strokeMenuButtonRef.current.getBoundingClientRect().bottom + 4 : 0,
-              left: strokeMenuButtonRef.current ? strokeMenuButtonRef.current.getBoundingClientRect().left : 0,
-              bgcolor: 'background.surface',
-              boxShadow: 'md',
-              borderRadius: 'sm',
-              zIndex: 10000,
-              minWidth: 180,
-              p: 1.5
-            }}
-          >
-            <Typography level="body-xs" sx={{ mb: 1, fontWeight: 'bold' }}>
-              Spessori predefiniti
-            </Typography>
-            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5, mb: 1.5 }}>
-              {STROKE_PRESETS.map((width) => (
-                <Box
-                  key={width}
-                  onClick={() => {
-                    setStrokeWidth(width);
-                    setStrokeMenuAnchor(null);
-                  }}
-                  sx={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: 1,
-                    p: 0.75,
-                    borderRadius: 'sm',
-                    cursor: 'pointer',
-                    bgcolor: strokeWidth === width ? 'primary.softBg' : 'transparent',
-                    '&:hover': {
-                      bgcolor: 'primary.softBg'
-                    }
-                  }}
-                >
-                  <Box
-                    sx={{
-                      flex: 1,
-                      height: width,
-                      bgcolor: 'text.primary',
-                      borderRadius: 'xs'
+            </Button>
+          </div>
+          
+          {/* Stroke menu dropdown */}
+          {strokeMenuOpen && (
+            <div className="absolute top-full left-0 z-50 mt-1 min-w-[180px] bg-white rounded-lg shadow-lg border border-divider p-3">
+              <p className="text-xs font-bold mb-2">Spessori predefiniti</p>
+              <div className="flex flex-col gap-1 mb-3">
+                {STROKE_PRESETS.map((width) => (
+                  <div
+                    key={width}
+                    onClick={() => {
+                      setStrokeWidth(width);
+                      setStrokeMenuOpen(false);
                     }}
-                  />
-                  <Typography level="body-xs" sx={{ minWidth: 30, textAlign: 'right' }}>
-                    {width}px
-                  </Typography>
-                </Box>
-              ))}
-            </Box>
-            <Typography level="body-xs" sx={{ mb: 0.5, fontWeight: 'bold' }}>
-              Spessore personalizzato
-            </Typography>
-            <Input
-              type="number"
-              value={strokeWidth}
-              onChange={(e) => setStrokeWidth(Number(e.target.value))}
-              slotProps={{ input: { min: 1, max: 20 } }}
-              sx={{ width: '100%' }}
-              size="sm"
-            />
-          </Box>
-        )}
+                    className={`flex items-center gap-2 p-1.5 rounded cursor-pointer ${strokeWidth === width ? 'bg-primary-50' : 'hover:bg-default-100'}`}
+                  >
+                    <div
+                      className="flex-1 bg-black rounded-sm"
+                      style={{ height: width }}
+                    />
+                    <span className="text-xs min-w-[30px] text-right">{width}px</span>
+                  </div>
+                ))}
+              </div>
+              <p className="text-xs font-bold mb-1">Spessore personalizzato</p>
+              <Input
+                type="number"
+                value={String(strokeWidth)}
+                onChange={(e) => setStrokeWidth(Number(e.target.value))}
+                min={1}
+                max={20}
+                className="w-full"
+                size="sm"
+              />
+            </div>
+          )}
+        </div>
         
-        <Box sx={{ width: 1, height: 20, bgcolor: 'divider' }} />
+        <div className="w-[1px] h-5 bg-divider" />
         
         {/* Actions */}
-        <Box sx={{ display: 'flex', gap: 0.5, alignItems: 'center' }}>
+        <div className="flex gap-1 items-center">
           {selectedIds.length > 0 && (
             <>
-              <IconButton size="sm" variant="plain" color="danger" onClick={deleteSelected} title={`Delete ${selectedIds.length} selected element${selectedIds.length > 1 ? 's' : ''}`}>
+              <Button isIconOnly size="sm" variant="light" color="danger" onPress={deleteSelected} title={`Delete ${selectedIds.length} selected element${selectedIds.length > 1 ? 's' : ''}`}>
                 <Trash2 size={16} />
-              </IconButton>
+              </Button>
               {selectedIds.length > 1 && (
-                <Typography level="body-xs" sx={{ color: 'text.secondary', px: 0.5 }}>
+                <span className="text-xs text-default-500 px-1">
                   {selectedIds.length} selected
-                </Typography>
+                </span>
               )}
             </>
           )}
-          <Button size="sm" variant="plain" onClick={clearCanvas} sx={{ minWidth: 'auto', px: 1 }}>
+          <Button size="sm" variant="light" onPress={clearCanvas} className="min-w-0 px-2">
             Clear All
           </Button>
-        </Box>
+        </div>
 
-        <Box sx={{ width: 1, height: 20, bgcolor: 'divider' }} />
+        <div className="w-[1px] h-5 bg-divider" />
 
         {/* Zoom controls */}
-        <Box sx={{ display: 'flex', gap: 0.5, alignItems: 'center' }}>
-          <IconButton
+        <div className="flex gap-1 items-center">
+          <Button
+            isIconOnly
             size="sm"
-            variant="plain"
-            onClick={zoomToFit}
+            variant="light"
+            onPress={zoomToFit}
             title="Zoom to fit all elements"
-            disabled={elements.length === 0}
+            isDisabled={elements.length === 0}
           >
             <Maximize2 size={16} />
-          </IconButton>
-          <Box sx={{ px: 1, py: 0.5, bgcolor: 'background.level1', borderRadius: 'sm', fontSize: '0.75rem', whiteSpace: 'nowrap' }}>
+          </Button>
+          <div className="px-2 py-1 bg-default-100 rounded text-xs whitespace-nowrap">
             Zoom: {Math.round(zoom * 100)}%
-          </Box>
-          <IconButton
+          </div>
+          <Button
+            isIconOnly
             size="sm"
-            variant={showMinimap ? 'solid' : 'plain'}
-            onClick={() => setShowMinimap(!showMinimap)}
+            variant={showMinimap ? 'solid' : 'light'}
+            color={showMinimap ? "primary" : "default"}
+            onPress={() => setShowMinimap(!showMinimap)}
             title={showMinimap ? "Nascondi minimappa" : "Mostra minimappa"}
           >
             <Map size={16} />
-          </IconButton>
-        </Box>
-      </Box>
+          </Button>
+        </div>
+      </div>
 
       {/* Canvas */}
-      <Box sx={{ flex: 1, position: 'relative', overflow: 'hidden' }}>
+      <div className="flex-1 relative overflow-hidden bg-white">
         <svg
           ref={svgRef}
           viewBox={`${viewBox.x} ${viewBox.y} ${viewBox.width} ${viewBox.height}`}
@@ -2261,7 +2158,7 @@ export function CanvasSpace({ space, spacesState, onNavigateToSpace }: CanvasSpa
             width={CANVAS_WIDTH}
             height={CANVAS_HEIGHT}
             fill="transparent"
-            stroke="var(--joy-palette-divider)"
+            stroke="#e5e7eb"
             strokeWidth={2}
             strokeDasharray="10 10"
             opacity={0.3}
@@ -2567,43 +2464,15 @@ export function CanvasSpace({ space, spacesState, onNavigateToSpace }: CanvasSpa
 
         {/* Mini-map / Viewport indicator */}
         {showMinimap && (
-        <Box
-          sx={{
-            position: 'absolute',
-            bottom: 60,
-            right: 16,
-            width: 200,
-            height: 160,
-            bgcolor: 'background.surface',
-            border: '1px solid',
-            borderColor: 'divider',
-            borderRadius: '8px',
-            overflow: 'hidden',
-            boxShadow: 'sm',
-            pointerEvents: 'none',
-            zIndex: 100,
-            display: 'flex',
-            flexDirection: 'column'
-          }}
+        <div
+          className="absolute bottom-[60px] right-4 w-[200px] h-[160px] bg-white border border-divider rounded-lg overflow-hidden shadow-md pointer-events-none z-50 flex flex-col"
         >
           {/* Zoom indicator */}
-          <Box
-            sx={{
-              px: 1,
-              py: 0.5,
-              bgcolor: 'background.level1',
-              borderBottom: '1px solid',
-              borderColor: 'divider',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              gap: 0.5
-            }}
-          >
-            <Typography level="body-xs" sx={{ fontWeight: 'bold' }}>
+          <div className="px-2 py-1 bg-default-100 border-b border-divider flex items-center justify-center gap-1">
+            <span className="text-xs font-bold">
               {Math.round(zoom * 100)}%
-            </Typography>
-          </Box>
+            </span>
+          </div>
           
           <svg
             width="200"
@@ -2617,8 +2486,8 @@ export function CanvasSpace({ space, spacesState, onNavigateToSpace }: CanvasSpa
               y={-CANVAS_HEIGHT / 2}
               width={CANVAS_WIDTH}
               height={CANVAS_HEIGHT}
-              fill="var(--joy-palette-background-level1)"
-              stroke="var(--joy-palette-divider)"
+              fill="rgba(0,0,0,0.02)"
+              stroke="rgba(0,0,0,0.1)"
               strokeWidth={CANVAS_WIDTH / 100}
             />
             
@@ -2716,170 +2585,168 @@ export function CanvasSpace({ space, spacesState, onNavigateToSpace }: CanvasSpa
               width={viewBox.width}
               height={viewBox.height}
               fill="rgba(25, 118, 210, 0.1)"
-              stroke="var(--joy-palette-primary-500)"
+              stroke="var(--heroui-primary-500)"
               strokeWidth={CANVAS_WIDTH / 150}
               opacity={0.9}
             />
           </svg>
-        </Box>
+        </div>
         )}
-      </Box>
+      </div>
       
-      <Box sx={{ p: 1, borderTop: '1px solid', borderColor: 'divider', fontSize: '0.75rem', color: 'text.tertiary' }}>
+      <div className="p-2 border-t border-divider text-xs text-default-400 bg-background">
         Tip: Hold Alt or middle-click to pan • Pinch to zoom • Two-finger scroll to pan
-      </Box>
+      </div>
 
       {/* Context Menu */}
       {contextMenu && (
-        <Sheet
-          sx={{
-            position: 'fixed',
+        <div
+          className="fixed z-[10000] min-w-[200px] bg-white rounded-lg shadow-lg border border-divider py-1"
+          style={{
             left: contextMenu.x,
             top: contextMenu.y,
-            zIndex: 10000,
-            minWidth: 200,
-            borderRadius: 'sm',
-            boxShadow: 'md',
-            py: 1
           }}
         >
-          <List size="sm">
-            {/* Controlli per colore e spessore se applicabile */}
-            {(() => {
-              const selectedElements = elements.filter(e => contextMenu.elementIds.includes(e.id));
-              const hasStrokeElements = selectedElements.some(e => 
-                e.type === 'arrow' || e.type === 'rectangle' || e.type === 'circle' || e.type === 'line' || e.type === 'path'
-              );
-              
-              if (!hasStrokeElements) return null;
-              
-              // Prendi il colore e lo spessore del primo elemento applicabile
-              const firstStrokeElement = selectedElements.find(e => 
-                e.type === 'arrow' || e.type === 'rectangle' || e.type === 'circle' || e.type === 'line' || e.type === 'path'
-              );
-              
-              return (
-                <>
-                  <Box sx={{ px: 2, py: 1 }}>
-                    <Typography level="body-xs" sx={{ mb: 0.5, color: 'text.secondary' }}>
-                      Colore:
-                    </Typography>
-                    <Input
-                      type="color"
-                      value={firstStrokeElement?.color || '#000000'}
-                      onChange={(e) => {
-                        const newColor = e.target.value;
-                        const newElements = elements.map(el => {
-                          if (contextMenu.elementIds.includes(el.id) && 
-                              (el.type === 'arrow' || el.type === 'rectangle' || el.type === 'circle' || el.type === 'line' || el.type === 'path' || el.type === 'text')) {
-                            return { ...el, color: newColor };
-                          }
-                          return el;
-                        });
-                        const oldElements = [...elements];
-                        saveElementsWithHistory(newElements, oldElements, 'Colore modificato');
-                      }}
-                      sx={{ width: '100%' }}
-                      size="sm"
-                    />
-                  </Box>
-                  
-                  <Box sx={{ px: 2, py: 1 }}>
-                    <Typography level="body-xs" sx={{ mb: 0.5, color: 'text.secondary' }}>
-                      Spessore: {firstStrokeElement?.strokeWidth || 2}px
-                    </Typography>
-                    <Slider
-                      value={firstStrokeElement?.strokeWidth || 2}
-                      onChange={(_, value) => {
-                        const newStrokeWidth = value as number;
-                        const newElements = elements.map(el => {
-                          if (contextMenu.elementIds.includes(el.id) && 
-                              (el.type === 'arrow' || el.type === 'rectangle' || el.type === 'circle' || el.type === 'line' || el.type === 'path')) {
-                            return { ...el, strokeWidth: newStrokeWidth };
-                          }
-                          return el;
-                        });
-                        const oldElements = [...elements];
-                        saveElementsWithHistory(newElements, oldElements, 'Spessore modificato');
-                      }}
-                      min={1}
-                      max={20}
-                      size="sm"
-                    />
-                  </Box>
-                  
-                  <ListDivider />
-                </>
-              );
-            })()}
+          {/* Controlli per colore e spessore se applicabile */}
+          {(() => {
+            const selectedElements = elements.filter(e => contextMenu.elementIds.includes(e.id));
+            const hasStrokeElements = selectedElements.some(e => 
+              e.type === 'arrow' || e.type === 'rectangle' || e.type === 'circle' || e.type === 'line' || e.type === 'path'
+            );
             
-            <ListItemButton onClick={() => {
+            if (!hasStrokeElements) return null;
+            
+            // Prendi il colore e lo spessore del primo elemento applicabile
+            const firstStrokeElement = selectedElements.find(e => 
+              e.type === 'arrow' || e.type === 'rectangle' || e.type === 'circle' || e.type === 'line' || e.type === 'path'
+            );
+            
+            return (
+              <>
+                <div className="px-3 py-2">
+                  <p className="text-xs text-default-500 mb-1">
+                    Colore:
+                  </p>
+                  <Input
+                    type="color"
+                    value={firstStrokeElement?.color || '#000000'}
+                    onChange={(e) => {
+                      const newColor = e.target.value;
+                      const newElements = elements.map(el => {
+                        if (contextMenu.elementIds.includes(el.id) && 
+                            (el.type === 'arrow' || el.type === 'rectangle' || el.type === 'circle' || el.type === 'line' || el.type === 'path' || el.type === 'text')) {
+                          return { ...el, color: newColor };
+                        }
+                        return el;
+                      });
+                      const oldElements = [...elements];
+                      saveElementsWithHistory(newElements, oldElements, 'Colore modificato');
+                    }}
+                    className="w-full"
+                    size="sm"
+                  />
+                </div>
+                
+                <div className="px-3 py-2">
+                  <p className="text-xs text-default-500 mb-1">
+                    Spessore: {firstStrokeElement?.strokeWidth || 2}px
+                  </p>
+                  <Slider
+                    value={firstStrokeElement?.strokeWidth || 2}
+                    onChange={(value) => {
+                      const newStrokeWidth = value as number;
+                      const newElements = elements.map(el => {
+                        if (contextMenu.elementIds.includes(el.id) && 
+                            (el.type === 'arrow' || el.type === 'rectangle' || el.type === 'circle' || el.type === 'line' || el.type === 'path')) {
+                          return { ...el, strokeWidth: newStrokeWidth };
+                        }
+                        return el;
+                      });
+                      const oldElements = [...elements];
+                      saveElementsWithHistory(newElements, oldElements, 'Spessore modificato');
+                    }}
+                    minValue={1}
+                    maxValue={20}
+                    size="sm"
+                  />
+                </div>
+                
+                <Divider className="my-1" />
+              </>
+            );
+          })()}
+          
+          <div 
+            className="flex items-center gap-2 px-3 py-2 text-sm hover:bg-default-100 cursor-pointer"
+            onClick={() => {
               deleteSelected();
               setContextMenu(null);
-            }}>
-              <ListItemDecorator>
-                <Trash2 size={16} />
-              </ListItemDecorator>
-              Elimina
-            </ListItemButton>
-            
-            <ListDivider />
-            
-            <ListItemButton onClick={() => {
+            }}
+          >
+            <Trash2 size={16} />
+            <span>Elimina</span>
+          </div>
+          
+          <Divider className="my-1" />
+          
+          <div 
+            className="flex items-center gap-2 px-3 py-2 text-sm hover:bg-default-100 cursor-pointer"
+            onClick={() => {
               bringToFront();
               setContextMenu(null);
-            }}>
-              <ListItemDecorator>
-                <BringToFront size={16} />
-              </ListItemDecorator>
-              Porta in primo piano
-            </ListItemButton>
-            
-            <ListItemButton onClick={() => {
+            }}
+          >
+            <BringToFront size={16} />
+            <span>Porta in primo piano</span>
+          </div>
+          
+          <div 
+            className="flex items-center gap-2 px-3 py-2 text-sm hover:bg-default-100 cursor-pointer"
+            onClick={() => {
               sendToBack();
               setContextMenu(null);
-            }}>
-              <ListItemDecorator>
-                <SendToBack size={16} />
-              </ListItemDecorator>
-              Porta in secondo piano
-            </ListItemButton>
+            }}
+          >
+            <SendToBack size={16} />
+            <span>Porta in secondo piano</span>
+          </div>
 
-            {contextMenu.elementIds.length > 1 && (
-              <>
-                <ListDivider />
-                <ListItemButton onClick={() => {
+          {contextMenu.elementIds.length > 1 && (
+            <>
+              <Divider className="my-1" />
+              <div 
+                className="flex items-center gap-2 px-3 py-2 text-sm hover:bg-default-100 cursor-pointer"
+                onClick={() => {
                   groupElements();
                   setContextMenu(null);
-                }}>
-                  <ListItemDecorator>
-                    <Group size={16} />
-                  </ListItemDecorator>
-                  Raggruppa
-                </ListItemButton>
-              </>
-            )}
+                }}
+              >
+                <Group size={16} />
+                <span>Raggruppa</span>
+              </div>
+            </>
+          )}
 
-            {contextMenu.elementIds.length > 0 && (() => {
-              const selectedElements = elements.filter(e => contextMenu.elementIds.includes(e.id));
-              const hasGroup = selectedElements.some(e => e.groupId);
-              return hasGroup ? (
-                <>
-                  <ListDivider />
-                  <ListItemButton onClick={() => {
+          {contextMenu.elementIds.length > 0 && (() => {
+            const selectedElements = elements.filter(e => contextMenu.elementIds.includes(e.id));
+            const hasGroup = selectedElements.some(e => e.groupId);
+            return hasGroup ? (
+              <>
+                <Divider className="my-1" />
+                <div 
+                  className="flex items-center gap-2 px-3 py-2 text-sm hover:bg-default-100 cursor-pointer"
+                  onClick={() => {
                     ungroupElements();
                     setContextMenu(null);
-                  }}>
-                    <ListItemDecorator>
-                      <Ungroup size={16} />
-                    </ListItemDecorator>
-                    Separa
-                  </ListItemButton>
-                </>
-              ) : null;
-            })()}
-          </List>
-        </Sheet>
+                  }}
+                >
+                  <Ungroup size={16} />
+                  <span>Separa</span>
+                </div>
+              </>
+            ) : null;
+          })()}
+        </div>
       )}
     </div>
   );

@@ -1,13 +1,13 @@
-import { Box, Typography, Chip } from '@mui/joy@5.0.0-beta.48';
+import { Chip } from '@heroui/react';
 import { 
   Type, 
   Heading1, 
   Heading2, 
-  Heading3,
-  List as ListIcon,
-  ListOrdered,
-  CheckSquare,
-  Quote,
+  Heading3, 
+  List as ListIcon, 
+  ListOrdered, 
+  CheckSquare, 
+  Quote, 
   AlertCircle,
   Code,
   Image as ImageIcon,
@@ -71,48 +71,28 @@ export function TextElementPreview({ type, content, sourceSpaceName }: TextEleme
   const displayContent = content.length > 60 ? `${content.substring(0, 60)}...` : content;
   
   return (
-    <Box
-      sx={{
-        minWidth: 280,
-        maxWidth: 400,
-        bgcolor: 'background.surface',
-        border: '1px solid',
-        borderColor: 'primary.500',
-        borderRadius: '8px',
-        p: 2,
-        boxShadow: 'lg',
-        display: 'flex',
-        flexDirection: 'column',
-        gap: 1,
-      }}
+    <div
+      className="min-w-[280px] max-w-[400px] bg-white border border-primary-500 rounded-lg p-4 shadow-lg flex flex-col gap-2"
     >
       {/* Header */}
-      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-        <Icon size={16} style={{ flexShrink: 0, color: 'var(--joy-palette-primary-500)' }} />
-        <Typography level="body-sm" sx={{ fontWeight: 600 }}>
+      <div className="flex items-center gap-2">
+        <Icon size={16} className="shrink-0 text-primary-500" />
+        <span className="text-sm font-semibold">
           {label}
-        </Typography>
+        </span>
         {sourceSpaceName && (
-          <Chip size="sm" variant="soft" color="primary" sx={{ ml: 'auto' }}>
+          <Chip size="sm" variant="flat" color="primary" className="ml-auto">
             {sourceSpaceName}
           </Chip>
         )}
-      </Box>
+      </div>
       
       {/* Content preview */}
       {content && type !== 'divider' && (
-        <Typography 
-          level="body-sm" 
-          sx={{ 
-            color: 'text.secondary',
-            overflow: 'hidden',
-            textOverflow: 'ellipsis',
-            whiteSpace: 'nowrap'
-          }}
-        >
+        <p className="text-sm text-default-500 overflow-hidden text-ellipsis whitespace-nowrap">
           {displayContent}
-        </Typography>
+        </p>
       )}
-    </Box>
+    </div>
   );
 }

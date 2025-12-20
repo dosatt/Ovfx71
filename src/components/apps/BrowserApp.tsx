@@ -1,43 +1,44 @@
 import { useState } from 'react';
-import Box from '@mui/joy@5.0.0-beta.48/Box';
-import Input from '@mui/joy@5.0.0-beta.48/Input';
-import IconButton from '@mui/joy@5.0.0-beta.48/IconButton';
+import { Input, Button } from '@heroui/react';
 import { ArrowLeft, ArrowRight, RotateCw, Home } from 'lucide-react';
 
 export function BrowserApp() {
   const [url, setUrl] = useState('https://example.com');
 
   return (
-    <Box sx={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+    <div className="flex flex-col h-full bg-white">
       {/* URL Bar */}
-      <Box sx={{ p: 2, display: 'flex', gap: 1, borderBottom: '1px solid', borderColor: 'divider' }}>
-        <IconButton size="sm" variant="plain">
+      <div className="p-2 flex gap-1 border-b border-divider items-center">
+        <Button isIconOnly size="sm" variant="light">
           <ArrowLeft size={16} />
-        </IconButton>
-        <IconButton size="sm" variant="plain">
+        </Button>
+        <Button isIconOnly size="sm" variant="light">
           <ArrowRight size={16} />
-        </IconButton>
-        <IconButton size="sm" variant="plain">
+        </Button>
+        <Button isIconOnly size="sm" variant="light">
           <RotateCw size={16} />
-        </IconButton>
-        <IconButton size="sm" variant="plain">
+        </Button>
+        <Button isIconOnly size="sm" variant="light">
           <Home size={16} />
-        </IconButton>
+        </Button>
         <Input
           value={url}
-          onChange={(e) => setUrl(e.target.value)}
-          sx={{ flex: 1 }}
+          onValueChange={setUrl}
+          className="flex-1"
           size="sm"
+          classNames={{
+            inputWrapper: "bg-default-100",
+          }}
         />
-      </Box>
+      </div>
 
       {/* Browser Content */}
-      <Box sx={{ flex: 1, p: 4, overflow: 'auto' }}>
-        <Box sx={{ textAlign: 'center', color: 'text.tertiary' }}>
+      <div className="flex-1 p-4 overflow-auto">
+        <div className="text-center text-default-400">
           <p>Browser simulation</p>
-          <p style={{ fontSize: '0.875rem' }}>Navigate to: {url}</p>
-        </Box>
-      </Box>
-    </Box>
+          <p className="text-small">Navigate to: {url}</p>
+        </div>
+      </div>
+    </div>
   );
 }

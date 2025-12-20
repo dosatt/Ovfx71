@@ -1,8 +1,5 @@
 import { useState } from 'react';
-import Box from '@mui/joy@5.0.0-beta.48/Box';
-import Button from '@mui/joy@5.0.0-beta.48/Button';
-import IconButton from '@mui/joy@5.0.0-beta.48/IconButton';
-import Typography from '@mui/joy@5.0.0-beta.48/Typography';
+import { Button } from '@heroui/react';
 import { ChevronLeft, ChevronRight, Plus } from 'lucide-react';
 
 const daysOfWeek = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
@@ -84,7 +81,7 @@ export function CalendarApp() {
     const startDay = firstDay === 0 ? 6 : firstDay - 1;
 
     for (let i = 0; i < startDay; i++) {
-      days.push(<Box key={`empty-${i}`} />);
+      days.push(<div key={`empty-${i}`} />);
     }
 
     for (let d = 1; d <= daysInMonth; d++) {
@@ -94,22 +91,15 @@ export function CalendarApp() {
         year === new Date().getFullYear();
 
       days.push(
-        <Box
+        <div
           key={d}
-          sx={{
-            p: 1,
-            textAlign: 'center',
-            borderRadius: '8px',
-            bgcolor: isToday ? 'primary.softBg' : 'transparent',
-            fontWeight: isToday ? 'bold' : 'normal',
-            cursor: 'pointer',
-            '&:hover': {
-              bgcolor: 'background.level1'
-            }
-          }}
+          className={`
+            p-2 text-center rounded-lg cursor-pointer hover:bg-default-100 transition-colors
+            ${isToday ? 'bg-primary/10 font-bold text-primary' : ''}
+          `}
         >
           {d}
-        </Box>
+        </div>
       );
     }
 
@@ -123,16 +113,16 @@ export function CalendarApp() {
     const hours = Array.from({ length: 24 }, (_, i) => i);
     
     return (
-      <Box sx={{ display: 'flex', height: '100%', overflow: 'auto' }}>
+      <div className="flex h-full overflow-auto">
         {/* Colonna orari */}
-        <Box sx={{ width: 60, flexShrink: 0, borderRight: '1px solid', borderColor: 'divider' }}>
-          <Box sx={{ height: 40 }} /> {/* Header spacing */}
+        <div className="w-[60px] shrink-0 border-r border-divider">
+          <div className="h-[40px]" /> {/* Header spacing */}
           {hours.map(hour => (
-            <Box key={hour} sx={{ height: 60, px: 1, py: 0.5, borderTop: '1px solid', borderColor: 'divider' }}>
-              <Typography level="body-xs">{`${hour}:00`}</Typography>
-            </Box>
+            <div key={hour} className="h-[60px] px-2 py-1 border-t border-divider">
+              <span className="text-xs text-default-500">{`${hour}:00`}</span>
+            </div>
           ))}
-        </Box>
+        </div>
         
         {/* Giorni della settimana */}
         {Array.from({ length: 7 }, (_, i) => {
@@ -141,40 +131,26 @@ export function CalendarApp() {
           const isToday = date.toDateString() === new Date().toDateString();
           
           return (
-            <Box key={i} sx={{ flex: 1, borderRight: '1px solid', borderColor: 'divider' }}>
-              <Box sx={{ 
-                height: 40, 
-                display: 'flex', 
-                flexDirection: 'column',
-                alignItems: 'center',
-                justifyContent: 'center',
-                borderBottom: '1px solid',
-                borderColor: 'divider',
-                bgcolor: isToday ? 'primary.softBg' : 'transparent'
-              }}>
-                <Typography level="body-xs">{daysOfWeekShort[i]}</Typography>
-                <Typography level="body-sm" sx={{ fontWeight: isToday ? 'bold' : 'normal' }}>
+            <div key={i} className="flex-1 border-r border-divider min-w-[100px]">
+              <div className={`
+                h-[40px] flex flex-col items-center justify-center border-b border-divider
+                ${isToday ? 'bg-primary/10 text-primary' : ''}
+              `}>
+                <span className="text-xs text-default-500">{daysOfWeekShort[i]}</span>
+                <span className={`text-sm ${isToday ? 'font-bold' : ''}`}>
                   {date.getDate()}
-                </Typography>
-              </Box>
+                </span>
+              </div>
               {hours.map(hour => (
-                <Box 
+                <div 
                   key={hour} 
-                  sx={{ 
-                    height: 60, 
-                    borderTop: '1px solid', 
-                    borderColor: 'divider',
-                    cursor: 'pointer',
-                    '&:hover': {
-                      bgcolor: 'background.level1'
-                    }
-                  }} 
+                  className="h-[60px] border-t border-divider cursor-pointer hover:bg-default-100 transition-colors"
                 />
               ))}
-            </Box>
+            </div>
           );
         })}
-      </Box>
+      </div>
     );
   };
 
@@ -182,46 +158,29 @@ export function CalendarApp() {
     const hours = Array.from({ length: 24 }, (_, i) => i);
     
     return (
-      <Box sx={{ display: 'flex', height: '100%', overflow: 'auto' }}>
+      <div className="flex h-full overflow-auto">
         {/* Colonna orari */}
-        <Box sx={{ width: 80, flexShrink: 0, borderRight: '1px solid', borderColor: 'divider' }}>
+        <div className="w-[80px] shrink-0 border-r border-divider">
           {hours.map(hour => (
-            <Box key={hour} sx={{ height: 80, px: 1, py: 1, borderTop: '1px solid', borderColor: 'divider' }}>
-              <Typography level="body-sm">{`${hour}:00`}</Typography>
-            </Box>
+            <div key={hour} className="h-[80px] px-2 py-2 border-t border-divider">
+              <span className="text-sm text-default-500">{`${hour}:00`}</span>
+            </div>
           ))}
-        </Box>
+        </div>
         
         {/* Griglia eventi */}
-        <Box sx={{ flex: 1 }}>
+        <div className="flex-1">
           {hours.map(hour => (
-            <Box 
+            <div 
               key={hour} 
-              sx={{ 
-                height: 80, 
-                borderTop: '1px solid', 
-                borderColor: 'divider',
-                position: 'relative',
-                cursor: 'pointer',
-                '&:hover': {
-                  bgcolor: 'background.level1'
-                }
-              }}
+              className="h-[80px] border-t border-divider relative cursor-pointer hover:bg-default-100 transition-colors"
             >
               {/* Linea mezz'ora */}
-              <Box sx={{ 
-                position: 'absolute',
-                top: '50%',
-                left: 0,
-                right: 0,
-                height: '1px',
-                bgcolor: 'divider',
-                opacity: 0.3
-              }} />
-            </Box>
+              <div className="absolute top-1/2 left-0 right-0 h-px bg-divider opacity-30" />
+            </div>
           ))}
-        </Box>
-      </Box>
+        </div>
+      </div>
     );
   };
 
@@ -229,41 +188,25 @@ export function CalendarApp() {
     const monthsInYear = Array.from({ length: 12 }, (_, i) => i);
     
     return (
-      <Box sx={{ 
-        display: 'grid', 
-        gridTemplateColumns: 'repeat(4, 1fr)', 
-        gap: 2,
-        p: 2,
-        overflow: 'auto',
-        height: '100%'
-      }}>
+      <div className="grid grid-cols-4 gap-4 p-4 overflow-auto h-full">
         {monthsInYear.map(m => {
           const firstDayOfMonth = new Date(year, m, 1).getDay();
           const daysInCurrentMonth = new Date(year, m + 1, 0).getDate();
           const startDay = firstDayOfMonth === 0 ? 6 : firstDayOfMonth - 1;
           
           return (
-            <Box key={m} sx={{ 
-              border: '1px solid',
-              borderColor: 'divider',
-              borderRadius: '8px',
-              p: 1
-            }}>
-              <Typography level="title-sm" sx={{ mb: 1, textAlign: 'center' }}>
+            <div key={m} className="border border-divider rounded-lg p-2 bg-white">
+              <p className="text-sm font-semibold mb-2 text-center text-default-700">
                 {months[m]}
-              </Typography>
-              <Box sx={{ 
-                display: 'grid', 
-                gridTemplateColumns: 'repeat(7, 1fr)', 
-                gap: 0.5
-              }}>
+              </p>
+              <div className="grid grid-cols-7 gap-0.5">
                 {daysOfWeekShort.map((d, idx) => (
-                  <Typography key={idx} level="body-xs" sx={{ textAlign: 'center', fontSize: '0.65rem' }}>
+                  <span key={idx} className="text-center text-[0.65rem] text-default-400">
                     {d}
-                  </Typography>
+                  </span>
                 ))}
                 {Array.from({ length: startDay }, (_, i) => (
-                  <Box key={`empty-${i}`} />
+                  <div key={`empty-${i}`} />
                 ))}
                 {Array.from({ length: daysInCurrentMonth }, (_, i) => {
                   const d = i + 1;
@@ -273,30 +216,22 @@ export function CalendarApp() {
                     year === new Date().getFullYear();
                   
                   return (
-                    <Box
+                    <div
                       key={d}
-                      sx={{
-                        textAlign: 'center',
-                        fontSize: '0.7rem',
-                        p: 0.25,
-                        borderRadius: '4px',
-                        bgcolor: isToday ? 'primary.softBg' : 'transparent',
-                        fontWeight: isToday ? 'bold' : 'normal',
-                        cursor: 'pointer',
-                        '&:hover': {
-                          bgcolor: 'background.level1'
-                        }
-                      }}
+                      className={`
+                        text-center text-[0.7rem] p-0.5 rounded cursor-pointer hover:bg-default-100
+                        ${isToday ? 'bg-primary/10 font-bold text-primary' : ''}
+                      `}
                     >
                       {d}
-                    </Box>
+                    </div>
                   );
                 })}
-              </Box>
-            </Box>
+              </div>
+            </div>
           );
         })}
-      </Box>
+      </div>
     );
   };
 
@@ -314,163 +249,117 @@ export function CalendarApp() {
     const hours = [8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18];
     
     return (
-      <Box sx={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'auto' }}>
+      <div className="flex flex-col h-full overflow-auto">
         {/* Header giorni */}
-        <Box sx={{ display: 'flex', borderBottom: '2px solid', borderColor: 'divider', position: 'sticky', top: 0, bgcolor: 'background.surface', zIndex: 1 }}>
-          <Box sx={{ width: 80, flexShrink: 0 }} /> {/* Spazio per orari */}
+        <div className="flex border-b-2 border-divider sticky top-0 bg-background z-10">
+          <div className="w-[80px] shrink-0 bg-background" /> {/* Spazio per orari */}
           {days.map((date, i) => {
             const isToday = date.toDateString() === new Date().toDateString();
             return (
-              <Box key={i} sx={{ 
-                flex: 1, 
-                minWidth: 100,
-                p: 1,
-                textAlign: 'center',
-                borderRight: '1px solid',
-                borderColor: 'divider',
-                bgcolor: isToday ? 'primary.softBg' : 'transparent'
-              }}>
-                <Typography level="body-xs">{daysOfWeekShort[date.getDay() === 0 ? 6 : date.getDay() - 1]}</Typography>
-                <Typography level="body-sm" sx={{ fontWeight: isToday ? 'bold' : 'normal' }}>
+              <div key={i} className={`
+                flex-1 min-w-[100px] p-2 text-center border-r border-divider
+                ${isToday ? 'bg-primary/10 text-primary' : ''}
+              `}>
+                <span className="text-xs text-default-500 block">{daysOfWeekShort[date.getDay() === 0 ? 6 : date.getDay() - 1]}</span>
+                <span className={`text-sm ${isToday ? 'font-bold' : ''}`}>
                   {date.getDate()}/{date.getMonth() + 1}
-                </Typography>
-              </Box>
+                </span>
+              </div>
             );
           })}
-        </Box>
+        </div>
         
         {/* Griglia timeline */}
-        <Box sx={{ display: 'flex', flex: 1 }}>
+        <div className="flex flex-1">
           {/* Colonna orari */}
-          <Box sx={{ width: 80, flexShrink: 0, borderRight: '1px solid', borderColor: 'divider' }}>
+          <div className="w-[80px] shrink-0 border-r border-divider bg-background">
             {hours.map(hour => (
-              <Box key={hour} sx={{ height: 60, px: 1, py: 0.5, borderTop: '1px solid', borderColor: 'divider' }}>
-                <Typography level="body-xs">{`${hour}:00`}</Typography>
-              </Box>
+              <div key={hour} className="h-[60px] px-2 py-1 border-t border-divider">
+                <span className="text-xs text-default-500">{`${hour}:00`}</span>
+              </div>
             ))}
-          </Box>
+          </div>
           
           {/* Giorni */}
-          <Box sx={{ display: 'flex', flex: 1 }}>
+          <div className="flex flex-1">
             {days.map((date, i) => (
-              <Box key={i} sx={{ flex: 1, minWidth: 100, borderRight: '1px solid', borderColor: 'divider' }}>
+              <div key={i} className="flex-1 min-w-[100px] border-r border-divider">
                 {hours.map(hour => (
-                  <Box 
+                  <div 
                     key={hour} 
-                    sx={{ 
-                      height: 60, 
-                      borderTop: '1px solid', 
-                      borderColor: 'divider',
-                      cursor: 'pointer',
-                      '&:hover': {
-                        bgcolor: 'background.level1'
-                      }
-                    }} 
+                    className="h-[60px] border-t border-divider cursor-pointer hover:bg-default-100 transition-colors"
                   />
                 ))}
-              </Box>
+              </div>
             ))}
-          </Box>
-        </Box>
-      </Box>
+          </div>
+        </div>
+      </div>
     );
   };
 
   return (
-    <Box sx={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' }}>
+    <div className="flex flex-col h-full overflow-hidden bg-white">
       {/* Header */}
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', p: 2, borderBottom: '1px solid', borderColor: 'divider' }}>
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-          <IconButton size="sm" onClick={prevPeriod}>
+      <div className="flex justify-between items-center p-2 border-b border-divider shrink-0">
+        <div className="flex items-center gap-1">
+          <Button isIconOnly size="sm" variant="light" onPress={prevPeriod}>
             <ChevronLeft size={16} />
-          </IconButton>
-          <Typography level="h4" sx={{ minWidth: 200, textAlign: 'center' }}>
+          </Button>
+          <h4 className="min-w-[200px] text-center text-lg font-bold text-default-900">
             {getViewTitle()}
-          </Typography>
-          <IconButton size="sm" onClick={nextPeriod}>
+          </h4>
+          <Button isIconOnly size="sm" variant="light" onPress={nextPeriod}>
             <ChevronRight size={16} />
-          </IconButton>
-        </Box>
+          </Button>
+        </div>
         
-        <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
-          <Box sx={{ display: 'flex', gap: 0.5 }}>
-            <Button 
-              size="sm" 
-              variant={view === 'month' ? 'solid' : 'outlined'}
-              onClick={() => setView('month')}
-            >
-              Mese
-            </Button>
-            <Button 
-              size="sm" 
-              variant={view === 'week' ? 'solid' : 'outlined'}
-              onClick={() => setView('week')}
-            >
-              Settimana
-            </Button>
-            <Button 
-              size="sm" 
-              variant={view === 'day' ? 'solid' : 'outlined'}
-              onClick={() => setView('day')}
-            >
-              Giorno
-            </Button>
-            <Button 
-              size="sm" 
-              variant={view === 'year' ? 'solid' : 'outlined'}
-              onClick={() => setView('year')}
-            >
-              Anno
-            </Button>
-            <Button 
-              size="sm" 
-              variant={view === 'timeline' ? 'solid' : 'outlined'}
-              onClick={() => setView('timeline')}
-            >
-              Timeline
-            </Button>
-          </Box>
-          <Button startDecorator={<Plus size={16} />} size="sm">
+        <div className="flex gap-2 items-center">
+          <div className="flex gap-1 bg-default-100 p-1 rounded-lg">
+            {(['month', 'week', 'day', 'year', 'timeline'] as const).map((v) => (
+              <Button 
+                key={v}
+                size="sm" 
+                variant={view === v ? 'solid' : 'light'}
+                color={view === v ? 'primary' : 'default'}
+                onPress={() => setView(v)}
+                className="capitalize"
+              >
+                {v === 'month' ? 'Mese' : v === 'week' ? 'Settimana' : v === 'day' ? 'Giorno' : v === 'year' ? 'Anno' : 'Timeline'}
+              </Button>
+            ))}
+          </div>
+          <Button startContent={<Plus size={16} />} size="sm" color="primary">
             Nuovo Evento
           </Button>
-        </Box>
-      </Box>
+        </div>
+      </div>
 
       {/* Content */}
-      <Box sx={{ flex: 1, overflow: 'hidden' }}>
+      <div className="flex-1 overflow-hidden">
         {view === 'month' && (
-          <Box sx={{ p: 2, height: '100%', display: 'flex', flexDirection: 'column' }}>
+          <div className="p-4 h-full flex flex-col">
             {/* Days of week */}
-            <Box sx={{ 
-              display: 'grid', 
-              gridTemplateColumns: 'repeat(7, 1fr)', 
-              gap: 1,
-              mb: 1
-            }}>
+            <div className="grid grid-cols-7 gap-2 mb-2">
               {daysOfWeek.map(d => (
-                <Typography key={d} level="body-sm" sx={{ textAlign: 'center', fontWeight: 'bold' }}>
+                <div key={d} className="text-center font-bold text-sm text-default-600">
                   {d}
-                </Typography>
+                </div>
               ))}
-            </Box>
+            </div>
 
             {/* Calendar grid */}
-            <Box sx={{ 
-              display: 'grid', 
-              gridTemplateColumns: 'repeat(7, 1fr)', 
-              gap: 1,
-              flex: 1
-            }}>
+            <div className="grid grid-cols-7 gap-2 flex-1">
               {renderMonthView()}
-            </Box>
-          </Box>
+            </div>
+          </div>
         )}
         
         {view === 'week' && renderWeekView()}
         {view === 'day' && renderDayView()}
         {view === 'year' && renderYearView()}
         {view === 'timeline' && renderTimelineView()}
-      </Box>
-    </Box>
+      </div>
+    </div>
   );
 }
