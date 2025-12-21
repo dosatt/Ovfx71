@@ -11,7 +11,7 @@ import { CalendarApp } from './apps/CalendarApp';
 import { MailApp } from './apps/MailApp';
 import { ChatApp } from './apps/ChatApp';
 import { DrawApp } from './apps/DrawApp';
-import { ModbusConfigApp } from './apps/ModbusConfigApp';
+import { SettingsApp } from './apps/SettingsApp';
 import { WelcomePage } from './WelcomePage';
 import type { Settings } from '../hooks/useSettings';
 
@@ -20,12 +20,24 @@ interface ViewportContentProps {
   spacesState: any;
   viewportsState: any;
   settings: Settings;
+  onUpdateSettings: (updates: Partial<Settings>) => void;
+  onResetSettings: () => void;
   getBackgroundStyle: () => any;
   brokenLinks?: Set<string>;
   brokenLinksVersion?: number;
 }
 
-export function ViewportContent({ viewport, spacesState, viewportsState, settings, getBackgroundStyle, brokenLinks, brokenLinksVersion }: ViewportContentProps) {
+export function ViewportContent({ 
+  viewport, 
+  spacesState, 
+  viewportsState, 
+  settings, 
+  onUpdateSettings,
+  onResetSettings,
+  getBackgroundStyle, 
+  brokenLinks, 
+  brokenLinksVersion 
+}: ViewportContentProps) {
   const [showMarkdown, setShowMarkdown] = useState(false);
   const activeTab = viewport.tabs.find(t => t.id === viewport.activeTabId);
   const space = activeTab?.spaceId ? spacesState.getSpace(activeTab.spaceId) : null;
@@ -37,8 +49,11 @@ export function ViewportContent({ viewport, spacesState, viewportsState, setting
     viewportsState.setFocusedViewportId(viewport.id);
   };
 
-  const handleOpenApp = (appType: 'browser' | 'mail' | 'chat' | 'calendar' | 'draw' | 'modbus') => {
-    const title = appType === 'modbus' ? 'Modbus' : appType.charAt(0).toUpperCase() + appType.slice(1);
+  const handleOpenApp = (appType: 'browser' | 'mail' | 'chat' | 'calendar' | 'draw' | 'settings') => {
+    const title = appType === 'settings' 
+      ? 'Impostazioni' 
+      : appType.charAt(0).toUpperCase() + appType.slice(1);
+      
     viewportsState.replaceCurrentTab(viewport.id, undefined, appType, title);
     viewportsState.setFocusedViewportId(viewport.id);
   };
@@ -91,7 +106,15 @@ export function ViewportContent({ viewport, spacesState, viewportsState, setting
             {activeTab.appType === 'mail' && <MailApp />}
             {activeTab.appType === 'chat' && <ChatApp />}
             {activeTab.appType === 'draw' && <DrawApp />}
-            {activeTab.appType === 'modbus' && <ModbusConfigApp />}
+            {activeTab.appType === 'settings' && (
+              <SettingsApp 
+                settings={settings}
+                onUpdateSettings={onUpdateSettings}
+                onResetSettings={onResetSettings}
+                spacesState={spacesState}
+                viewportsState={viewportsState}
+              />
+            )}
           </>
         )}
 

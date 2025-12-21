@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 
 export interface Settings {
+  theme: 'light' | 'dark';
   transparency: boolean;
   blur: boolean;
   viewportTransparency: boolean;
@@ -24,6 +25,7 @@ export interface Settings {
 }
 
 const DEFAULT_SETTINGS: Settings = {
+  theme: 'light',
   transparency: true,
   blur: true,
   viewportTransparency: false,

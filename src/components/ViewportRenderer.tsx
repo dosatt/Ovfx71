@@ -8,12 +8,24 @@ interface ViewportRendererProps {
   spacesState: any;
   viewportsState: any;
   settings: Settings;
+  onUpdateSettings: (updates: Partial<Settings>) => void;
+  onResetSettings: () => void;
   getBackgroundStyle: () => any;
   brokenLinks?: Set<string>;
   brokenLinksVersion?: number;
 }
 
-export function ViewportRenderer({ viewport, spacesState, viewportsState, settings, getBackgroundStyle, brokenLinks, brokenLinksVersion }: ViewportRendererProps) {
+export function ViewportRenderer({ 
+  viewport, 
+  spacesState, 
+  viewportsState, 
+  settings, 
+  onUpdateSettings,
+  onResetSettings,
+  getBackgroundStyle, 
+  brokenLinks, 
+  brokenLinksVersion 
+}: ViewportRendererProps) {
   // Always call all hooks at the top level
   const [isDragging, setIsDragging] = useState(false);
   const [size, setSize] = useState(viewport.size || 50);
@@ -104,6 +116,8 @@ export function ViewportRenderer({ viewport, spacesState, viewportsState, settin
         spacesState={spacesState}
         viewportsState={viewportsState}
         settings={settings}
+        onUpdateSettings={onUpdateSettings}
+        onResetSettings={onResetSettings}
         getBackgroundStyle={getBackgroundStyle}
         brokenLinks={brokenLinks}
         brokenLinksVersion={brokenLinksVersion}
@@ -138,6 +152,8 @@ export function ViewportRenderer({ viewport, spacesState, viewportsState, settin
           spacesState={spacesState}
           viewportsState={viewportsState}
           settings={settings}
+          onUpdateSettings={onUpdateSettings}
+          onResetSettings={onResetSettings}
           getBackgroundStyle={getBackgroundStyle}
           brokenLinks={brokenLinks}
           brokenLinksVersion={brokenLinksVersion}
@@ -168,6 +184,8 @@ export function ViewportRenderer({ viewport, spacesState, viewportsState, settin
           spacesState={spacesState}
           viewportsState={viewportsState}
           settings={settings}
+          onUpdateSettings={onUpdateSettings}
+          onResetSettings={onResetSettings}
           getBackgroundStyle={getBackgroundStyle}
           brokenLinks={brokenLinks}
           brokenLinksVersion={brokenLinksVersion}

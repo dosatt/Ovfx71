@@ -41,11 +41,11 @@ body {
 }
 
 /* Dark mode scrollbar */
-[data-joy-color-scheme="dark"] ::-webkit-scrollbar-thumb {
+:is([data-joy-color-scheme="dark"], .dark) ::-webkit-scrollbar-thumb {
   background: rgba(255, 255, 255, 0.2);
 }
 
-[data-joy-color-scheme="dark"] ::-webkit-scrollbar-thumb:hover {
+:is([data-joy-color-scheme="dark"], .dark) ::-webkit-scrollbar-thumb:hover {
   background: rgba(255, 255, 255, 0.3);
 }
 

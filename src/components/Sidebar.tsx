@@ -34,7 +34,6 @@ interface SidebarProps {
   settings: Settings;
   onUpdateSettings: (updates: Partial<Settings>) => void;
   onResetSettings: () => void;
-  onOpenSettings: () => void;
 }
 
 const apps = [
@@ -44,7 +43,7 @@ const apps = [
   { type: 'mail' as AppType, title: 'Mail', icon: Mail, color: '#FFBD2E' }
 ];
 
-export function Sidebar({ open, onToggle, spacesState, viewportsState, settings, onUpdateSettings, onResetSettings, onOpenSettings }: SidebarProps) {
+export function Sidebar({ open, onToggle, spacesState, viewportsState, settings, onUpdateSettings, onResetSettings }: SidebarProps) {
   const [newSpaceModalOpen, setNewSpaceModalOpen] = useState(false);
   const [sidebarWidth, setSidebarWidth] = useState(280);
   const [isResizing, setIsResizing] = useState(false);
@@ -213,7 +212,7 @@ export function Sidebar({ open, onToggle, spacesState, viewportsState, settings,
       <Button
         isIconOnly
         variant="light"
-        onClick={onToggle}
+        onPress={onToggle}
         className="fixed left-0 top-1/2 -translate-y-1/2 z-50 rounded-r-lg bg-background border border-l-0 border-divider shadow-md h-12 w-8 min-w-8"
       >
         <ChevronLeft className="rotate-180" size={20} />
@@ -250,7 +249,7 @@ export function Sidebar({ open, onToggle, spacesState, viewportsState, settings,
               color="primary"
               variant="solid"
               startContent={<Plus size={16} />}
-              onClick={() => setNewSpaceModalOpen(true)}
+              onPress={() => setNewSpaceModalOpen(true)}
               className="font-medium"
               style={{
                 borderRadius: settings.buttonBorderRadius,
@@ -290,7 +289,7 @@ export function Sidebar({ open, onToggle, spacesState, viewportsState, settings,
                     isIconOnly
                     size="sm"
                     variant="light"
-                    onClick={() => handleAppClick(app.type, app.title)}
+                    onPress={() => handleAppClick(app.type, app.title)}
                     className="text-default-500 hover:text-default-900"
                   >
                     <app.icon size={18} />
@@ -358,22 +357,22 @@ export function Sidebar({ open, onToggle, spacesState, viewportsState, settings,
             <div className="px-4 py-2 mt-auto border-t border-divider">
               <span className="text-xs font-semibold text-default-500 uppercase px-2 py-1 block">Utility</span>
               <div className="flex gap-1 mt-2 justify-between px-2 flex-wrap">
-                <Button isIconOnly size="sm" variant="light" onClick={() => handleUtilityClick('clock', 'Clock')}>
+                <Button isIconOnly size="sm" variant="light" onPress={() => handleUtilityClick('clock', 'Clock')}>
                   <Clock size={18} />
                 </Button>
-                <Button isIconOnly size="sm" variant="light" onClick={() => handleUtilityClick('archive', 'Archive')}>
+                <Button isIconOnly size="sm" variant="light" onPress={() => handleUtilityClick('archive', 'Archive')}>
                   <Archive size={18} />
                 </Button>
-                <Button isIconOnly size="sm" variant="light" onClick={() => handleUtilityClick('notifications', 'Notifications')}>
+                <Button isIconOnly size="sm" variant="light" onPress={() => handleUtilityClick('notifications', 'Notifications')}>
                   <Bell size={18} />
                 </Button>
-                <Button isIconOnly size="sm" variant="light" onClick={onOpenSettings}>
+                <Button isIconOnly size="sm" variant="light" onPress={() => handleAppClick('settings', 'Impostazioni')} aria-label="Impostazioni">
                   <SettingsIcon size={18} />
                 </Button>
-                <Button isIconOnly size="sm" variant="light" color="danger" onClick={() => handleUtilityClick('trash', 'Trash')}>
+                <Button isIconOnly size="sm" variant="light" color="danger" onPress={() => handleUtilityClick('trash', 'Trash')}>
                   <Trash2 size={18} />
                 </Button>
-                <Button isIconOnly size="sm" variant="light" onClick={onToggle}>
+                <Button isIconOnly size="sm" variant="light" onPress={onToggle}>
                   <ChevronLeft size={18} />
                 </Button>
               </div>

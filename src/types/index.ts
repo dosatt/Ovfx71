@@ -87,7 +87,7 @@ export interface Tab {
   title: string;
 }
 
-export type AppType = 'browser' | 'calendar' | 'mail' | 'chat' | 'draw';
+export type AppType = 'browser' | 'calendar' | 'mail' | 'chat' | 'draw' | 'settings';
 
 export interface App {
   type: AppType;
