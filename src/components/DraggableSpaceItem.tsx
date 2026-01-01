@@ -217,7 +217,7 @@ export function DraggableSpaceItem({ space, spacesState, onSpaceClick, level = 0
               );
             })()}
             <span className="text-small truncate overflow-hidden text-ellipsis whitespace-nowrap">
-              {space.title}
+              {space.title || (space.type === 'page' ? 'New page' : `New ${space.type}`)}
             </span>
           </div>
 

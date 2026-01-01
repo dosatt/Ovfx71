@@ -43,6 +43,7 @@ export function TextElementDragLayer() {
           type={item.blockType}
           content={item.content}
           sourceSpaceName={item.sourceSpaceName}
+          count={item.count}
         />
       </div>
 

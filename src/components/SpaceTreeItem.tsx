@@ -21,7 +21,8 @@ import {
   Trash2,
   Edit2,
   Smile,
-  ArrowLeft
+  ArrowLeft,
+  Settings2
 } from 'lucide-react';
 import { Space, SpaceType } from '../types';
 import { IconPicker } from './IconPicker';
@@ -97,6 +98,15 @@ export function SpaceTreeItem({ space, spacesState, onSpaceClick, level = 0 }: S
   const handleToggleFavorite = () => {
     spacesState.toggleFavorite(space.id);
     setShowMenu(false);
+  };
+
+  const handleToggleProperties = () => {
+    const currentShow = space.metadata?.showProperties === true;
+    spacesState.updateSpace(space.id, {
+      metadata: { ...space.metadata, showProperties: !currentShow }
+    });
+    setShowMenu(false);
+    setContextMenu(null);
   };
 
   const handleDelete = () => {
@@ -283,12 +293,23 @@ export function SpaceTreeItem({ space, spacesState, onSpaceClick, level = 0 }: S
                   {space.isFavorite ? 'Remove from favorites' : 'Add to favorites'}
                 </span>
               </div>
+              {space.type === 'page' && (
+                <div
+                  onClick={handleToggleProperties}
+                  className="p-2 rounded-md cursor-pointer flex items-center gap-2 hover:bg-default-100 transition-colors"
+                >
+                  <Settings2 size={14} />
+                  <span className="text-small">
+                    {space.metadata?.showProperties === true ? 'Hide Properties' : 'Show Properties'}
+                  </span>
+                </div>
+              )}
               <div
                 onClick={handleDelete}
-                className="p-2 rounded-md cursor-pointer flex items-center gap-2 text-danger hover:bg-danger-50 transition-colors"
+                className="p-2 rounded-md cursor-pointer flex items-center gap-2 text-red-600 hover:bg-red-50 transition-colors"
               >
-                <Trash2 size={14} />
-                <span className="text-small">Delete</span>
+                <Trash2 size={14} className="text-red-600" />
+                <span className="text-small text-red-600">Delete</span>
               </div>
             </div>
           </>
@@ -390,6 +411,17 @@ export function SpaceTreeItem({ space, spacesState, onSpaceClick, level = 0 }: S
                 {space.isFavorite ? 'Remove from favorites' : 'Add to favorites'}
               </span>
             </div>
+            {space.type === 'page' && (
+              <div
+                onClick={handleToggleProperties}
+                className="p-2 rounded-md cursor-pointer flex items-center gap-2 hover:bg-default-100 transition-colors"
+              >
+                <Settings2 size={14} />
+                <span className="text-small">
+                  {space.metadata?.showProperties === true ? 'Hide Properties' : 'Show Properties'}
+                </span>
+              </div>
+            )}
             <div
               onClick={handleChangeIcon}
               className="p-2 rounded-md cursor-pointer flex items-center gap-2 hover:bg-default-100 transition-colors"
@@ -399,10 +431,10 @@ export function SpaceTreeItem({ space, spacesState, onSpaceClick, level = 0 }: S
             </div>
             <div
               onClick={handleContextDelete}
-              className="p-2 rounded-md cursor-pointer flex items-center gap-2 text-danger hover:bg-danger-50 transition-colors"
+              className="p-2 rounded-md cursor-pointer flex items-center gap-2 text-red-600 hover:bg-red-50 transition-colors"
             >
-              <Trash2 size={14} />
-              <span className="text-small">Delete</span>
+              <Trash2 size={14} className="text-red-600" />
+              <span className="text-small text-red-600">Delete</span>
             </div>
           </div>
         </>

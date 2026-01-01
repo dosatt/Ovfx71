@@ -22,6 +22,11 @@ export interface Settings {
   tabPaddingBottom: number;
   tabPaddingLeft: number;
   tabPaddingRight: number;
+  showTextOutlines: boolean;
+  showPadding: boolean;
+  showMargins: boolean;
+  paddingColor: string;
+  marginColor: string;
 }
 
 const DEFAULT_SETTINGS: Settings = {
@@ -45,7 +50,12 @@ const DEFAULT_SETTINGS: Settings = {
   tabPaddingTop: 0.5,
   tabPaddingBottom: 0.66,
   tabPaddingLeft: 1.5,
-  tabPaddingRight: 1.5
+  tabPaddingRight: 1.5,
+  showTextOutlines: false,
+  showPadding: false,
+  showMargins: false,
+  paddingColor: '#3b82f6', // blue-500
+  marginColor: '#f97316'  // orange-500
 };
 
 export function useSettings() {

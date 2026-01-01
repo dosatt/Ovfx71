@@ -1,31 +1,32 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import { useDrop } from 'react-dnd';
+import { NativeTypes } from 'react-dnd-html5-backend';
 import { Button, Input, Textarea, Tooltip } from '@heroui/react';
 import {
-  Plus,
-  Type,
-  Heading1,
-  Heading2,
-  Heading3,
-  List,
-  ListOrdered,
-  CheckSquare,
-  Quote,
-  Minus,
-  Code,
-  AlertCircle,
-  Image as ImageIcon,
-  File as FileIcon,
-  Link2,
+  Calendar,
+  Clock,
+  User,
+  Tag,
+  Hash,
+  Link as LinkIcon,
   Globe,
+  Plus,
   Trash2,
-  GripVertical
+  GripVertical,
+  ChevronRight,
+  ChevronDown,
+  Type,
+  Upload
 } from 'lucide-react';
 import { Space, Block, BlockType, PageContent } from '../../types';
-import { PageBlock } from './PageBlock';
+import { ListGroup } from './ListGroup';
+import { TextElement } from './TextElement';
 import { ITEM_TYPE_TO_WORKSPACE, ITEM_TYPE_TEXT_ELEMENT } from '../SpaceTreeItem';
 import { useHistory } from '../../contexts/HistoryContext';
+import { blockTypeConfig } from './blockConfig';
+import type { Settings } from '../../hooks/useSettings';
+import { PropertiesView } from './PropertiesView';
 
 interface PageEditorProps {
   space: Space;
@@ -35,49 +36,38 @@ interface PageEditorProps {
   tabId?: string;
   brokenLinks?: Set<string>;
   brokenLinksVersion?: number;
+  settings?: Settings;
 }
 
-const blockTypeConfig: Record<BlockType, { icon: any; label: string; placeholder: string }> = {
-  text: { icon: Type, label: 'Text', placeholder: 'Type something...' },
-  heading1: { icon: Heading1, label: 'Heading 1', placeholder: 'Heading 1' },
-  heading2: { icon: Heading2, label: 'Heading 2', placeholder: 'Heading 2' },
-  heading3: { icon: Heading3, label: 'Heading 3', placeholder: 'Heading 3' },
-  bulletList: { icon: List, label: 'Bullet List', placeholder: 'List item' },
-  numberedList: { icon: ListOrdered, label: 'Numbered List', placeholder: 'List item' },
-  checkbox: { icon: CheckSquare, label: 'Checkbox', placeholder: 'To-do item' },
-  quote: { icon: Quote, label: 'Quote', placeholder: 'Quote' },
-  divider: { icon: Minus, label: 'Divider', placeholder: '' },
-  callout: { icon: AlertCircle, label: 'Callout', placeholder: 'Callout text' },
-  code: { icon: Code, label: 'Code', placeholder: 'Code block' },
-  image: { icon: ImageIcon, label: 'Image', placeholder: 'Insert image' },
-  file: { icon: FileIcon, label: 'File', placeholder: 'Insert file' },
-  embed: { icon: Globe, label: 'Embed', placeholder: 'Paste iframe or code' },
-  pageLink: { icon: Link2, label: 'Space Link', placeholder: 'Link to space' },
-  spaceEmbed: { icon: Globe, label: 'Space Embed', placeholder: 'Embed a space' },
-  blockEmbed: { icon: Link2, label: 'Block Embed', placeholder: 'Embed a block' },
-  elementEmbed: { icon: Link2, label: 'Element Embed', placeholder: 'Embed an element' },
-  video: { icon: FileIcon, label: 'Video', placeholder: 'Insert video' },
-  audio: { icon: FileIcon, label: 'Audio', placeholder: 'Insert audio' }
-};
-
-export function PageEditor({ space, spacesState, viewportsState, viewportId, tabId, brokenLinks, brokenLinksVersion }: PageEditorProps) {
+export function PageEditor({ space, spacesState, viewportsState, viewportId, tabId, brokenLinks, brokenLinksVersion, settings }: PageEditorProps) {
+  const [selectedBlockIds, setSelectedBlockIds] = useState<string[]>([]);
   const [menuAnchor, setMenuAnchor] = useState<{ anchor: HTMLElement; afterBlockId?: string } | null>(null);
   const [collapsedHeaders, setCollapsedHeaders] = useState<Set<string>>(new Set());
   const [temporaryBlockId, setTemporaryBlockId] = useState<string | null>(null);
   const titleInputRef = useRef<HTMLInputElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const { pushAction } = useHistory();
 
   const content = space.content as PageContent;
   const blocks = content?.blocks || [];
 
-  // Focus sul titolo quando la pagina viene creata (titolo vuoto o "Untitled")
+  const showProperties = space.metadata?.showProperties === true; // Default to false (hidden)
+
+  // Focus sul primo blocco quando la pagina viene creata
   useEffect(() => {
-    if (!space.title || space.title === 'Untitled' || space.title.startsWith('New Page')) {
+    if (blocks.length === 0) {
+      addBlock('text');
+      // Wait for the state to update and block to be rendered
       setTimeout(() => {
-        titleInputRef.current?.focus();
-      }, 100);
+        focusBlockByIndex(0);
+      }, 150);
+    } else {
+      // If it's a new session for this page but it has content, focus first
+      setTimeout(() => {
+        focusBlockByIndex(0);
+      }, 150);
     }
-  }, []);
+  }, [space.id]);
 
   const handleTitleChange = (newTitle: string) => {
     // Update space title
@@ -93,6 +83,21 @@ export function PageEditor({ space, spacesState, viewportsState, viewportId, tab
     spacesState.updateSpace(space.id, {
       content: { ...content, blocks: newBlocks }
     });
+
+    // Check if the title needs to be synced with a new "first header"
+    const isTitleSynced = space.metadata?.syncTitleWithH1 !== false;
+    if (isTitleSynced) {
+      const firstHeader = newBlocks.find((b: any) => 
+        ['heading1', 'heading2', 'heading3', 'heading4'].includes(b.type)
+      );
+      if (firstHeader && firstHeader.content !== space.title) {
+        spacesState.updateSpace(space.id, { title: firstHeader.content });
+        // Update tab title if viewportsState is available
+        if (viewportsState && viewportId && tabId) {
+          viewportsState.updateTab(viewportId, tabId, { title: firstHeader.content });
+        }
+      }
+    }
   };
 
   const addBlock = (type: BlockType, afterBlockId?: string) => {
@@ -144,16 +149,35 @@ export function PageEditor({ space, spacesState, viewportsState, viewportId, tab
     }, 50);
   };
 
-  const createNextBlock = (blockId: string, blockType: BlockType) => {
+  const createNextBlock = (blockId: string, blockType: BlockType, currentBlockUpdates?: Partial<Block>) => {
     const index = blocks.findIndex(b => b.id === blockId);
+    
+    // Logic to inherit indent
+    let indent = 0;
+    const allowedIndentTypes = ['bulletList', 'numberedList', 'checkbox', 'checkboxNumberedList'];
+    
+    if (index !== -1 && allowedIndentTypes.includes(blockType)) {
+        const currentBlock = blocks[index];
+        if (currentBlock.indent) {
+             indent = currentBlock.indent;
+        }
+    }
+
     const newBlock: Block = {
       id: `block_${Date.now()}_${Math.random()}`,
       type: blockType,
       content: '',
-      checked: blockType === 'checkbox' ? false : undefined
+      checked: blockType === 'checkbox' ? false : undefined,
+      indent: indent > 0 ? indent : undefined
     };
     
-    const newBlocks = [...blocks];
+    let newBlocks = [...blocks];
+    
+    // Apply updates to current block if provided
+    if (currentBlockUpdates && index !== -1) {
+       newBlocks[index] = { ...newBlocks[index], ...currentBlockUpdates };
+    }
+    
     newBlocks.splice(index + 1, 0, newBlock);
     updateContent(newBlocks);
     
@@ -244,68 +268,79 @@ export function PageEditor({ space, spacesState, viewportsState, viewportId, tab
     }
   };
 
-  const focusBlockByIndex = (index: number, position: 'start' | 'end' = 'start') => {
-    if (index === -1) {
-      // Focus sul titolo
-      titleInputRef.current?.focus();
-    } else if (index >= 0 && index < blocks.length) {
-      // Focus sul blocco
-      setTimeout(() => {
-        const blockElement = document.querySelector(`[data-block-id="${blocks[index].id}"]`);
-        if (blockElement) {
-          // Cerca prima input/textarea, poi contentEditable
-          const input = blockElement.querySelector('input, textarea') as HTMLTextAreaElement | HTMLInputElement;
-          if (input) {
-            (input as HTMLElement).focus();
-            // Posiziona il cursore alla fine o all'inizio
-            if (position === 'end') {
-              const length = input.value.length;
-              input.setSelectionRange(length, length);
-            } else {
-              input.setSelectionRange(0, 0);
-            }
+  const focusBlockByIndex = (index: number) => {
+    // We need to wait for the DOM to be ready
+    setTimeout(() => {
+      // Find all contenteditable blocks within this editor instance
+      // Use a more specific selector to avoid picking up sidebar items or other viewports
+      const editorElement = document.querySelector(`[data-viewport-id="${viewportId}"]`) || document;
+      const editableElements = editorElement.querySelectorAll('[contenteditable="true"]');
+      
+      const target = editableElements[index] as HTMLElement;
+      if (target) {
+        target.focus();
+        
+        // Move cursor to end
+        try {
+          const selection = window.getSelection();
+          const range = document.createRange();
+          
+          if (target.childNodes.length > 0) {
+            range.selectNodeContents(target);
+            range.collapse(false); // end
           } else {
-            // Cerca contentEditable per RichTextEditor
-            const contentEditable = blockElement.querySelector('[contenteditable="true"]');
-            if (contentEditable) {
-              (contentEditable as HTMLElement).focus();
-              // Posiziona il cursore alla fine o all'inizio del contenuto
-              const selection = window.getSelection();
-              const range = document.createRange();
-              range.selectNodeContents(contentEditable);
-              range.collapse(position === 'end' ? false : true); // false = alla fine, true = all'inizio
-              selection?.removeAllRanges();
-              selection?.addRange(range);
-            }
+            range.setStart(target, 0);
+            range.setEnd(target, 0);
           }
+          
+          if (selection) {
+            selection.removeAllRanges();
+            selection.addRange(range);
+          }
+        } catch (e) {
+          console.warn("Could not move cursor:", e);
         }
-      }, 0);
-    }
+        
+        // Ensure the block is marked as focused in our state if necessary
+        // (TextElement manages its own focus state via onFocus/onBlur)
+      }
+    }, 150);
+  };
+
+  const focusLastBlock = () => {
+    focusBlockByIndex(blocks.length - 1);
   };
 
   const updateBlock = (id: string, updates: Partial<Block>) => {
     const oldBlock = blocks.find(b => b.id === id);
-    const newBlocks = blocks.map(b => b.id === id ? { ...b, ...updates } : b);
+    if (!oldBlock) return;
+
+    const newBlock = { ...oldBlock, ...updates };
+    const newBlocks = blocks.map(b => b.id === id ? newBlock : b);
     updateContent(newBlocks);
     
-    // Track history only for content changes (not for internal state like checked)
-    if (updates.content !== undefined && oldBlock) {
-      const oldContent = oldBlock.content;
-      const newContent = updates.content;
-      
+    // Track history for content or type changes
+    // We ignore internal state changes like checked unless explicitly needed, 
+    // but type change is significant.
+    const isContentChange = updates.content !== undefined && updates.content !== oldBlock.content;
+    const isTypeChange = updates.type !== undefined && updates.type !== oldBlock.type;
+
+    if (isContentChange || isTypeChange) {
       pushAction({
         type: 'updateBlock',
-        description: 'Modifica blocco',
+        description: isTypeChange ? 'Converti blocco' : 'Modifica blocco',
         undo: () => {
           const currentBlocks = (spacesState.getSpace(space.id)?.content as PageContent)?.blocks || [];
-          const restoredBlocks = currentBlocks.map(b => b.id === id ? { ...b, content: oldContent } : b);
+          // Restore the entire old block state
+          const restoredBlocks = currentBlocks.map(b => b.id === id ? oldBlock : b);
           spacesState.updateSpace(space.id, {
             content: { ...content, blocks: restoredBlocks }
           });
         },
         redo: () => {
           const currentBlocks = (spacesState.getSpace(space.id)?.content as PageContent)?.blocks || [];
-          const updatedBlocks = currentBlocks.map(b => b.id === id ? { ...b, content: newContent } : b);
+          // Apply the new block state
+          const updatedBlocks = currentBlocks.map(b => b.id === id ? newBlock : b);
           spacesState.updateSpace(space.id, {
             content: { ...content, blocks: updatedBlocks }
           });
@@ -344,12 +379,22 @@ export function PageEditor({ space, spacesState, viewportsState, viewportId, tab
   };
 
   const convertBlock = (id: string, newType: BlockType) => {
-    const oldBlock = blocks.find(b => b.id === id);
-    if (!oldBlock) return;
+    convertBlocks([id], newType);
+  };
+
+  const convertBlocks = (ids: string[], newType: BlockType) => {
+    // Filter out blocks that don't need conversion
+    const targetIds = new Set(ids);
+    const blocksToConvert = blocks.filter(b => targetIds.has(b.id) && b.type !== newType);
     
-    const oldType = oldBlock.type;
+    if (blocksToConvert.length === 0) return;
+    
+    // Store old types for undo
+    const oldTypes = new Map<string, BlockType>();
+    blocksToConvert.forEach(b => oldTypes.set(b.id, b.type));
+
     const newBlocks = blocks.map(b => {
-      if (b.id === id) {
+      if (targetIds.has(b.id)) {
         return {
           ...b,
           type: newType,
@@ -358,15 +403,17 @@ export function PageEditor({ space, spacesState, viewportsState, viewportId, tab
       }
       return b;
     });
+    
     updateContent(newBlocks);
     
     pushAction({
-      type: 'convertBlock',
-      description: `Converti in ${blockTypeConfig[newType].label}`,
+      type: 'convertBlock', // reusing type for simplicity, or could add 'convertBlocks'
+      description: `Converti ${ids.length} elementi in ${blockTypeConfig[newType].label}`,
       undo: () => {
         const currentBlocks = (spacesState.getSpace(space.id)?.content as PageContent)?.blocks || [];
         const restoredBlocks = currentBlocks.map(b => {
-          if (b.id === id) {
+          if (targetIds.has(b.id) && oldTypes.has(b.id)) {
+            const oldType = oldTypes.get(b.id)!;
             return {
               ...b,
               type: oldType,
@@ -382,7 +429,7 @@ export function PageEditor({ space, spacesState, viewportsState, viewportId, tab
       redo: () => {
         const currentBlocks = (spacesState.getSpace(space.id)?.content as PageContent)?.blocks || [];
         const convertedBlocks = currentBlocks.map(b => {
-          if (b.id === id) {
+          if (targetIds.has(b.id)) {
             return {
               ...b,
               type: newType,
@@ -398,10 +445,80 @@ export function PageEditor({ space, spacesState, viewportsState, viewportId, tab
     });
   };
 
-  const moveBlock = useCallback((dragIndex: number, hoverIndex: number) => {
+  const moveBlocks = useCallback((blockIds: string[], hoverIndex: number) => {
     const newBlocks = [...blocks];
-    const [removed] = newBlocks.splice(dragIndex, 1);
-    newBlocks.splice(hoverIndex, 0, removed);
+    
+    // Filtra gli ID validi presenti in questo space
+    const validIds = blockIds.filter(id => blocks.some(b => b.id === id));
+    if (validIds.length === 0) return;
+
+    // Salva i blocchi da spostare nell'ordine di selezione (pickup order)
+    const blocksToMove = validIds.map(id => blocks.find(b => b.id === id)!).filter(Boolean);
+    
+    // Trova l'indice del blocco target prima della rimozione
+    const targetBlock = blocks[hoverIndex];
+    
+    // Rimuovi i blocchi dalle posizioni originali
+    const remainingBlocks = newBlocks.filter(b => !validIds.includes(b.id));
+    
+    // Trova il nuovo indice di inserimento
+    let insertIndex = hoverIndex;
+    if (targetBlock) {
+        insertIndex = remainingBlocks.findIndex(b => b.id === targetBlock.id);
+        // Se non lo trova (perché era uno di quelli rimossi), usa hoverIndex limitato
+        if (insertIndex === -1) insertIndex = Math.min(hoverIndex, remainingBlocks.length);
+    } else {
+        insertIndex = remainingBlocks.length;
+    }
+
+    // Pulisci i numeri di lista se necessario
+    const cleanedBlocksToMove = blocksToMove.map(block => {
+      if (block.listNumber !== undefined) {
+        return { ...block, listNumber: undefined };
+      }
+      return block;
+    });
+
+    remainingBlocks.splice(insertIndex, 0, ...cleanedBlocksToMove);
+    updateContent(remainingBlocks);
+    setSelectedBlockIds([]); // Pulisci la selezione dopo lo spostamento
+  }, [blocks, updateContent]);
+
+  const moveBlock = useCallback((dragIndex: number, hoverIndex: number, count: number = 1) => {
+    // Se c'è una selezione multipla e il blocco trascinato ne fa parte, usa moveBlocks
+    const draggedBlock = blocks[dragIndex];
+    if (draggedBlock && selectedBlockIds.includes(draggedBlock.id)) {
+        moveBlocks(selectedBlockIds, hoverIndex);
+        return;
+    }
+
+    const newBlocks = [...blocks];
+    
+    // Ensure indices are valid
+    if (dragIndex < 0 || dragIndex >= newBlocks.length || hoverIndex < 0 || hoverIndex > newBlocks.length) {
+      return;
+    }
+
+    // Remove the block(s)
+    const removed = newBlocks.splice(dragIndex, count);
+
+    // Reset manual ordering for moved blocks so they comply with the new list position
+    const cleanedRemoved = removed.map(block => {
+      if (block.listNumber !== undefined) {
+        return { ...block, listNumber: undefined };
+      }
+      return block;
+    });
+    
+    // Calculate insertion index
+    // When moving down (dragIndex < hoverIndex), the removal shifts subsequent items by 'count'.
+    // If count > 1, using hoverIndex directly would skip (count-1) items.
+    let insertIndex = hoverIndex;
+    if (dragIndex < hoverIndex) {
+      insertIndex = hoverIndex - (count - 1);
+    }
+    
+    newBlocks.splice(insertIndex, 0, ...cleanedRemoved);
     updateContent(newBlocks);
   }, [blocks, content, space.id, spacesState]);
 
@@ -418,51 +535,76 @@ export function PageEditor({ space, spacesState, viewportsState, viewportId, tab
   };
 
   const isBlockCollapsed = (blockIndex: number): boolean => {
-    // Check if this block is under a collapsed header
     const currentBlock = blocks[blockIndex];
-    const currentIsHeader = currentBlock.type === 'heading1' || currentBlock.type === 'heading2' || currentBlock.type === 'heading3';
     
-    // Headers themselves are never hidden
-    if (currentIsHeader) {
+    // 1. Stop Dividers exception: if we are a stop divider, we are never hidden by a parent collapse
+    // because we are the boundary. Regular dividers remain collapsible.
+    if (currentBlock.type === 'divider' && currentBlock.metadata?.dividerVariant === 'stop') {
       return false;
     }
     
-    // Find the most recent header before this block
+    const currentIsHeader = currentBlock.type === 'heading1' || currentBlock.type === 'heading2' || currentBlock.type === 'heading3' || currentBlock.type === 'heading4';
+    
+    let currentLevel = 99; // Text/other default
+    if (currentIsHeader) {
+      currentLevel = parseInt(currentBlock.type.replace('heading', ''));
+    }
+
+    let minLevelSeen = currentLevel;
+
     for (let i = blockIndex - 1; i >= 0; i--) {
       const block = blocks[i];
-      const isHeader = block.type === 'heading1' || block.type === 'heading2' || block.type === 'heading3';
+
+      // If we find a stop divider, it blocks all collapse scopes from above
+      if (block.type === 'divider' && block.metadata?.dividerVariant === 'stop') {
+        return false;
+      }
+
+      const isHeader = block.type === 'heading1' || block.type === 'heading2' || block.type === 'heading3' || block.type === 'heading4';
       
       if (isHeader) {
-        // If we found a collapsed header, check if current block should be hidden
-        if (collapsedHeaders.has(block.id)) {
-          // Find the next header at the same or higher level
-          const headerLevel = parseInt(block.type.replace('heading', ''));
-          
-          for (let j = i + 1; j < blocks.length; j++) {
-            const nextBlock = blocks[j];
-            const nextIsHeader = nextBlock.type === 'heading1' || nextBlock.type === 'heading2' || nextBlock.type === 'heading3';
-            
-            if (nextIsHeader) {
-              const nextLevel = parseInt(nextBlock.type.replace('heading', ''));
-              if (nextLevel <= headerLevel) {
-                // This is the end of the collapsed section
-                return j > blockIndex ? false : (j === blockIndex ? false : true);
-              }
-            }
-            
-            // If we reach the current block before finding another header, it should be hidden
-            if (j === blockIndex) {
-              return true;
-            }
-          }
-          
-          // If we reach here, the current block is after the last header in the collapsed section
-          return true;
+        const headerLevel = parseInt(block.type.replace('heading', ''));
+        
+        if (headerLevel < minLevelSeen) {
+           if (collapsedHeaders.has(block.id)) {
+             return true; 
+           }
+           minLevelSeen = headerLevel;
         }
       }
     }
     
     return false;
+  };
+
+  const getCollapsedGroupSize = (startIndex: number): number => {
+    const headerBlock = blocks[startIndex];
+    const isHeader = headerBlock.type.startsWith('heading');
+    if (!isHeader || !collapsedHeaders.has(headerBlock.id)) {
+      return 1;
+    }
+    
+    const headerLevel = headerBlock.type === 'text' ? 99 : parseInt(headerBlock.type.replace('heading', ''));
+    let count = 1;
+    
+    for (let i = startIndex + 1; i < blocks.length; i++) {
+      const current = blocks[i];
+
+      // Stop grouping if we hit a stop divider
+      if (current.type === 'divider' && current.metadata?.dividerVariant === 'stop') {
+        break;
+      }
+
+      // Check if current block breaks the scope
+      if (current.type.startsWith('heading')) {
+        const currentLevel = parseInt(current.type.replace('heading', ''));
+        if (currentLevel <= headerLevel) {
+          break;
+        }
+      }
+      count++;
+    }
+    return count;
   };
 
   const handleApplyStyle = (style: 'bold' | 'italic' | 'underline' | 'strikethrough') => {
@@ -516,9 +658,59 @@ export function PageEditor({ space, spacesState, viewportsState, viewportId, tab
     }
   };
 
+  const handleFileDrop = async (files: any[]) => {
+    const newBlocks: Block[] = [];
+    
+    for (const file of files) {
+      if (file.type && file.type.startsWith('image/')) {
+        try {
+          const dataUrl = await new Promise<string>((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = () => resolve(reader.result as string);
+            reader.onerror = reject;
+            reader.readAsDataURL(file);
+          });
+          
+          newBlocks.push({
+            id: `block_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+            type: 'image',
+            content: dataUrl,
+          });
+        } catch (e) {
+          console.error("Failed to read file", file.name, e);
+        }
+      } else {
+        // Generic File Block
+        newBlocks.push({
+          id: `block_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+          type: 'file',
+          content: file.name,
+          metadata: {
+            fileName: file.name,
+            fileSize: file.size,
+            fileType: file.type || 'application/octet-stream'
+          }
+        });
+      }
+    }
+    
+    if (newBlocks.length > 0) {
+      updateContent([...blocks, ...newBlocks]);
+    }
+  };
+
   const [{ isOver }, dropRef] = useDrop({
-    accept: [ITEM_TYPE_TO_WORKSPACE, ITEM_TYPE_TEXT_ELEMENT],
+    accept: [ITEM_TYPE_TO_WORKSPACE, ITEM_TYPE_TEXT_ELEMENT, NativeTypes.FILE],
     drop: (item: any, monitor) => {
+      // Handle File Drop
+      if (monitor.getItemType() === NativeTypes.FILE) {
+        const files = item.files;
+        if (files && files.length > 0) {
+          handleFileDrop(files);
+        }
+        return;
+      }
+
       // Gestione drop textElement (da PageBlock)
       if (item.itemType === ITEM_TYPE_TEXT_ELEMENT) {
         const dragMode = getDragMode(); // Ottieni il drag mode corrente
@@ -657,96 +849,263 @@ export function PageEditor({ space, spacesState, viewportsState, viewportId, tab
       const blockElement = document.querySelector(`[data-block-id="${resultBlock.id}"]`);
       if (blockElement) {
         blockElement.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-        // Highlight animation
-        blockElement.animate([
-          { backgroundColor: 'var(--heroui-primary-100)' },
-          { backgroundColor: 'transparent' }
-        ], {
-          duration: 600,
-          easing: 'ease-out'
-        });
       }
     }, 100);
+  };
+
+  const renderBlocks = () => {
+    const renderedElements: JSX.Element[] = [];
+    let i = 0;
+
+    // Helper for calculating list number based on hierarchy
+    const calculateListNumber = (currentIndex: number): string | number | undefined => {
+      const currentBlock = blocks[currentIndex];
+      const isNumbered = (type: BlockType) => type === 'numberedList' || type === 'checkboxNumberedList';
+      const isList = (type: BlockType) => ['bulletList', 'numberedList', 'checkbox', 'checkboxNumberedList'].includes(type);
+
+      if (!isNumbered(currentBlock.type)) return undefined;
+
+      const currentIndent = currentBlock.indent || 0;
+      let siblingCount = 0;
+      let localBase = 1;
+      let parentIndex = -1;
+      let foundLocalBase = false;
+
+      // Single pass backwards
+      for (let k = currentIndex - 1; k >= 0; k--) {
+        const prevBlock = blocks[k];
+        
+        if (!isList(prevBlock.type)) break;
+        
+        const prevIndent = prevBlock.indent || 0;
+        
+        if (prevIndent === currentIndent) {
+           if (isNumbered(prevBlock.type)) {
+               // Only count siblings if we haven't found a base yet
+               if (!foundLocalBase) {
+                   siblingCount++;
+                   if (prevBlock.listNumber !== undefined) {
+                       localBase = prevBlock.listNumber;
+                       foundLocalBase = true;
+                   }
+               }
+           } else {
+               // Sibling breaks sequence (e.g. bullet list in between numbered lists)
+               // If we hit a break, it means the current sequence started AFTER this block.
+               // So we stop counting siblings and use default base 1.
+               break;
+           }
+        } else if (prevIndent < currentIndent) {
+            parentIndex = k;
+            break;
+        }
+      }
+
+      let localValue = localBase;
+      if (currentBlock.listNumber !== undefined) {
+          localValue = currentBlock.listNumber;
+      } else {
+          localValue = localBase + siblingCount;
+      }
+
+      if (parentIndex !== -1) {
+          const parentString = calculateListNumber(parentIndex);
+          if (parentString !== undefined) {
+             return `${parentString}.${localValue}`;
+          }
+      }
+      
+      return localValue;
+    };
+
+    while (i < blocks.length) {
+      const block = blocks[i];
+      const isNumbered = (type: BlockType) => type === 'numberedList' || type === 'checkboxNumberedList';
+      const isList = ['bulletList', 'numberedList', 'checkbox', 'checkboxNumberedList'].includes(block.type);
+
+      if (isList) {
+        let j = i + 1;
+        // Group logic:
+        // If current is numbered/checkboxNumbered, group with subsequent numbered/checkboxNumbered
+        // Else group with exact same type
+        const currentIsNumbered = isNumbered(block.type);
+
+        while (j < blocks.length) {
+          const nextType = blocks[j].type;
+          if (currentIsNumbered) {
+            if (!isNumbered(nextType)) break;
+          } else {
+             if (nextType !== block.type) break;
+          }
+          j++;
+        }
+
+        const groupSize = j - i;
+        
+        if (groupSize >= 2) {
+           const groupBlocks = blocks.slice(i, j);
+           
+           const groupListNumbers = groupBlocks.map((b, relativeIndex) => {
+              return calculateListNumber(i + relativeIndex);
+           });
+
+           renderedElements.push(
+             <ListGroup 
+               key={`group-${block.id}`}
+               blocks={groupBlocks}
+               startIndex={i}
+               onUpdate={updateBlock}
+               onDelete={deleteBlock}
+               onAddAfter={(blockId, anchor) => setMenuAnchor({ anchor, afterBlockId: blockId })}
+               onAddBefore={addBlockBefore}
+               onMove={moveBlock}
+               onConvertBlock={convertBlock}
+               onConvertBlocks={convertBlocks}
+               createNextBlock={createNextBlock}
+               toggleHeaderCollapse={toggleHeaderCollapse}
+               isBlockCollapsed={isBlockCollapsed}
+               collapsedHeaders={collapsedHeaders}
+               focusBlockByIndex={focusBlockByIndex}
+               totalBlocks={blocks.length}
+               config={{}} 
+               currentSpaceId={space.id}
+               currentSpaceName={space.title}
+               spacesState={spacesState}
+               viewportsState={viewportsState}
+               brokenLinks={brokenLinks}
+               brokenLinksVersion={brokenLinksVersion}
+               listNumbers={groupListNumbers}
+               settings={settings}
+               selectedBlockIds={selectedBlockIds}
+               onToggleSelection={onToggleSelection}
+             />
+           );
+           i = j;
+           continue;
+        }
+      }
+
+      // Render single block
+      const isHeader = block.type === 'heading1' || block.type === 'heading2' || block.type === 'heading3' || block.type === 'heading4';
+      const isCollapsed = isHeader ? collapsedHeaders.has(block.id) : false;
+      const prevBlock = i > 0 ? blocks[i - 1] : undefined;
+      const nextBlock = i < blocks.length - 1 ? blocks[i + 1] : undefined;
+      
+      const dragCount = isCollapsed ? getCollapsedGroupSize(i) : 1;
+      
+      let listNumber: number | string | undefined;
+      
+      if (isNumbered(block.type)) {
+          listNumber = calculateListNumber(i);
+      }
+
+      renderedElements.push(
+        <TextElement
+          key={block.id}
+          block={{ ...block, collapsed: isCollapsed }}
+          index={i}
+          onUpdate={updateBlock}
+          onDelete={deleteBlock}
+          onAddAfter={(blockId, anchor) => setMenuAnchor({ anchor, afterBlockId: blockId })}
+          onAddBefore={addBlockBefore}
+          onMove={moveBlock}
+          onConvertBlock={convertBlock}
+          config={blockTypeConfig[block.type] || blockTypeConfig['text']}
+          createNextBlock={createNextBlock}
+          toggleHeaderCollapse={toggleHeaderCollapse}
+          isBlockCollapsed={isBlockCollapsed}
+          collapsedHeaders={collapsedHeaders}
+          focusBlockByIndex={focusBlockByIndex}
+          totalBlocks={blocks.length}
+          prevBlock={prevBlock}
+          nextBlock={nextBlock}
+          currentSpaceId={space.id}
+          currentSpaceName={space.title}
+          spacesState={spacesState}
+          viewportsState={viewportsState}
+          brokenLinks={brokenLinks}
+          brokenLinksVersion={brokenLinksVersion}
+          listNumber={listNumber}
+          dragCount={dragCount}
+          settings={settings}
+          selectedBlockIds={selectedBlockIds}
+          onToggleSelection={onToggleSelection}
+        />
+      );
+      i++;
+    }
+    return renderedElements;
+  };
+
+  const selectAllBlocks = useCallback(() => {
+    setSelectedBlockIds(blocks.map(b => b.id));
+  }, [blocks]);
+
+  const selectGroupBlocks = useCallback((ids: string[]) => {
+    setSelectedBlockIds(ids);
+  }, []);
+
+  const onToggleSelection = (blockId: string, isShift: boolean) => {
+    if (isShift) {
+      setSelectedBlockIds(prev => 
+        prev.includes(blockId) ? prev.filter(id => id !== blockId) : [...prev, blockId]
+      );
+    } else {
+      setSelectedBlockIds([blockId]);
+    }
   };
 
   return (
     <div 
       ref={dropRef}
-      className="max-w-[700px] mx-auto p-4 relative min-h-screen"
+      className={`flex-1 h-full min-h-[500px] overflow-y-auto no-scrollbar pb-32 transition-colors duration-200 ${isOver ? 'bg-primary/5' : ''}`}
     >
-      {/* Page title - allineato con i text blocks */}
-      <div className="flex gap-2 items-start mb-4">
-        {/* Spazio per allineare con il drag handle dei blocchi - 24px (handle width) */}
-        <div className="w-6 shrink-0" />
-        
-        {/* Textarea del titolo - con flex: 1 come i blocchi */}
-        <Textarea
-          value={space.title}
-          onChange={(e) => handleTitleChange(e.target.value)}
-          placeholder="Untitled"
-          minRows={1}
-          classNames={{
-            base: "flex-1",
-            input: "text-[2.5rem] font-bold p-0 border-none outline-none shadow-none text-center bg-transparent focus:outline-none focus:ring-0 focus:border-none",
-            inputWrapper: "bg-transparent shadow-none hover:bg-transparent data-[focus=true]:bg-transparent border-none p-0 !outline-none !ring-0",
-          }}
-          onKeyDown={handleTitleKeyDown}
-          ref={titleInputRef as any}
-        />
-      </div>
-
-      {/* Blocks */}
-      <div className="flex flex-col gap-0">
-        {blocks.map((block, index) => {
-          const isHeader = block.type === 'heading1' || block.type === 'heading2' || block.type === 'heading3';
-          const isCollapsed = isHeader ? collapsedHeaders.has(block.id) : false;
-          const prevBlock = index > 0 ? blocks[index - 1] : undefined;
-          const nextBlock = index < blocks.length - 1 ? blocks[index + 1] : undefined;
-          
-          return (
-            <PageBlock
-              key={block.id}
-              block={{ ...block, collapsed: isCollapsed }}
-              index={index}
-              onUpdate={updateBlock}
-              onDelete={deleteBlock}
-              onAddAfter={(blockId, anchor) => setMenuAnchor({ anchor, afterBlockId: blockId })}
-              onAddBefore={addBlockBefore}
-              onMove={moveBlock}
-              onConvertBlock={convertBlock}
-              config={blockTypeConfig[block.type] || blockTypeConfig['text']}
-              createNextBlock={createNextBlock}
-              toggleHeaderCollapse={toggleHeaderCollapse}
-              isBlockCollapsed={isBlockCollapsed}
-              collapsedHeaders={collapsedHeaders}
-              focusBlockByIndex={focusBlockByIndex}
-              totalBlocks={blocks.length}
-              prevBlock={prevBlock}
-              nextBlock={nextBlock}
-              currentSpaceId={space.id}
-              currentSpaceName={space.title}
-              spacesState={spacesState}
-              viewportsState={viewportsState}
-              brokenLinks={brokenLinks}
-              brokenLinksVersion={brokenLinksVersion}
-            />
-          );
-        })}
-      </div>
-      
-      {/* Area vuota sotto i blocchi per aggiungere facilmente un nuovo blocco cliccando */}
       <div 
-        className="flex-1 min-h-[200px] cursor-text"
-        onClick={() => {
-          // Se non ci sono blocchi, aggiungine uno
-          if (blocks.length === 0) {
-            addBlock('text');
-          } else {
-            // Altrimenti focalizza l'ultimo blocco
-            focusBlockByIndex(blocks.length - 1, 'end');
-          }
-        }}
-      />
+        className={`max-w-4xl mx-auto pb-8 px-8 flex flex-col transition-all duration-300 ${
+          showProperties ? 'pt-6' : 'pt-[15vh]'
+        }`}
+      >
+        {/* Properties Section */}
+        {showProperties && (
+          <div className="mb-6 -mx-3 border border-divider rounded-lg bg-white/15 dark:bg-default-50/30">
+            <PropertiesView 
+              space={space} 
+              spacesState={spacesState}
+            />
+          </div>
+        )}
+
+        {/* Actions Bar */}
+        <div className="flex justify-end mb-4 opacity-0 hover:opacity-100 transition-opacity">
+          <Button
+            isIconOnly
+            size="sm"
+            variant="light"
+            onPress={() => fileInputRef.current?.click()}
+            className="text-default-400 hover:text-default-600"
+            title="Carica più file"
+          >
+            <Upload size={18} />
+          </Button>
+          <input 
+            type="file" 
+            ref={fileInputRef} 
+            className="hidden" 
+            multiple 
+            onChange={(e) => {
+              if (e.target.files && e.target.files.length > 0) {
+                handleFileDrop(Array.from(e.target.files));
+                e.target.value = '';
+              }
+            }}
+          />
+        </div>
+
+        {/* Editor Blocks */}
+        <div className="flex flex-col relative">
+          {renderBlocks()}
+        </div>
+      </div>
     </div>
   );
 }

@@ -34,7 +34,7 @@ export function useSpaces(onSpaceDeleted?: (spaceId: string) => void) {
     
     const newSpace: Space = {
       id: `space_${Date.now()}`,
-      title: `New ${type.charAt(0).toUpperCase() + type.slice(1)}`,
+      title: type === 'page' ? 'New page' : `New ${type.charAt(0).toUpperCase() + type.slice(1)}`,
       type,
       parentId,
       order: maxOrder + 1,

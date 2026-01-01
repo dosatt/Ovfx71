@@ -169,11 +169,14 @@ export function useViewports() {
 
   const addTab = (viewportId: string, spaceId?: string, appType?: AppType, title?: string) => {
     setRootViewport(prev => updateViewportInTree(viewportId, (viewport) => {
+      const initialHistoryItem = { spaceId, appType, title: title || 'New Tab' };
       const newTab: Tab = {
         id: `tab_${Date.now()}`,
         spaceId,
         appType,
-        title: title || 'New Tab'
+        title: title || 'New Tab',
+        history: [initialHistoryItem],
+        historyIndex: 0
       };
       return {
         ...viewport,
@@ -202,10 +205,50 @@ export function useViewports() {
   };
 
   const updateTab = (viewportId: string, tabId: string, updates: Partial<Tab>) => {
-    setRootViewport(prev => updateViewportInTree(viewportId, (viewport) => ({
-      ...viewport,
-      tabs: viewport.tabs.map(t => t.id === tabId ? { ...t, ...updates } : t)
-    }), prev));
+    setRootViewport(prev => updateViewportInTree(viewportId, (viewport) => {
+      const tab = viewport.tabs.find(t => t.id === tabId);
+      if (!tab) return viewport;
+
+      const updatedTab = { ...tab, ...updates };
+
+      // If content changed, push to history
+      if (updates.spaceId !== undefined || updates.appType !== undefined) {
+        const isContentChange = updates.spaceId !== tab.spaceId || updates.appType !== tab.appType;
+        if (isContentChange) {
+           const history = tab.history || [];
+           const currentIndex = tab.historyIndex ?? -1;
+           
+           // Slice history if we were in the middle
+           // If history was empty/undefined, slice(0, 0) is empty array.
+           const newHistory = currentIndex >= 0 ? history.slice(0, currentIndex + 1) : [];
+           
+           // Push new state
+           newHistory.push({
+               spaceId: updatedTab.spaceId,
+               appType: updatedTab.appType,
+               title: updatedTab.title
+           });
+           
+           updatedTab.history = newHistory;
+           updatedTab.historyIndex = newHistory.length - 1;
+        }
+      }
+      
+      // Safety: Ensure history exists
+      if (!updatedTab.history || updatedTab.history.length === 0) {
+          updatedTab.history = [{
+              spaceId: updatedTab.spaceId,
+              appType: updatedTab.appType,
+              title: updatedTab.title
+          }];
+          updatedTab.historyIndex = 0;
+      }
+
+      return {
+        ...viewport,
+        tabs: viewport.tabs.map(t => t.id === tabId ? updatedTab : t)
+      };
+    }, prev));
   };
 
   const closeTabsWithSpace = (spaceId: string) => {
@@ -272,28 +315,33 @@ export function useViewports() {
           ...currentTab,
           spaceId,
           appType,
-          title: title || currentTab.title
+          title: title || currentTab.title,
         };
         
         // Add to history
-        const newHistory = [
-          ...(viewport.history || []).slice(0, (viewport.historyIndex || -1) + 1),
-          { spaceId, appType, title }
-        ];
+        const history = currentTab.history || [];
+        const currentIndex = currentTab.historyIndex ?? -1;
+        
+        const newHistory = currentIndex >= 0 ? history.slice(0, currentIndex + 1) : [];
+        newHistory.push({ spaceId, appType, title });
+        
+        updatedTab.history = newHistory;
+        updatedTab.historyIndex = newHistory.length - 1;
         
         return {
           ...viewport,
-          tabs: viewport.tabs.map(t => t.id === currentTab.id ? updatedTab : t),
-          history: newHistory,
-          historyIndex: newHistory.length - 1
+          tabs: viewport.tabs.map(t => t.id === currentTab.id ? updatedTab : t)
         };
       } else {
-        // Otherwise add new tab
+        // Otherwise add new tab (delegate to addTab logic, but we must inline it here to keep clean state update)
+        const initialHistoryItem = { spaceId, appType, title: title || 'New Tab' };
         const newTab: Tab = {
           id: `tab_${Date.now()}`,
           spaceId,
           appType,
-          title: title || 'New Tab'
+          title: title || 'New Tab',
+          history: [initialHistoryItem],
+          historyIndex: 0
         };
         return {
           ...viewport,
@@ -306,8 +354,13 @@ export function useViewports() {
 
   const navigateHistory = (viewportId: string, direction: 'back' | 'forward') => {
     setRootViewport(prev => updateViewportInTree(viewportId, (viewport) => {
-      const history = viewport.history || [];
-      const currentIndex = viewport.historyIndex ?? -1;
+      if (!viewport.activeTabId) return viewport;
+      
+      const currentTab = viewport.tabs.find(t => t.id === viewport.activeTabId);
+      if (!currentTab) return viewport;
+
+      const history = currentTab.history || [];
+      const currentIndex = currentTab.historyIndex ?? -1;
       
       let newIndex = currentIndex;
       if (direction === 'back' && currentIndex > 0) {
@@ -319,36 +372,100 @@ export function useViewports() {
       }
       
       const historyItem = history[newIndex];
-      const currentTab = viewport.tabs.find(t => t.id === viewport.activeTabId);
-      
-      if (!currentTab) return viewport;
       
       const updatedTab: Tab = {
         ...currentTab,
         spaceId: historyItem.spaceId,
         appType: historyItem.appType,
-        title: historyItem.title || currentTab.title
+        title: historyItem.title || currentTab.title,
+        historyIndex: newIndex
       };
       
       return {
         ...viewport,
-        tabs: viewport.tabs.map(t => t.id === currentTab.id ? updatedTab : t),
-        historyIndex: newIndex
+        tabs: viewport.tabs.map(t => t.id === currentTab.id ? updatedTab : t)
       };
     }, prev));
   };
 
   const canNavigateBack = (viewportId: string): boolean => {
     const viewport = findViewport(viewportId);
-    if (!viewport) return false;
-    return (viewport.historyIndex ?? -1) > 0;
+    if (!viewport || !viewport.activeTabId) return false;
+    const tab = viewport.tabs.find(t => t.id === viewport.activeTabId);
+    if (!tab) return false;
+    return (tab.historyIndex ?? -1) > 0;
   };
 
   const canNavigateForward = (viewportId: string): boolean => {
     const viewport = findViewport(viewportId);
-    if (!viewport) return false;
-    const history = viewport.history || [];
-    return (viewport.historyIndex ?? -1) < history.length - 1;
+    if (!viewport || !viewport.activeTabId) return false;
+    const tab = viewport.tabs.find(t => t.id === viewport.activeTabId);
+    if (!tab) return false;
+    const history = tab.history || [];
+    return (tab.historyIndex ?? -1) < history.length - 1;
+  };
+
+  const moveTab = (sourceViewportId: string, targetViewportId: string, tabId: string, targetIndex: number) => {
+    setRootViewport(prev => {
+      let movedTab: Tab | null = null;
+      
+      // Step 1: Find and remove the tab from source
+      const removeTab = (viewport: Viewport): Viewport => {
+        if (viewport.id === sourceViewportId) {
+          const tabIndex = viewport.tabs.findIndex(t => t.id === tabId);
+          if (tabIndex !== -1) {
+            movedTab = viewport.tabs[tabIndex];
+            const newTabs = viewport.tabs.filter(t => t.id !== tabId);
+            let newActiveTabId = viewport.activeTabId;
+            
+            if (viewport.activeTabId === tabId) {
+              if (newTabs.length > 0) {
+                newActiveTabId = newTabs[Math.max(0, tabIndex - 1)].id;
+              } else {
+                newActiveTabId = undefined;
+              }
+            }
+            
+            return { ...viewport, tabs: newTabs, activeTabId: newActiveTabId };
+          }
+        }
+        
+        if (viewport.children) {
+          return {
+            ...viewport,
+            children: [removeTab(viewport.children[0]), removeTab(viewport.children[1])]
+          };
+        }
+        return viewport;
+      };
+
+      const treeWithoutTab = removeTab(prev);
+      if (!movedTab) return prev;
+
+      // Step 2: Insert the tab into target
+      const insertTab = (viewport: Viewport): Viewport => {
+        if (viewport.id === targetViewportId) {
+          const newTabs = [...viewport.tabs];
+          newTabs.splice(targetIndex, 0, movedTab!);
+          
+          return {
+            ...viewport,
+            tabs: newTabs,
+            activeTabId: movedTab!.id
+          };
+        }
+
+        if (viewport.children) {
+          return {
+            ...viewport,
+            children: [insertTab(viewport.children[0]), insertTab(viewport.children[1])]
+          };
+        }
+        return viewport;
+      };
+
+      return insertTab(treeWithoutTab);
+    });
   };
 
   return {
@@ -367,6 +484,7 @@ export function useViewports() {
     navigateHistory,
     canNavigateBack,
     canNavigateForward,
+    moveTab,
     focusedViewportId,
     setFocusedViewportId
   };

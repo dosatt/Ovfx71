@@ -76,8 +76,8 @@ export function ViewportContent({
       data-viewport-id={viewport.id}
       className={`
         w-full h-full flex flex-col rounded-[15px] overflow-hidden border-2 transition-colors duration-200 shadow-medium
-        ${isFocused ? 'border-primary' : 'border-divider'}
-        ${settings.viewportTransparency ? 'bg-white/70' : 'bg-white'}
+        border-divider
+        ${settings.viewportTransparency ? 'bg-background/70' : 'bg-background'}
         ${settings.viewportBlur ? 'backdrop-blur-xl' : ''}
       `}
     >
@@ -95,7 +95,7 @@ export function ViewportContent({
         data-viewport-content
         className={`
           flex-1 overflow-auto no-scrollbar
-          ${settings.viewportTransparency ? 'bg-transparent' : 'bg-white'}
+          ${settings.viewportTransparency ? 'bg-transparent' : 'bg-background'}
         `}
       >
         {/* Render APP if active tab has appType */}
@@ -134,10 +134,15 @@ export function ViewportContent({
                     tabId={activeTab?.id}
                     brokenLinks={brokenLinks}
                     brokenLinksVersion={brokenLinksVersion}
+                    settings={settings}
                   />
                 )}
                 {space.type === 'canvas' && (
-                  <CanvasSpace space={space} spacesState={spacesState} />
+                  <CanvasSpace 
+                    space={space} 
+                    spacesState={spacesState} 
+                    isActive={isFocused}
+                  />
                 )}
                 {space.type === 'database' && (
                   <DatabaseSpace space={space} spacesState={spacesState} />

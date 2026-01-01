@@ -2,6 +2,7 @@ import { useState, useRef, useEffect } from 'react';
 import { Button, Input, ScrollShadow } from '@heroui/react';
 import { 
   ChevronLeft,
+  ChevronRight,
   ChevronDown,
   Plus, 
   Calendar,
@@ -227,13 +228,13 @@ export function Sidebar({ open, onToggle, spacesState, viewportsState, settings,
         style={{ width: sidebarWidth }}
         className={`
           flex flex-col h-[calc(100vh-8px)] overflow-hidden relative mt-1 ml-1 rounded-2xl border-2 border-divider
-          bg-white/70 backdrop-blur-xl shadow-xl transition-all
-          ${settings.transparency ? 'bg-white/70' : 'bg-white'}
+          shadow-none transition-all technical-border
+          ${settings.transparency ? 'bg-background/70' : 'bg-background'}
           ${settings.blur ? 'backdrop-blur-xl' : ''}
         `}
       >
         {/* Header */}
-        <div className="p-4 flex items-center justify-between">
+        <div className="p-4 flex items-center justify-between relative z-10">
           <div className="flex items-center gap-3">
             {/* macOS Traffic Lights */}
             <div className="flex gap-1.5">
@@ -243,19 +244,41 @@ export function Sidebar({ open, onToggle, spacesState, viewportsState, settings,
             </div>
             <h4 className="text-lg font-bold">OVFX</h4>
           </div>
-          <div className="flex gap-1">
+          <div className="flex items-center gap-1">
+            <div className="flex items-center mr-1">
+              <Button 
+                isIconOnly
+                size="sm" 
+                variant="light"
+                onPress={() => viewportsState.navigateHistory && viewportsState.navigateHistory(viewportsState.focusedViewportId, 'back')}
+                isDisabled={!viewportsState.canNavigateBack || !viewportsState.canNavigateBack(viewportsState.focusedViewportId)}
+                className="text-default-500 hover:text-default-900 min-w-8 w-8 h-8"
+              >
+                <ChevronLeft size={18} />
+              </Button>
+              <Button 
+                isIconOnly
+                size="sm" 
+                variant="light"
+                onPress={() => viewportsState.navigateHistory && viewportsState.navigateHistory(viewportsState.focusedViewportId, 'forward')}
+                isDisabled={!viewportsState.canNavigateForward || !viewportsState.canNavigateForward(viewportsState.focusedViewportId)}
+                className="text-default-500 hover:text-default-900 min-w-8 w-8 h-8"
+              >
+                <ChevronRight size={18} />
+              </Button>
+            </div>
+            
             <Button 
+              isIconOnly
               size="sm" 
               color="primary"
               variant="solid"
-              startContent={<Plus size={16} />}
               onPress={() => setNewSpaceModalOpen(true)}
-              className="font-medium"
               style={{
                 borderRadius: settings.buttonBorderRadius,
               }}
             >
-              Nuovo
+              <Plus size={18} />
             </Button>
           </div>
         </div>
@@ -415,7 +438,9 @@ export function Sidebar({ open, onToggle, spacesState, viewportsState, settings,
                     ) : (
                       space.icon && <span className="text-base shrink-0">{space.icon}</span>
                     )}
-                    <span className="text-sm truncate">{space.title}</span>
+                    <span className="text-sm truncate">
+                      {space.title || (space.type === 'page' ? 'New page' : `New ${space.type}`)}
+                    </span>
                   </div>
                 );
               })}

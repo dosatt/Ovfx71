@@ -1,0 +1,70 @@
+import {
+  Type,
+  Heading1,
+  Heading2,
+  Heading3,
+  Heading4,
+  List,
+  ListOrdered,
+  CheckSquare,
+  Quote,
+  Minus,
+  Code,
+  AlertCircle,
+  Image as ImageIcon,
+  File as FileIcon,
+  Link2,
+  Globe,
+  Sigma,
+  Table,
+  ListTodo
+} from 'lucide-react';
+import { BlockType } from '../../types';
+
+export const blockTypeConfig: Record<BlockType, { icon: any; label: string; placeholder: string }> = {
+  text: { icon: Type, label: 'Text', placeholder: 'Type something' },
+  heading1: { icon: Heading1, label: 'Heading 1', placeholder: 'Heading 1' },
+  heading2: { icon: Heading2, label: 'Heading 2', placeholder: 'Heading 2' },
+  heading3: { icon: Heading3, label: 'Heading 3', placeholder: 'Heading 3' },
+  heading4: { icon: Heading4, label: 'Heading 4', placeholder: 'Heading 4' },
+  bulletList: { icon: List, label: 'Bullet List', placeholder: 'List item' },
+  numberedList: { icon: ListOrdered, label: 'Numbered List', placeholder: 'List item' },
+  checkbox: { icon: CheckSquare, label: 'Checkbox', placeholder: 'To-do item' },
+  checkboxNumberedList: { icon: ListTodo, label: 'Checkbox Numbered List', placeholder: 'To-do item' },
+  table: { icon: Table, label: 'Table', placeholder: '' },
+  quote: { icon: Quote, label: 'Quote', placeholder: 'Quote' },
+  divider: { icon: Minus, label: 'Divider', placeholder: '' },
+  callout: { icon: AlertCircle, label: 'Callout', placeholder: 'Callout text' },
+  math: { icon: Sigma, label: 'Math', placeholder: 'Math equation' },
+  code: { icon: Code, label: 'Code', placeholder: 'Code block' },
+  image: { icon: ImageIcon, label: 'Image', placeholder: 'Insert image' },
+  file: { icon: FileIcon, label: 'File', placeholder: 'Insert file' },
+  embed: { icon: Globe, label: 'Embed', placeholder: 'Paste iframe or code' },
+  pageLink: { icon: Link2, label: 'Inline Link', placeholder: 'Link to space' },
+  spaceEmbed: { icon: Globe, label: 'Space Preview', placeholder: 'Embed a space' },
+  blockEmbed: { icon: Link2, label: 'Block Embed', placeholder: 'Embed a block' },
+  elementEmbed: { icon: Link2, label: 'Element Embed', placeholder: 'Embed an element' },
+  video: { icon: FileIcon, label: 'Video', placeholder: 'Insert video' },
+  audio: { icon: FileIcon, label: 'Audio', placeholder: 'Insert audio' }
+};
+
+export const orderedBlockTypes: BlockType[] = [
+  'text',
+  'heading1',
+  'heading2',
+  'heading3',
+  'heading4',
+  'bulletList',
+  'numberedList',
+  'checkbox',
+  'checkboxNumberedList',
+  'table',
+  'image',
+  'file',
+  'spaceEmbed', // Index 13 (0-based is 12)
+  'divider',
+  'callout',
+  'quote',
+  'math',
+  'code'
+];

@@ -58,4 +58,51 @@ or initiating processes. They communicate interactivity and should have clear, a
   * Purpose : Used for the least important actions
   * Visual Style : Text-only with no border, using primary color
   * Usage : For actions that should be available but not emphasized
+
+
+## Text Element Order
+
+The dropdown menus for text elements should follow this specific order:
+
+1. Text
+2. Heading 1
+3. Heading 2
+4. Heading 3
+5. Heading 4
+6. Bullet list
+7. Numbered list
+8. Checkbox
+9. Checkbox numbered list
+10. Tablee
+11. Image
+12. File
+13. Space Link
+14. Divider
+15. Callout
+16. Quote
+17. Math
+18. Code
+
+## Pages shortcuts
+
+[[ = checkbox list element (unchecked)
+[[[ = checkbox list element (checked)
+N[[ = numbered checkbox list element (unchecked, the number can also be any number)
+N[[[ = unnumbered checkbox list element (checked, the number can also be any number
+N. = numbered list element (the number can also be any number and become the reference number)
+- = Bullet list element
+--- = divider
+___ = stop divider
+# = Header 1
+## = Header 2
+### = Header 3
+#### = Header 4
+\\\ = add inline space link
+
+### Other inline pages shortcuts
+
+>> = Add space link preview
+
+
+
 -->

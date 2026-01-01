@@ -14,7 +14,8 @@ import { Space } from '../../types';
 import { RichTextRenderer } from './RichTextRenderer';
 import { useSettings } from '../../hooks/useSettings';
 import { useState, useRef, useEffect } from 'react';
-import { Button, Checkbox } from '@heroui/react';
+import { Button } from '@heroui/react';
+import { Checkbox } from '../ui/checkbox';
 
 interface SpaceEmbedProps {
   space: Space;
@@ -89,7 +90,7 @@ export function SpaceEmbed({ space, onNavigate, compact = false, spacesState }: 
               return (
                 <h2
                   key={index}
-                  className="text-2xl font-bold text-center mb-2 overflow-hidden text-ellipsis whitespace-nowrap"
+                  className="text-2xl font-bold mb-2 overflow-hidden text-ellipsis whitespace-nowrap"
                 >
                   {block.content || '(vuoto)'}
                 </h2>
@@ -101,7 +102,7 @@ export function SpaceEmbed({ space, onNavigate, compact = false, spacesState }: 
               return (
                 <h3
                   key={index}
-                  className="text-xl font-bold text-center mb-1.5 overflow-hidden text-ellipsis whitespace-nowrap"
+                  className="text-xl font-bold mb-1.5 overflow-hidden text-ellipsis whitespace-nowrap"
                 >
                   {block.content || '(vuoto)'}
                 </h3>
@@ -113,10 +114,22 @@ export function SpaceEmbed({ space, onNavigate, compact = false, spacesState }: 
               return (
                 <h4
                   key={index}
-                  className="text-lg font-bold text-center mb-1 overflow-hidden text-ellipsis whitespace-nowrap"
+                  className="text-lg font-bold mb-1 overflow-hidden text-ellipsis whitespace-nowrap"
                 >
                   {block.content || '(vuoto)'}
                 </h4>
+              );
+            }
+
+            // Heading 4
+            if (block.type === 'heading4') {
+              return (
+                <h5
+                  key={index}
+                  className="text-base font-bold mb-1 overflow-hidden text-ellipsis whitespace-nowrap"
+                >
+                  {block.content || '(vuoto)'}
+                </h5>
               );
             }
 
@@ -137,12 +150,21 @@ export function SpaceEmbed({ space, onNavigate, compact = false, spacesState }: 
 
             // Numbered List
             if (block.type === 'numberedList') {
+              let listNumber = 1;
+              for (let i = index - 1; i >= 0; i--) {
+                if (blocks[i].type === 'numberedList') {
+                  listNumber++;
+                } else {
+                  break;
+                }
+              }
+
               return (
                 <div
                   key={index}
                   className="flex gap-2 mb-1 overflow-hidden"
                 >
-                  <span className="shrink-0">{index + 1}.</span>
+                  <span className="shrink-0">{listNumber}.</span>
                   <span className="flex-1 overflow-hidden text-ellipsis whitespace-nowrap">
                     {block.content || '(vuoto)'}
                   </span>
@@ -158,8 +180,7 @@ export function SpaceEmbed({ space, onNavigate, compact = false, spacesState }: 
                   className="flex gap-2 items-center mb-1 overflow-hidden"
                 >
                   <Checkbox
-                    isSelected={block.checked || false}
-                    size="sm"
+                    checked={block.checked || false}
                     className="pointer-events-none"
                   />
                   <span
@@ -442,9 +463,11 @@ export function SpaceEmbed({ space, onNavigate, compact = false, spacesState }: 
           e.stopPropagation();
           onNavigate(space.id);
         }}
-        className="p-4 rounded-[12px] border border-divider bg-background relative overflow-visible transition-all cursor-default hover:border-primary hover:shadow-sm"
+        className="p-4 bg-background relative overflow-visible transition-all cursor-default hover:shadow-sm"
         style={{
-          borderRadius: settings.previewBorderRadius,
+          borderRadius: '32px',
+          border: '2px solid #D4AF37',
+          pointerEvents: 'auto'
         }}
       >
         {/* Badge Preview con dropdown - sempre visibile */}

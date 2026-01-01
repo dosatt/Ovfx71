@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react';
 import {
   Button,
   Card,
@@ -12,17 +13,43 @@ import {
   Mail, 
   MessageSquare, 
   Calendar,
-  Clock
+  Clock,
+  Search,
+  Command
 } from 'lucide-react';
+
+interface RecentSpace {
+  id: string;
+  title: string;
+  type: string;
+}
 
 interface WelcomePageProps {
   onCreateSpace: (type: 'page' | 'canvas' | 'database' | 'dashboard') => void;
-  onOpenApp: (appType: 'browser' | 'mail' | 'chat' | 'calendar' | 'draw') => void;
-  recentSpaces?: Array<{ id: string; title: string; type: string }>;
-  onOpenSpace?: (spaceId: string) => void;
+  onOpenApp: (appType: 'browser' | 'mail' | 'chat' | 'calendar' | 'draw' | 'settings') => void;
+  onOpenSpace: (spaceId: string) => void;
+  recentSpaces: RecentSpace[];
 }
 
-export function WelcomePage({ onCreateSpace, onOpenApp, recentSpaces = [], onOpenSpace }: WelcomePageProps) {
+export function WelcomePage({ onCreateSpace, onOpenApp, onOpenSpace, recentSpaces }: WelcomePageProps) {
+  const [searchFocused, setSearchFocused] = useState(false);
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+        e.preventDefault();
+        const searchInput = document.getElementById('welcome-search-input');
+        if (searchInput) {
+          searchInput.focus();
+          setSearchFocused(true);
+        }
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
+
   const spaces = [
     { type: 'page' as const, icon: FileText, label: 'Page', description: 'Documento con editor di testo' },
     { type: 'canvas' as const, icon: Layout, label: 'Canvas', description: 'Tela infinita per idee visive' },
@@ -38,16 +65,37 @@ export function WelcomePage({ onCreateSpace, onOpenApp, recentSpaces = [], onOpe
   ];
 
   return (
-    <div className="h-full overflow-auto p-6 no-scrollbar">
-      <div className="max-w-[600px] mx-auto">
+    <div className="flex flex-col items-center justify-center min-h-full py-12 px-6 select-none relative">
+      <div className="max-w-4xl w-full">
         {/* Header */}
         <div className="mb-8 text-center">
           <h3 className="text-3xl font-bold mb-1">
             Benvenuto in OVFX
           </h3>
-          <p className="text-default-500">
+          <p className="text-default-500 mb-6">
             Crea un nuovo spazio o apri un'applicazione
           </p>
+          
+          {/* Quick Search Bar */}
+          <div className="max-w-md mx-auto relative group">
+            <div className={`
+              flex items-center gap-3 px-4 h-12 rounded-xl border-2 transition-all duration-200
+              ${searchFocused ? 'border-primary bg-background shadow-lg shadow-primary/10' : 'border-divider bg-default-50 hover:border-default-400'}
+            `}>
+              <Search size={18} className={searchFocused ? 'text-primary' : 'text-default-400'} />
+              <input 
+                id="welcome-search-input"
+                type="text" 
+                placeholder="Cerca comandi o spazi..." 
+                className="flex-1 bg-transparent border-none outline-none text-sm"
+                onFocus={() => setSearchFocused(true)}
+                onBlur={() => setSearchFocused(false)}
+              />
+              <div className="flex items-center gap-1 px-1.5 py-0.5 rounded bg-default-200/50 text-[10px] font-medium text-default-500">
+                <Command size={10} /> K
+              </div>
+            </div>
+          </div>
         </div>
 
         {/* Spaces */}

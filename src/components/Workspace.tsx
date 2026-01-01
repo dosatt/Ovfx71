@@ -27,7 +27,7 @@ export function Workspace({
 }: WorkspaceProps) {
   return (
     <div
-      className="flex-1 h-full overflow-hidden p-1"
+      className="flex-1 h-full overflow-hidden p-1 pcb-grid"
     >
       <ViewportRenderer
         viewport={viewportsState.rootViewport}

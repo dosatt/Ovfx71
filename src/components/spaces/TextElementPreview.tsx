@@ -21,6 +21,7 @@ interface TextElementPreviewProps {
   type: TextElementType;
   content: string;
   sourceSpaceName?: string;
+  count?: number;
 }
 
 const blockTypeIcons: Record<string, any> = {
@@ -63,12 +64,13 @@ const blockTypeLabels: Record<string, string> = {
   divider: 'Divider',
 };
 
-export function TextElementPreview({ type, content, sourceSpaceName }: TextElementPreviewProps) {
+export function TextElementPreview({ type, content = '', sourceSpaceName, count }: TextElementPreviewProps) {
   const Icon = blockTypeIcons[type] || Type;
   const label = blockTypeLabels[type] || 'Block';
   
   // Truncate content
-  const displayContent = content.length > 60 ? `${content.substring(0, 60)}...` : content;
+  const safeContent = content || '';
+  const displayContent = safeContent.length > 60 ? `${safeContent.substring(0, 60)}...` : safeContent;
   
   return (
     <div
@@ -80,6 +82,11 @@ export function TextElementPreview({ type, content, sourceSpaceName }: TextEleme
         <span className="text-sm font-semibold">
           {label}
         </span>
+        {count && count > 1 && (
+           <Chip size="sm" variant="flat" color="primary">
+             {count} items
+           </Chip>
+        )}
         {sourceSpaceName && (
           <Chip size="sm" variant="flat" color="primary" className="ml-auto">
             {sourceSpaceName}

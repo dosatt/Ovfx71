@@ -1,15 +1,11 @@
 import { useState } from 'react';
 import {
   Button,
-  Switch,
   Input,
-  Slider,
   Tabs,
   Tab,
   Card,
   CardBody,
-  RadioGroup,
-  Radio,
   Divider,
 } from '@heroui/react';
 import { 
@@ -19,7 +15,12 @@ import {
   Terminal,
   RotateCcw,
   Sun,
-  Moon
+  Moon,
+  Check,
+  ChevronDown,
+  Eye,
+  Copy,
+  CheckCircle2
 } from 'lucide-react';
 import { DebugTreeView } from '../DebugTreeView';
 import type { Settings as SettingsType } from '../../hooks/useSettings';
@@ -37,12 +38,137 @@ const PRESET_GRADIENTS = [
   { name: 'Sunset', start: '#ff6b6b', end: '#feca57', angle: 135 },
   { name: 'Forest', start: '#11998e', end: '#38ef7d', angle: 135 },
   { name: 'Lavender', start: '#a8caba', end: '#5d4e6d', angle: 135 },
+  { name: 'Midnight', start: '#2c3e50', end: '#3498db', angle: 135 },
+  { name: 'Warmth', start: '#f093fb', end: '#f5576c', angle: 135 },
 ];
 
 const PRESET_COLORS = [
   '#ffffff', '#f5f7fa', '#e8ecf1', 
-  '#667eea', '#ff6b6b', '#11998e'
+  '#667eea', '#ff6b6b', '#11998e',
+  '#1e1e1e', '#2d3748', '#4a5568', '#000000',
+  '#E5E2D1', '#E5E0D2', '#C7C7C7', '#D2E5DE', '#D4E5E8'
 ];
+
+const LIGHT_THEME_DEFAULTS = {
+  backgroundType: 'gradient',
+  backgroundColor: '#f5f7fa',
+  gradientStart: '#f5f7fa',
+  gradientEnd: '#e8ecf1',
+  gradientAngle: 135
+};
+
+const DARK_THEME_DEFAULTS = {
+  backgroundType: 'solid',
+  backgroundColor: '#18181b', // zinc-950
+  gradientStart: '#0f172a', // slate-950
+  gradientEnd: '#1e293b', // slate-800
+  gradientAngle: 135
+};
+
+// Custom Switch Component
+const SettingSwitch = ({ 
+  label, 
+  description, 
+  isSelected, 
+  onChange 
+}: { 
+  label: string; 
+  description?: string; 
+  isSelected: boolean; 
+  onChange: (val: boolean) => void;
+}) => (
+  <div 
+    className="flex justify-between items-center py-3 px-1 group cursor-pointer"
+    onClick={() => onChange(!isSelected)}
+  >
+    <div className="flex flex-col gap-1">
+      <span className="text-sm font-medium text-default-900">{label}</span>
+      {description && <span className="text-xs text-default-500">{description}</span>}
+    </div>
+    <div className={`
+      relative w-11 h-6 rounded-full transition-colors duration-200 ease-in-out
+      ${isSelected ? 'bg-primary' : 'bg-default-200'}
+    `}>
+      <div className={`
+        absolute top-1 left-1 w-4 h-4 rounded-full bg-white shadow-sm transition-transform duration-200 ease-in-out
+        ${isSelected ? 'translate-x-5' : 'translate-x-0'}
+      `} />
+    </div>
+  </div>
+);
+
+// Custom Radio Card Component
+const RadioCard = ({
+  isSelected,
+  onClick,
+  icon: Icon,
+  label,
+  value
+}: {
+  isSelected: boolean;
+  onClick: () => void;
+  icon?: any;
+  label: string;
+  value?: string;
+}) => (
+  <div
+    onClick={onClick}
+    className={`
+      relative flex flex-col items-center justify-center p-4 rounded-xl border-2 cursor-pointer transition-all duration-200
+      ${isSelected 
+        ? 'border-primary bg-primary/5 shadow-sm' 
+        : 'border-default-200 bg-transparent hover:border-default-300 hover:bg-default-50'
+      }
+    `}
+  >
+    {isSelected && (
+      <div className="absolute top-2 right-2 text-primary">
+        <Check size={16} />
+      </div>
+    )}
+    {Icon && <Icon className={`w-6 h-6 mb-2 ${isSelected ? 'text-primary' : 'text-default-500'}`} />}
+    <span className={`text-sm font-medium ${isSelected ? 'text-primary' : 'text-default-700'}`}>
+      {label}
+    </span>
+  </div>
+);
+
+// Custom Slider Component
+const SettingSlider = ({
+  label,
+  value,
+  min,
+  max,
+  step,
+  unit = '',
+  onChange
+}: {
+  label: string;
+  value: number;
+  min: number;
+  max: number;
+  step: number;
+  unit?: string;
+  onChange: (val: number) => void;
+}) => (
+  <div className="flex flex-col gap-3 py-2">
+    <div className="flex justify-between items-center">
+      <span className="text-sm font-medium text-default-900">{label}</span>
+      <span className="text-xs font-mono bg-default-100 px-2 py-1 rounded text-default-600">
+        {value}{unit}
+      </span>
+    </div>
+    <input
+      type="range"
+      min={min}
+      max={max}
+      step={step}
+      value={value}
+      onChange={(e) => onChange(parseFloat(e.target.value))}
+      className="slider w-full h-2 bg-default-200 rounded-lg appearance-none cursor-pointer accent-primary"
+    />
+  </div>
+);
 
 export function SettingsApp({
   settings,
@@ -53,16 +179,49 @@ export function SettingsApp({
 }: SettingsAppProps) {
   const [debugMode, setDebugMode] = useState<'json' | 'tree'>('json');
 
+  const generateDesignSystemPrompt = () => {
+    const prompt = `
+Current Design System Settings:
+- Theme: ${settings.theme}
+- Background: ${settings.backgroundType === 'solid' ? settings.backgroundColor : `Linear Gradient (${settings.gradientAngle}deg, ${settings.gradientStart}, ${settings.gradientEnd})`}
+- Transparency: ${settings.transparency ? 'On' : 'Off'}
+- Blur: ${settings.blur ? 'On' : 'Off'}
+- Button Radius: ${settings.buttonBorderRadius}
+- Button Padding: Horizontal ${settings.buttonPaddingLeft}rem, Vertical ${settings.buttonPaddingTop}rem
+- Viewport Transparency: ${settings.viewportTransparency ? 'On' : 'Off'}
+- Viewport Blur: ${settings.viewportBlur ? 'On' : 'Off'}
+
+Typography:
+- Heading 1: text-4xl font-bold tracking-tight
+- Heading 2: text-3xl font-bold tracking-tight
+- Heading 3: text-2xl font-bold
+- Heading 4: text-xl font-semibold
+- Body: text-base leading-relaxed
+- Small: text-sm text-default-500
+
+Colors:
+- Primary: hsl(var(--primary))
+- Background: var(--background)
+- Foreground: var(--foreground)
+
+Please apply these settings to the application design.
+    `.trim();
+    
+    navigator.clipboard.writeText(prompt);
+  };
+
   if (!settings) return null;
 
   return (
-    <div className="h-full w-full flex flex-col bg-background">
-      <div className="flex-1 overflow-y-auto p-6">
-        <div className="max-w-4xl mx-auto space-y-8">
+    <div className="h-full w-full flex flex-col bg-transparent">
+      <div className="flex-1 overflow-y-auto">
+        <div className="max-w-3xl mx-auto py-8 px-6 space-y-8">
+          
+          {/* Header */}
           <div>
-            <h1 className="text-2xl font-bold mb-2">Impostazioni</h1>
+            <h1 className="text-3xl font-bold tracking-tight mb-2">Impostazioni</h1>
             <p className="text-default-500">
-              Personalizza l'aspetto e il comportamento dell'applicazione
+              Personalizza l'aspetto e l'esperienza del tuo spazio di lavoro.
             </p>
           </div>
 
@@ -72,11 +231,12 @@ export function SettingsApp({
             variant="underlined"
             classNames={{
               tabList: "gap-6 w-full relative rounded-none p-0 border-b border-divider",
-              cursor: "w-full bg-primary",
-              tab: "max-w-fit px-0 h-12",
+              cursor: "w-full bg-primary h-0.5",
+              tab: "max-w-fit px-0 h-12 text-default-500 data-[selected=true]:text-primary font-medium",
               tabContent: "group-data-[selected=true]:text-primary"
             }}
           >
+            {/* --- APPEARANCE TAB --- */}
             <Tab
               key="appearance"
               title={
@@ -86,102 +246,81 @@ export function SettingsApp({
                 </div>
               }
             >
-              <div className="flex flex-col gap-6 py-4">
-                <section>
-                  <h3 className="text-small font-semibold mb-3 text-default-500 uppercase tracking-wider">Tema Applicazione</h3>
+              <div className="flex flex-col gap-8 py-6">
+                
+                {/* Theme Section */}
+                <section className="space-y-4">
+                  <h3 className="text-xs font-semibold text-default-400 uppercase tracking-wider">Tema</h3>
                   <div className="grid grid-cols-2 gap-4">
-                    <Card 
-                      isPressable 
-                      onPress={() => onUpdateSettings({ theme: 'light' })}
-                      className={`
-                        border-2 transition-all hover:scale-[1.02]
-                        ${settings.theme === 'light' ? 'border-primary bg-primary/5' : 'border-transparent bg-default-50'}
-                      `}
-                      shadow="sm"
-                    >
-                      <CardBody className="flex flex-col items-center justify-center gap-3 p-6">
-                        <Sun className={`w-8 h-8 ${settings.theme === 'light' ? 'text-primary' : 'text-default-500'}`} />
-                        <span className={`font-medium ${settings.theme === 'light' ? 'text-primary' : 'text-default-600'}`}>Chiaro</span>
-                      </CardBody>
-                    </Card>
-
-                    <Card 
-                      isPressable 
-                      onPress={() => onUpdateSettings({ theme: 'dark' })}
-                      className={`
-                        border-2 transition-all hover:scale-[1.02]
-                        ${settings.theme === 'dark' ? 'border-primary bg-primary/5' : 'border-transparent bg-default-50'}
-                      `}
-                      shadow="sm"
-                    >
-                      <CardBody className="flex flex-col items-center justify-center gap-3 p-6">
-                        <Moon className={`w-8 h-8 ${settings.theme === 'dark' ? 'text-primary' : 'text-default-500'}`} />
-                        <span className={`font-medium ${settings.theme === 'dark' ? 'text-primary' : 'text-default-600'}`}>Scuro</span>
-                      </CardBody>
-                    </Card>
+                    <RadioCard
+                      label="Chiaro"
+                      icon={Sun}
+                      isSelected={settings.theme === 'light'}
+                      onClick={() => onUpdateSettings({ 
+                        theme: 'light',
+                        // Apply light theme defaults if coming from dark
+                        ...(settings.theme === 'dark' ? LIGHT_THEME_DEFAULTS : {})
+                      })}
+                    />
+                    <RadioCard
+                      label="Scuro"
+                      icon={Moon}
+                      isSelected={settings.theme === 'dark'}
+                      onClick={() => onUpdateSettings({ 
+                        theme: 'dark',
+                        // Apply dark theme defaults if coming from light
+                        ...(settings.theme === 'light' ? DARK_THEME_DEFAULTS : {})
+                      })}
+                    />
                   </div>
                 </section>
 
-                <section>
-                  <h3 className="text-small font-semibold mb-3 text-default-500 uppercase tracking-wider">Sidebar</h3>
-                  <Card shadow="sm" className="bg-default-50">
-                    <CardBody className="gap-4">
-                      <div className="flex justify-between items-center">
-                        <div className="flex flex-col">
-                          <span className="text-small font-medium">Trasparenza</span>
-                          <span className="text-tiny text-default-500">Rende lo sfondo semi-trasparente</span>
-                        </div>
-                        <Switch 
-                          isSelected={settings.transparency} 
-                          onValueChange={(val) => onUpdateSettings({ transparency: val })}
-                        />
-                      </div>
-                      <Divider />
-                      <div className="flex justify-between items-center">
-                        <div className="flex flex-col">
-                          <span className="text-small font-medium">Sfocatura (Blur)</span>
-                          <span className="text-tiny text-default-500">Applica un effetto vetro smerigliato</span>
-                        </div>
-                        <Switch 
-                          isSelected={settings.blur} 
-                          onValueChange={(val) => onUpdateSettings({ blur: val })}
-                        />
-                      </div>
-                    </CardBody>
-                  </Card>
+                <Divider />
+
+                {/* Sidebar Section */}
+                <section className="space-y-4">
+                  <h3 className="text-xs font-semibold text-default-400 uppercase tracking-wider">Sidebar</h3>
+                  <div className="bg-default-50/50 rounded-xl border border-divider p-4 space-y-2">
+                    <SettingSwitch
+                      label="Trasparenza"
+                      description="Rende lo sfondo della sidebar semi-trasparente"
+                      isSelected={settings.transparency}
+                      onChange={(val) => onUpdateSettings({ transparency: val })}
+                    />
+                    <Divider className="opacity-50" />
+                    <SettingSwitch
+                      label="Sfocatura (Blur)"
+                      description="Applica un effetto vetro smerigliato (backdrop-filter)"
+                      isSelected={settings.blur}
+                      onChange={(val) => onUpdateSettings({ blur: val })}
+                    />
+                  </div>
                 </section>
 
-                <section>
-                  <h3 className="text-small font-semibold mb-3 text-default-500 uppercase tracking-wider">Viewport</h3>
-                  <Card shadow="sm" className="bg-default-50">
-                    <CardBody className="gap-4">
-                      <div className="flex justify-between items-center">
-                        <div className="flex flex-col">
-                          <span className="text-small font-medium">Trasparenza</span>
-                          <span className="text-tiny text-default-500">Rende i pannelli semi-trasparenti</span>
-                        </div>
-                        <Switch 
-                          isSelected={settings.viewportTransparency} 
-                          onValueChange={(val) => onUpdateSettings({ viewportTransparency: val })}
-                        />
-                      </div>
-                      <Divider />
-                      <div className="flex justify-between items-center">
-                        <div className="flex flex-col">
-                          <span className="text-small font-medium">Sfocatura (Blur)</span>
-                          <span className="text-tiny text-default-500">Applica un effetto vetro ai pannelli</span>
-                        </div>
-                        <Switch 
-                          isSelected={settings.viewportBlur} 
-                          onValueChange={(val) => onUpdateSettings({ viewportBlur: val })}
-                        />
-                      </div>
-                    </CardBody>
-                  </Card>
+                {/* Viewport Section */}
+                <section className="space-y-4">
+                  <h3 className="text-xs font-semibold text-default-400 uppercase tracking-wider">Viewport</h3>
+                  <div className="bg-default-50/50 rounded-xl border border-divider p-4 space-y-2">
+                    <SettingSwitch
+                      label="Trasparenza Pannelli"
+                      description="Rende i pannelli di contenuto semi-trasparenti"
+                      isSelected={settings.viewportTransparency}
+                      onChange={(val) => onUpdateSettings({ viewportTransparency: val })}
+                    />
+                    <Divider className="opacity-50" />
+                    <SettingSwitch
+                      label="Sfocatura Pannelli"
+                      description="Applica un effetto vetro ai pannelli di contenuto"
+                      isSelected={settings.viewportBlur}
+                      onChange={(val) => onUpdateSettings({ viewportBlur: val })}
+                    />
+                  </div>
                 </section>
+
               </div>
             </Tab>
 
+            {/* --- INTERFACE TAB --- */}
             <Tab
               key="ui"
               title={
@@ -191,76 +330,80 @@ export function SettingsApp({
                 </div>
               }
             >
-              <div className="flex flex-col gap-6 py-4">
-                <section>
-                  <h3 className="text-small font-semibold mb-3 text-default-500 uppercase tracking-wider">Pulsanti</h3>
-                  <Card shadow="sm" className="bg-default-50">
-                    <CardBody className="gap-6">
-                      <div className="flex flex-col gap-2">
-                        <span className="text-small font-medium">Arrotondamento Bordi</span>
-                        <div className="flex gap-2">
-                          {['4px', '8px', '12px', '999px'].map((radius) => (
-                            <Button
-                              key={radius}
-                              size="sm"
-                              variant={settings.buttonBorderRadius === radius ? "solid" : "bordered"}
-                              color={settings.buttonBorderRadius === radius ? "primary" : "default"}
-                              onPress={() => onUpdateSettings({ buttonBorderRadius: radius })}
-                              className="capitalize"
-                            >
-                              {radius === '999px' ? 'Pillola' : radius}
-                            </Button>
-                          ))}
-                        </div>
+              <div className="flex flex-col gap-8 py-6">
+                
+                {/* Buttons Section */}
+                <section className="space-y-4">
+                  <h3 className="text-xs font-semibold text-default-400 uppercase tracking-wider">Stile Pulsanti</h3>
+                  <div className="space-y-6">
+                    <div>
+                      <span className="text-sm font-medium text-default-900 mb-3 block">Arrotondamento</span>
+                      <div className="flex gap-3">
+                        {['4px', '8px', '12px', '999px'].map((radius) => (
+                          <button
+                            key={radius}
+                            onClick={() => onUpdateSettings({ buttonBorderRadius: radius })}
+                            className={`
+                              flex-1 h-10 rounded-lg border text-sm font-medium transition-all
+                              ${settings.buttonBorderRadius === radius
+                                ? 'border-primary bg-primary text-primary-foreground shadow-md'
+                                : 'border-default-200 bg-white hover:bg-default-50 text-default-700'
+                              }
+                            `}
+                          >
+                            {radius === '999px' ? 'Pillola' : radius}
+                          </button>
+                        ))}
                       </div>
-                      
-                      <div className="flex flex-col gap-2">
-                        <div className="flex justify-between">
-                          <span className="text-small font-medium">Padding Orizzontale</span>
-                          <span className="text-tiny text-default-500">{settings.buttonPaddingLeft}rem</span>
-                        </div>
-                        <Slider 
-                          size="sm"
-                          step={0.1}
-                          maxValue={3}
-                          minValue={0}
-                          value={settings.buttonPaddingLeft}
-                          onChange={(val) => onUpdateSettings({ 
-                            buttonPaddingLeft: val as number,
-                            buttonPaddingRight: val as number 
-                          })}
-                        />
-                      </div>
-                    </CardBody>
-                  </Card>
+                    </div>
+
+                    <SettingSlider
+                      label="Padding Orizzontale"
+                      value={settings.buttonPaddingLeft}
+                      min={0}
+                      max={3}
+                      step={0.1}
+                      unit="rem"
+                      onChange={(val) => onUpdateSettings({ 
+                        buttonPaddingLeft: val,
+                        buttonPaddingRight: val 
+                      })}
+                    />
+                  </div>
                 </section>
 
-                <section>
-                  <h3 className="text-small font-semibold mb-3 text-default-500 uppercase tracking-wider">Anteprime</h3>
-                  <Card shadow="sm" className="bg-default-50">
-                    <CardBody className="gap-4">
-                      <div className="flex flex-col gap-2">
-                        <span className="text-small font-medium">Arrotondamento Anteprima Space</span>
-                        <div className="flex gap-2">
-                          {['4px', '8px', '12px', '16px'].map((radius) => (
-                            <Button
-                              key={radius}
-                              size="sm"
-                              variant={settings.previewBorderRadius === radius ? "solid" : "bordered"}
-                              color={settings.previewBorderRadius === radius ? "primary" : "default"}
-                              onPress={() => onUpdateSettings({ previewBorderRadius: radius })}
-                            >
-                              {radius}
-                            </Button>
-                          ))}
-                        </div>
+                <Divider />
+
+                {/* Previews Section */}
+                <section className="space-y-4">
+                  <h3 className="text-xs font-semibold text-default-400 uppercase tracking-wider">Anteprime Spaces</h3>
+                  <div className="space-y-6">
+                     <div>
+                      <span className="text-sm font-medium text-default-900 mb-3 block">Arrotondamento Card</span>
+                      <div className="flex gap-3">
+                        {['4px', '8px', '12px', '16px'].map((radius) => (
+                          <button
+                            key={radius}
+                            onClick={() => onUpdateSettings({ previewBorderRadius: radius })}
+                            className={`
+                              flex-1 h-10 rounded-lg border text-sm font-medium transition-all
+                              ${settings.previewBorderRadius === radius
+                                ? 'border-primary bg-primary text-primary-foreground shadow-md'
+                                : 'border-default-200 bg-white hover:bg-default-50 text-default-700'
+                              }
+                            `}
+                          >
+                            {radius}
+                          </button>
+                        ))}
                       </div>
-                    </CardBody>
-                  </Card>
+                    </div>
+                  </div>
                 </section>
               </div>
             </Tab>
 
+            {/* --- BACKGROUND TAB --- */}
             <Tab
               key="background"
               title={
@@ -270,67 +413,86 @@ export function SettingsApp({
                 </div>
               }
             >
-              <div className="flex flex-col gap-6 py-4">
-                <RadioGroup
-                  orientation="horizontal"
-                  value={settings.backgroundType}
-                  onValueChange={(val) => onUpdateSettings({ backgroundType: val as 'solid' | 'gradient' })}
-                  label="Tipo di Sfondo"
-                >
-                  <Radio value="solid">Tinta Unita</Radio>
-                  <Radio value="gradient">Gradiente</Radio>
-                </RadioGroup>
+              <div className="flex flex-col gap-8 py-6">
+                
+                {/* Type Selection */}
+                <div className="bg-default-100 p-1 rounded-xl flex">
+                  <button
+                    className={`flex-1 py-2 rounded-lg text-sm font-medium transition-all ${settings.backgroundType === 'solid' ? 'bg-white shadow text-primary' : 'text-default-500 hover:text-default-700'}`}
+                    onClick={() => onUpdateSettings({ backgroundType: 'solid' })}
+                  >
+                    Tinta Unita
+                  </button>
+                  <button
+                    className={`flex-1 py-2 rounded-lg text-sm font-medium transition-all ${settings.backgroundType === 'gradient' ? 'bg-white shadow text-primary' : 'text-default-500 hover:text-default-700'}`}
+                    onClick={() => onUpdateSettings({ backgroundType: 'gradient' })}
+                  >
+                    Gradiente
+                  </button>
+                </div>
 
                 {settings.backgroundType === 'solid' ? (
-                  <Card shadow="sm" className="bg-default-50">
-                    <CardBody className="gap-4">
-                      <div className="grid grid-cols-6 gap-3">
+                  <div className="space-y-6 animate-in fade-in zoom-in-95 duration-200">
+                    <section className="space-y-4">
+                       <h3 className="text-xs font-semibold text-default-400 uppercase tracking-wider">Colori Predefiniti</h3>
+                       <div className="grid grid-cols-6 gap-3">
                         {PRESET_COLORS.map((color) => (
                           <button
                             key={color}
                             className={`
-                              w-full aspect-square rounded-full border-2 transition-transform hover:scale-110
-                              ${settings.backgroundColor === color ? 'border-primary ring-2 ring-primary/30' : 'border-divider'}
+                              w-full aspect-square rounded-full border-2 transition-all hover:scale-110 shadow-sm
+                              ${settings.backgroundColor === color ? 'border-primary ring-2 ring-primary/20 scale-110' : 'border-divider'}
                             `}
                             style={{ backgroundColor: color }}
                             onClick={() => onUpdateSettings({ backgroundColor: color })}
-                            aria-label={`Select color ${color}`}
+                            title={color}
                           />
                         ))}
                       </div>
-                      <Divider />
-                      <div className="flex gap-4 items-center">
+                    </section>
+
+                    <section className="space-y-4">
+                      <h3 className="text-xs font-semibold text-default-400 uppercase tracking-wider">Personalizza</h3>
+                      <div className="flex gap-4 items-center p-4 rounded-xl border border-divider bg-default-50">
                         <div 
-                          className="w-10 h-10 rounded-full border border-divider shadow-sm"
+                          className="w-12 h-12 rounded-full border-2 border-white shadow-md"
                           style={{ backgroundColor: settings.backgroundColor }}
                         />
-                        <Input 
-                          type="text" 
-                          label="Codice Colore" 
-                          value={settings.backgroundColor} 
-                          onChange={(e) => onUpdateSettings({ backgroundColor: e.target.value })}
-                          size="sm"
-                          className="flex-1"
-                        />
-                        <input 
-                          type="color" 
-                          value={settings.backgroundColor}
-                          onChange={(e) => onUpdateSettings({ backgroundColor: e.target.value })}
-                          className="w-10 h-10 p-0 border-0 rounded cursor-pointer"
-                        />
+                        <div className="flex-1">
+                          <Input 
+                            type="text" 
+                            label="HEX Color" 
+                            value={settings.backgroundColor} 
+                            onChange={(e) => onUpdateSettings({ backgroundColor: e.target.value })}
+                            size="sm"
+                            variant="flat"
+                          />
+                        </div>
+                        <div className="relative">
+                          <input 
+                            type="color" 
+                            value={settings.backgroundColor}
+                            onChange={(e) => onUpdateSettings({ backgroundColor: e.target.value })}
+                            className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                          />
+                          <Button size="sm" variant="flat" isIconOnly>
+                             <Palette size={18} />
+                          </Button>
+                        </div>
                       </div>
-                    </CardBody>
-                  </Card>
+                    </section>
+                  </div>
                 ) : (
-                  <Card shadow="sm" className="bg-default-50">
-                    <CardBody className="gap-6">
+                  <div className="space-y-8 animate-in fade-in zoom-in-95 duration-200">
+                    <section className="space-y-4">
+                      <h3 className="text-xs font-semibold text-default-400 uppercase tracking-wider">Gradienti Predefiniti</h3>
                       <div className="grid grid-cols-2 gap-3">
                         {PRESET_GRADIENTS.map((grad) => (
                           <button
                             key={grad.name}
                             className={`
-                              h-12 rounded-lg border-2 transition-all hover:scale-105 flex items-center justify-center
-                              ${settings.gradientStart === grad.start ? 'border-primary' : 'border-transparent'}
+                              h-14 rounded-xl border-2 transition-all hover:scale-[1.02] flex items-center justify-center relative overflow-hidden group
+                              ${settings.gradientStart === grad.start ? 'border-primary shadow-md' : 'border-transparent'}
                             `}
                             style={{ 
                               background: `linear-gradient(to right, ${grad.start}, ${grad.end})` 
@@ -341,62 +503,341 @@ export function SettingsApp({
                               gradientAngle: grad.angle
                             })}
                           >
-                            <span className="text-white font-medium shadow-sm drop-shadow-md">{grad.name}</span>
+                            <div className="absolute inset-0 bg-black/10 group-hover:bg-transparent transition-colors" />
+                            <span className="text-white font-medium drop-shadow-md relative z-10">{grad.name}</span>
                           </button>
                         ))}
                       </div>
-                      
-                      <div className="flex gap-4">
-                        <div className="flex-1 flex flex-col gap-2">
-                          <span className="text-tiny font-bold uppercase text-default-500">Inizio</span>
-                          <div className="flex gap-2">
-                            <div 
-                              className="w-8 h-8 rounded border border-divider" 
-                              style={{ backgroundColor: settings.gradientStart }}
-                            />
-                            <Input 
-                              size="sm" 
-                              value={settings.gradientStart} 
-                              onChange={(e) => onUpdateSettings({ gradientStart: e.target.value })}
-                            />
-                          </div>
+                    </section>
+                    
+                    <section className="space-y-4">
+                      <h3 className="text-xs font-semibold text-default-400 uppercase tracking-wider">Configurazione</h3>
+                      <div className="p-4 rounded-xl border border-divider bg-default-50 space-y-6">
+                        <div className="flex gap-6">
+                           <div className="flex-1 space-y-2">
+                              <label className="text-xs font-medium text-default-500">Colore Iniziale</label>
+                              <div className="flex items-center gap-2">
+                                <div 
+                                  className="w-8 h-8 rounded border border-divider" 
+                                  style={{ backgroundColor: settings.gradientStart }}
+                                />
+                                <Input 
+                                  size="sm" 
+                                  value={settings.gradientStart} 
+                                  onChange={(e) => onUpdateSettings({ gradientStart: e.target.value })}
+                                  className="flex-1"
+                                />
+                              </div>
+                           </div>
+                           <div className="flex-1 space-y-2">
+                              <label className="text-xs font-medium text-default-500">Colore Finale</label>
+                              <div className="flex items-center gap-2">
+                                <div 
+                                  className="w-8 h-8 rounded border border-divider" 
+                                  style={{ backgroundColor: settings.gradientEnd }}
+                                />
+                                <Input 
+                                  size="sm" 
+                                  value={settings.gradientEnd} 
+                                  onChange={(e) => onUpdateSettings({ gradientEnd: e.target.value })}
+                                  className="flex-1"
+                                />
+                              </div>
+                           </div>
                         </div>
-                        <div className="flex-1 flex flex-col gap-2">
-                          <span className="text-tiny font-bold uppercase text-default-500">Fine</span>
-                          <div className="flex gap-2">
-                            <div 
-                              className="w-8 h-8 rounded border border-divider" 
-                              style={{ backgroundColor: settings.gradientEnd }}
-                            />
-                            <Input 
-                              size="sm" 
-                              value={settings.gradientEnd} 
-                              onChange={(e) => onUpdateSettings({ gradientEnd: e.target.value })}
-                            />
-                          </div>
-                        </div>
-                      </div>
 
-                      <div className="flex flex-col gap-2">
-                        <div className="flex justify-between">
-                          <span className="text-small font-medium">Angolo</span>
-                          <span className="text-tiny text-default-500">{settings.gradientAngle}°</span>
-                        </div>
-                        <Slider 
-                          size="sm"
-                          step={15}
-                          maxValue={360}
-                          minValue={0}
+                        <Divider className="opacity-50" />
+
+                        <SettingSlider
+                          label="Angolo Gradiente"
                           value={settings.gradientAngle}
-                          onChange={(val) => onUpdateSettings({ gradientAngle: val as number })}
+                          min={0}
+                          max={360}
+                          step={15}
+                          unit="°"
+                          onChange={(val) => onUpdateSettings({ gradientAngle: val })}
                         />
                       </div>
-                    </CardBody>
-                  </Card>
+                    </section>
+                  </div>
                 )}
               </div>
             </Tab>
 
+            {/* --- DESIGN SYSTEM TAB --- */}
+            <Tab
+              key="design-system"
+              title={
+                <div className="flex items-center space-x-2">
+                  <Palette className="w-4 h-4" />
+                  <span>Design System</span>
+                </div>
+              }
+            >
+              <div className="flex flex-col gap-8 py-6">
+                <div className="space-y-4">
+                  <div className="flex items-center gap-3 mb-2">
+                    <div className="p-2 rounded-xl bg-primary/10 text-primary">
+                      <Palette size={24} />
+                    </div>
+                    <div>
+                      <h2 className="text-xl font-bold tracking-tight">OVFX Design System</h2>
+                      <p className="text-sm text-default-500">
+                        Editor visuale del tema e dei token. Le modifiche sono applicate in tempo reale.
+                      </p>
+                    </div>
+                  </div>
+                  
+                  <div className="flex gap-2">
+                    <div className="px-2 py-1 rounded bg-primary/10 text-primary text-xs font-medium">v2.0.0</div>
+                    <div className="px-2 py-1 rounded bg-default-100 text-default-600 text-xs font-medium">Hero UI</div>
+                    <div className="px-2 py-1 rounded bg-default-100 text-default-600 text-xs font-medium capitalize">{settings.theme} Mode</div>
+                  </div>
+                </div>
+
+                <Divider />
+
+                {/* Typography Section (Display Only as it relies on Tailwind classes) */}
+                <section className="space-y-6">
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-semibold text-default-400 uppercase tracking-wider">Tipografia</span>
+                  </div>
+                  
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                    <div className="space-y-6">
+                      <div>
+                        <h1 className="text-4xl font-bold tracking-tight mb-1">Heading 1</h1>
+                        <p className="text-xs text-default-400 font-mono">text-4xl font-bold tracking-tight</p>
+                      </div>
+                      <div>
+                        <h2 className="text-3xl font-bold tracking-tight mb-1">Heading 2</h2>
+                        <p className="text-xs text-default-400 font-mono">text-3xl font-bold tracking-tight</p>
+                      </div>
+                      <div>
+                        <h3 className="text-2xl font-bold mb-1">Heading 3</h3>
+                        <p className="text-xs text-default-400 font-mono">text-2xl font-bold</p>
+                      </div>
+                    </div>
+
+                    <div className="space-y-4">
+                      <div>
+                        <p className="text-base leading-relaxed mb-1">
+                          Body text. Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore.
+                        </p>
+                        <p className="text-xs text-default-400 font-mono">text-base leading-relaxed</p>
+                      </div>
+                      <div>
+                        <p className="text-sm text-default-500 mb-1">
+                          Muted text / Secondary. Duis aute irure dolor in reprehenderit.
+                        </p>
+                        <p className="text-xs text-default-400 font-mono">text-sm text-default-500</p>
+                      </div>
+                      <div>
+                        <p className="text-tiny font-bold uppercase tracking-wider text-default-400 mb-1">Overline / Caption</p>
+                        <p className="text-xs text-default-400 font-mono">text-tiny font-bold uppercase</p>
+                      </div>
+                    </div>
+                  </div>
+                </section>
+
+                <Divider />
+
+                {/* Interactive Components Section */}
+                <section className="space-y-6">
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-semibold text-default-400 uppercase tracking-wider">Componenti & Stile</span>
+                  </div>
+
+                  <div className="grid grid-cols-1 gap-6">
+                    {/* Button Radius Control */}
+                    <Card className="bg-default-50 border-divider shadow-none">
+                      <CardBody className="p-4 space-y-4">
+                        <div className="flex justify-between items-center">
+                          <label className="text-sm font-medium">Arrotondamento Pulsanti</label>
+                          <span className="text-xs font-mono text-default-500">{settings.buttonBorderRadius}</span>
+                        </div>
+                        <div className="flex gap-2">
+                          {['4px', '8px', '12px', '999px'].map((radius) => (
+                            <button
+                              key={radius}
+                              onClick={() => onUpdateSettings({ buttonBorderRadius: radius })}
+                              className={`
+                                flex-1 h-8 rounded border text-xs font-medium transition-all
+                                ${settings.buttonBorderRadius === radius
+                                  ? 'border-primary bg-primary text-primary-foreground'
+                                  : 'border-default-200 bg-white hover:bg-default-50 text-default-700'
+                                }
+                              `}
+                            >
+                              {radius === '999px' ? 'Pill' : radius}
+                            </button>
+                          ))}
+                        </div>
+                        <div className="flex flex-wrap gap-2 pt-2">
+                           <Button color="primary" size="sm">Primary</Button>
+                           <Button variant="flat" color="secondary" size="sm">Secondary</Button>
+                           <Button variant="bordered" size="sm">Outline</Button>
+                           <Button variant="ghost" size="sm">Ghost</Button>
+                        </div>
+                      </CardBody>
+                    </Card>
+                    
+                    {/* Viewport Style Control */}
+                    <Card className="bg-default-50 border-divider shadow-none">
+                      <CardBody className="p-4 space-y-4">
+                         <div className="flex justify-between items-center">
+                          <label className="text-sm font-medium">Stile Viewport</label>
+                        </div>
+                        <div className="grid grid-cols-2 gap-4">
+                           <SettingSwitch
+                              label="Trasparenza"
+                              isSelected={settings.viewportTransparency}
+                              onChange={(val) => onUpdateSettings({ viewportTransparency: val })}
+                           />
+                           <SettingSwitch
+                              label="Blur"
+                              isSelected={settings.viewportBlur}
+                              onChange={(val) => onUpdateSettings({ viewportBlur: val })}
+                           />
+                        </div>
+                        <div className={`
+                          p-4 rounded-xl border border-divider transition-all
+                          ${settings.viewportTransparency ? 'bg-background/60 backdrop-blur-xl' : 'bg-background'}
+                        `}>
+                          <p className="text-sm">Preview content area style</p>
+                        </div>
+                      </CardBody>
+                    </Card>
+                  </div>
+                </section>
+
+                <Divider />
+
+                {/* Prompt Generation */}
+                <section className="pt-2">
+                  <Button 
+                    className="w-full" 
+                    color="primary" 
+                    size="lg"
+                    startContent={<Copy size={18} />}
+                    onPress={generateDesignSystemPrompt}
+                  >
+                    Copia Prompt Design System
+                  </Button>
+                  <p className="text-xs text-center text-default-400 mt-2">
+                    Copia la configurazione attuale negli appunti per applicarla tramite prompt.
+                  </p>
+                </section>
+              </div>
+            </Tab>
+
+            {/* --- VISUAL AIDS TAB --- */}
+            <Tab
+              key="visual-aids"
+              title={
+                <div className="flex items-center space-x-2">
+                  <Eye className="w-4 h-4" />
+                  <span>Visual Aids</span>
+                </div>
+              }
+            >
+              <div className="flex flex-col gap-8 py-6">
+                <section className="space-y-4">
+                  <h3 className="text-xs font-semibold text-default-400 uppercase tracking-wider">Debug Visuals</h3>
+                  <div className="bg-default-50/50 rounded-xl border border-divider p-4 space-y-2">
+                    <SettingSwitch
+                      label="Show Text Outlines"
+                      description="Shows a border around text elements for debugging layout"
+                      isSelected={settings.showTextOutlines}
+                      onChange={(val) => onUpdateSettings({ showTextOutlines: val })}
+                    />
+                    <Divider className="opacity-50" />
+                    
+                    <SettingSwitch
+                      label="Show Padding"
+                      description="Visualizes padding areas"
+                      isSelected={settings.showPadding}
+                      onChange={(val) => onUpdateSettings({ showPadding: val })}
+                    />
+                    {settings.showPadding && (
+                      <div className="pl-4 pr-2 pb-3 pt-1">
+                         <div className="flex gap-4 items-center p-2 rounded-lg bg-default-100/50">
+                          <div 
+                            className="w-8 h-8 rounded border border-divider shadow-sm"
+                            style={{ backgroundColor: settings.paddingColor }}
+                          />
+                          <div className="flex-1">
+                            <Input 
+                              type="text" 
+                              label="Padding Color" 
+                              value={settings.paddingColor} 
+                              onChange={(e) => onUpdateSettings({ paddingColor: e.target.value })}
+                              size="sm"
+                              variant="flat"
+                              classNames={{ inputWrapper: "h-8 min-h-0" }}
+                            />
+                          </div>
+                           <div className="relative w-8 h-8">
+                              <input 
+                                type="color" 
+                                value={settings.paddingColor}
+                                onChange={(e) => onUpdateSettings({ paddingColor: e.target.value })}
+                                className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                              />
+                              <Button size="sm" variant="flat" isIconOnly className="w-8 h-8 min-w-0">
+                                 <Palette size={16} />
+                              </Button>
+                            </div>
+                        </div>
+                      </div>
+                    )}
+
+                    <Divider className="opacity-50" />
+
+                    <SettingSwitch
+                      label="Show Margins"
+                      description="Visualizes margin areas"
+                      isSelected={settings.showMargins}
+                      onChange={(val) => onUpdateSettings({ showMargins: val })}
+                    />
+                    {settings.showMargins && (
+                      <div className="pl-4 pr-2 pb-3 pt-1">
+                         <div className="flex gap-4 items-center p-2 rounded-lg bg-default-100/50">
+                          <div 
+                            className="w-8 h-8 rounded border border-divider shadow-sm"
+                            style={{ backgroundColor: settings.marginColor }}
+                          />
+                          <div className="flex-1">
+                            <Input 
+                              type="text" 
+                              label="Margin Color" 
+                              value={settings.marginColor} 
+                              onChange={(e) => onUpdateSettings({ marginColor: e.target.value })}
+                              size="sm"
+                              variant="flat"
+                              classNames={{ inputWrapper: "h-8 min-h-0" }}
+                            />
+                          </div>
+                           <div className="relative w-8 h-8">
+                              <input 
+                                type="color" 
+                                value={settings.marginColor}
+                                onChange={(e) => onUpdateSettings({ marginColor: e.target.value })}
+                                className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                              />
+                              <Button size="sm" variant="flat" isIconOnly className="w-8 h-8 min-w-0">
+                                 <Palette size={16} />
+                              </Button>
+                            </div>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </section>
+              </div>
+            </Tab>
+
+            {/* --- DEBUG TAB --- */}
             <Tab
               key="debug"
               title={
@@ -406,9 +847,9 @@ export function SettingsApp({
                 </div>
               }
             >
-              <div className="flex flex-col gap-4 py-4">
-                <div className="flex justify-between items-center">
-                  <div className="flex gap-2 bg-default-100 p-1 rounded-lg">
+              <div className="flex flex-col gap-6 py-6">
+                <div className="flex justify-between items-center bg-default-50 p-2 rounded-lg border border-divider">
+                  <div className="flex gap-2">
                     <Button
                       size="sm"
                       variant={debugMode === 'json' ? "solid" : "light"}
@@ -437,7 +878,7 @@ export function SettingsApp({
                   </Button>
                 </div>
 
-                <Card className="bg-[#1e1e1e] border-none">
+                <Card className="bg-[#1e1e1e] border-none shadow-md">
                   <CardBody className="p-0">
                     <div className="h-[400px] overflow-auto p-4 font-mono text-xs text-default-300">
                       {debugMode === 'json' ? (

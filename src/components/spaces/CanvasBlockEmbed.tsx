@@ -17,6 +17,7 @@ import {
   Globe,
   Link2
 } from 'lucide-react';
+import { FileElement } from './FileElement';
 
 interface CanvasBlockEmbedProps {
   element: {
@@ -29,6 +30,7 @@ interface CanvasBlockEmbedProps {
     sourceSpaceId?: string;
     blockType?: string;
     blockContent?: string;
+    rotation?: number;
   };
   onClick: (e: React.MouseEvent) => void;
   onDoubleClick?: (e: React.MouseEvent) => void;
@@ -147,6 +149,48 @@ export function CanvasBlockEmbed({
   }
 
   const TypeIcon = getTypeIcon(embeddedBlock.type);
+
+  // Se il blocco è un file, usa FileElement per la stessa preview
+  if (embeddedBlock.type === 'file') {
+    return (
+      <foreignObject
+        data-element-id={element.id}
+        x={element.x}
+        y={element.y}
+        width={element.width || 200}
+        height={element.height || 200}
+        onClick={onClick}
+        onDoubleClick={onDoubleClick}
+        onContextMenu={onContextMenu}
+        onMouseDown={onMouseDown}
+        onMouseEnter={onMouseEnter}
+        onMouseLeave={onMouseLeave}
+        style={{ cursor, opacity, overflow: 'visible' }}
+      >
+        <div 
+          style={{ 
+            width: '100%', 
+            height: '100%', 
+            transform: `rotate(${element.rotation || 0}deg)`,
+            transformOrigin: 'center',
+            pointerEvents: 'none'
+          }}
+        >
+          <div style={{ pointerEvents: 'auto' }}>
+            <FileElement
+              layout={embeddedBlock.metadata?.fileLayout || 'square'}
+              fileName={embeddedBlock.metadata?.fileName || embeddedBlock.content || 'New File'}
+              fileSize={embeddedBlock.metadata?.fileSize || 0}
+              fileType={embeddedBlock.metadata?.fileType || 'application/octet-stream'}
+              filePreview={embeddedBlock.metadata?.filePreview}
+              files={embeddedBlock.metadata?.files}
+              isReadOnly={true}
+            />
+          </div>
+        </div>
+      </foreignObject>
+    );
+  }
 
   // Tronca il contenuto se è troppo lungo
   const maxLength = 100;

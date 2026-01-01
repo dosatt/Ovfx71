@@ -8,6 +8,8 @@ import { Sidebar } from './components/Sidebar';
 import { Workspace } from './components/Workspace';
 import { HistoryProvider } from './contexts/HistoryContext';
 import { TextElementDragLayer } from './components/spaces/TextElementDragLayer';
+import { CommandPalette } from './components/CommandPalette';
+import { Toaster } from 'sonner@2.0.3';
 import './styles/globals.css';
 
 export default function App() {
@@ -22,19 +24,44 @@ export default function App() {
   // Apply theme class to document
   useEffect(() => {
     const root = document.documentElement;
-    if (settings.theme === 'dark') {
-      root.classList.add('dark');
+    if (settings.theme === "dark") {
+      root.classList.add("dark");
     } else {
-      root.classList.remove('dark');
+      root.classList.remove("dark");
     }
   }, [settings.theme]);
+
+  // Circular Feedback (Ripple Effect)
+  useEffect(() => {
+    const handleGlobalClick = (e: MouseEvent) => {
+      const circle = document.createElement("div");
+      circle.className = "click-ripple";
+      circle.style.left = `${e.clientX}px`;
+      circle.style.top = `${e.clientY}px`;
+      document.body.appendChild(circle);
+
+      circle.addEventListener("animationend", () => {
+        circle.remove();
+      });
+    };
+
+    window.addEventListener("mousedown", handleGlobalClick);
+    return () => window.removeEventListener("mousedown", handleGlobalClick);
+  }, []);
 
   return (
     <HeroUIProvider>
       <HistoryProvider>
         <DndProvider>
+          <Toaster />
+          <CommandPalette 
+            spacesState={spacesState}
+            viewportsState={viewportsState}
+            settings={settings}
+            onUpdateSettings={updateSettings}
+          />
           <div 
-            className="flex h-screen overflow-hidden relative"
+            className="flex h-screen overflow-hidden relative transition-all duration-300 bg-background"
             style={{ 
               background: getBackgroundStyle(),
               gap: sidebarOpen ? '2px' : 0,

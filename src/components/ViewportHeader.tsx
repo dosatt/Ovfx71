@@ -1,5 +1,6 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { createPortal } from 'react-dom';
+import { useDrag, useDrop } from 'react-dnd';
 import {
   Button,
   Tooltip,
@@ -8,13 +9,200 @@ import {
   ModalHeader,
   ModalBody,
   ModalFooter,
-  Input
+  Input,
+  Card,
+  CardBody
 } from '@heroui/react';
-import { X, ChevronLeft, ChevronRight, FileCode, SplitSquareVertical, SplitSquareHorizontal, Plus, Star, File, Edit2, Trash2, LayoutGrid, DiamondPlus } from 'lucide-react';
+import { X, FileCode, SplitSquareVertical, SplitSquareHorizontal, Plus, Star, File, Edit2, Trash2, LayoutGrid, DiamondPlus, Menu, Settings as SettingsIcon, Settings2, Eye, Calendar, Globe, MessageSquare, Mail, Clock, Archive, Bell, FileText, Pencil, Database, LayoutDashboard } from 'lucide-react';
 import * as LucideIcons from 'lucide-react';
 import type { Viewport } from '../types';
 import type { Space } from '../types';
 import type { Settings } from '../hooks/useSettings';
+import { PropertiesView } from './spaces/PropertiesView';
+
+const ITEM_TYPE_TAB = 'VIEWPORT_TAB';
+
+interface TabItemProps {
+  tab: any;
+  viewport: Viewport;
+  isActive: boolean;
+  tabSpace: Space | null;
+  showTitle: boolean;
+  isOnlyWelcomeTab: boolean;
+  IconComponent: any;
+  iconColor: string;
+  displayTitle: string;
+  settings: Settings;
+  viewportsState: any;
+  onCloseTab: (tabId: string) => void;
+  onContextMenu: (e: React.MouseEvent, tabId: string, title: string) => void;
+  index: number;
+}
+
+function TabItem({ 
+  tab, 
+  viewport, 
+  isActive, 
+  tabSpace, 
+  showTitle, 
+  isOnlyWelcomeTab, 
+  IconComponent, 
+  iconColor, 
+  displayTitle, 
+  settings, 
+  viewportsState, 
+  onCloseTab, 
+  onContextMenu,
+  index
+}: TabItemProps) {
+  const ref = useRef<HTMLDivElement>(null);
+  const [isHovered, setIsHovered] = useState(false);
+  const isViewportFocused = viewportsState.focusedViewportId === viewport.id;
+
+  const [{ isDragging }, drag] = useDrag({
+    type: ITEM_TYPE_TAB,
+    item: { tabId: tab.id, sourceViewportId: viewport.id, index },
+    collect: (monitor) => ({
+      isDragging: monitor.isDragging(),
+    }),
+  });
+
+  const [, drop] = useDrop({
+    accept: ITEM_TYPE_TAB,
+    hover: (item: any, monitor) => {
+      if (!ref.current) return;
+      const dragIndex = item.index;
+      const hoverIndex = index;
+      const sourceViewportId = item.sourceViewportId;
+
+      // Se stiamo trascinando nello stesso viewport
+      if (sourceViewportId === viewport.id) {
+        if (dragIndex === hoverIndex) return;
+
+        // Determiniamo il rettangolo dell'elemento
+        const hoverBoundingRect = ref.current?.getBoundingClientRect();
+        const hoverMiddleX = (hoverBoundingRect.right - hoverBoundingRect.left) / 2;
+        const clientOffset = monitor.getClientOffset();
+        const hoverClientX = (clientOffset?.x || 0) - hoverBoundingRect.left;
+
+        if (dragIndex < hoverIndex && hoverClientX < hoverMiddleX) return;
+        if (dragIndex > hoverIndex && hoverClientX > hoverMiddleX) return;
+
+        viewportsState.moveTab(viewport.id, viewport.id, item.tabId, hoverIndex);
+        item.index = hoverIndex;
+      }
+    },
+    drop: (item: any) => {
+      if (item.sourceViewportId !== viewport.id) {
+        viewportsState.moveTab(item.sourceViewportId, viewport.id, item.tabId, index);
+      }
+    }
+  });
+
+  drag(drop(ref));
+
+  const getTabActiveStyle = () => {
+    if (!isActive || !isViewportFocused) return {};
+    
+    if (settings.backgroundType === 'gradient') {
+      return {
+        background: `linear-gradient(${settings.gradientAngle}deg, ${settings.gradientStart} 0%, ${settings.gradientEnd} 100%)`,
+        filter: 'brightness(1.1) saturate(1.2)',
+        color: 'white'
+      };
+    }
+    return {
+      backgroundColor: settings.backgroundColor,
+      filter: 'brightness(0.9) saturate(1.5)',
+      color: 'white'
+    };
+  };
+
+  return (
+    <div 
+      ref={ref}
+      className={`flex-shrink-0 flex items-center h-full py-1 ${isDragging ? 'opacity-0' : 'opacity-100'}`}
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => setIsHovered(false)}
+    >
+      <Tooltip 
+        content={
+          <div className="p-1 min-w-[160px]">
+            <p className="text-tiny font-bold mb-2 border-b border-white/20 pb-1">{tab.title}</p>
+            <div className="aspect-video w-full rounded bg-default-200/20 overflow-hidden relative flex items-center justify-center border border-white/10 shadow-inner">
+              {tabSpace?.type === 'page' && <File size={24} className="text-default-400 opacity-20" />}
+              {tabSpace?.type === 'canvas' && <LayoutGrid size={24} className="text-default-400 opacity-20" />}
+              {!tab.spaceId && <DiamondPlus size={24} className="text-default-400 opacity-20" />}
+              <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent" />
+              <div className="absolute bottom-1 right-1">
+                <Eye size={10} className="text-white/40" />
+              </div>
+            </div>
+            <p className="text-[10px] text-default-400 mt-2 italic">
+              {tabSpace?.type ? `Spazio: ${tabSpace.type}` : 'Nuova Tab'}
+            </p>
+          </div>
+        } 
+        size="sm"
+        delay={400}
+        closeDelay={0}
+      >
+        <Button
+          size="sm"
+          variant={isActive ? (isViewportFocused ? 'solid' : 'flat') : 'light'}
+          color={isActive ? (isViewportFocused ? 'primary' : 'default') : 'default'}
+          onClick={() => {
+            viewportsState.setActiveTab(viewport.id, tab.id);
+            viewportsState.setFocusedViewportId(viewport.id);
+          }}
+          style={getTabActiveStyle()}
+          startContent={
+            (isActive || showTitle) ? (
+              IconComponent ? (
+                <IconComponent size={14} style={{ color: isActive && isViewportFocused ? 'white' : iconColor }} className="shrink-0" />
+              ) : (
+                tabSpace?.icon && <span className="shrink-0 text-[14px]">{tabSpace.icon}</span>
+              )
+            ) : (
+              IconComponent ? (
+                <IconComponent size={14} style={{ color: iconColor }} />
+              ) : (
+                tabSpace?.icon || '📄'
+              )
+            )
+          }
+          endContent={
+            (isActive || isHovered) ? (
+              <span
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onCloseTab(tab.id);
+                }}
+                className={`ml-1 flex items-center cursor-pointer hover:bg-white/20 rounded-full p-0.5 transition-all ${isActive && isViewportFocused ? 'text-white/80' : 'text-default-500'}`}
+              >
+                <X size={12} />
+              </span>
+            ) : undefined
+          }
+          className={`
+            h-8 min-h-0 rounded-full transition-all duration-300
+            ${isActive ? 'shadow-lg px-4' : 'px-3 text-default-500 hover:text-default-900'}
+            ${isActive && !isViewportFocused ? 'bg-default-200/50 text-default-700' : ''}
+            ${isActive || showTitle ? 'min-w-[100px] max-w-[160px] justify-between' : 'min-w-[32px] w-auto justify-center'}
+            ${isViewportFocused && isActive ? 'border-1 border-white/40 shadow-xl shadow-primary/20 scale-105' : ''}
+          `}
+          onContextMenu={(e) => onContextMenu(e, tab.id, tab.title)}
+        >
+          {(isActive || showTitle) && (
+            <span className={`truncate text-left flex-1 text-[13px] font-semibold ml-1 ${isActive && isViewportFocused ? 'text-white' : (isActive ? 'text-default-700' : '')}`}>
+              {displayTitle}
+            </span>
+          )}
+        </Button>
+      </Tooltip>
+    </div>
+  );
+}
 
 interface ViewportHeaderProps {
   viewport: Viewport;
@@ -31,17 +219,20 @@ export function ViewportHeader({ viewport, space, spacesState, viewportsState, s
   const [renameTabId, setRenameTabId] = useState<string | null>(null);
   const [renameValue, setRenameValue] = useState('');
   const [actionsMenuAnchor, setActionsMenuAnchor] = useState<HTMLElement | null>(null);
+  const [hamburgerMenuAnchor, setHamburgerMenuAnchor] = useState<HTMLElement | null>(null);
   
   const canClose = viewport.id !== 'root';
   const activeTab = viewport.tabs?.find(t => t.id === viewport.activeTabId);
-  const canGoBack = viewportsState.canNavigateBack(viewport.id);
-  const canGoForward = viewportsState.canNavigateForward(viewport.id);
   
   const handleCloseTab = (tabId: string) => {
     if (viewport.tabs.length === 1) {
-      // Se c'è solo una tab, apri la welcome page invece di chiudere
-      viewportsState.setActiveTab(viewport.id, tabId);
-      viewportsState.updateTab(viewport.id, tabId, { spaceId: 'welcome', title: 'Welcome to OVFX' });
+      // Se è l'ultima tab, chiudi l'intero viewport invece di sostituire con welcome
+      if (viewport.id !== 'root') {
+        viewportsState.closeViewport(viewport.id);
+      } else {
+        // Se è il root, sostituisci con welcome come fallback
+        viewportsState.updateTab(viewport.id, tabId, { spaceId: 'welcome', title: 'Welcome to OVFX' });
+      }
     } else {
       viewportsState.closeTab(viewport.id, tabId);
     }
@@ -80,115 +271,170 @@ export function ViewportHeader({ viewport, space, spacesState, viewportsState, s
     }
   };
 
+  const [{ isOverTabArea }, dropTabArea] = useDrop({
+    accept: ITEM_TYPE_TAB,
+    drop: (item: any, monitor) => {
+      // Se il drop non è stato gestito da un TabItem (quindi è sulla parte vuota dell'area tab)
+      if (!monitor.didDrop() && item.sourceViewportId !== viewport.id) {
+        viewportsState.moveTab(item.sourceViewportId, viewport.id, item.tabId, viewport.tabs.length);
+      }
+    },
+    collect: (monitor) => ({
+      isOverTabArea: monitor.isOver({ shallow: true })
+    })
+  });
+
+  const isViewportFocused = viewportsState.focusedViewportId === viewport.id;
+
   return (
     <div
-      className="flex items-center justify-between px-2 py-1 gap-2 min-h-[40px] border-b border-divider bg-white"
+      className={`flex items-center justify-between px-3 py-1.5 gap-3 min-h-[44px] transition-all duration-300 bg-transparent ${isViewportFocused ? 'opacity-100' : 'opacity-80'}`}
+      onClick={() => viewportsState.setFocusedViewportId(viewport.id)}
     >
-      {/* Navigation */}
-      <div className="flex gap-1">
+      {/* Navigation - Replaced by Hamburger Menu */}
+      <div className="flex gap-1 shrink-0">
         <Button 
           isIconOnly
           size="sm" 
           variant="light" 
-          isDisabled={!canGoBack}
-          onClick={() => viewportsState.navigateHistory(viewport.id, 'back')}
-          className="min-w-0 w-8 h-8"
+          onClick={(e) => setHamburgerMenuAnchor(e.currentTarget)}
+          className="min-w-0 w-8 h-8 rounded-full"
         >
-          <ChevronLeft size={16} />
-        </Button>
-        <Button 
-          isIconOnly
-          size="sm" 
-          variant="light" 
-          isDisabled={!canGoForward}
-          onClick={() => viewportsState.navigateHistory(viewport.id, 'forward')}
-          className="min-w-0 w-8 h-8"
-        >
-          <ChevronRight size={16} />
+          <Menu size={16} />
         </Button>
       </div>
 
+      {/* Hamburger Menu Portal */}
+      {hamburgerMenuAnchor && createPortal(
+        (() => {
+          const rect = hamburgerMenuAnchor.getBoundingClientRect();
+          const menuWidth = 200;
+          
+          return (
+            <>
+              <div
+                onClick={() => setHamburgerMenuAnchor(null)}
+                className="fixed inset-0 z-[999]"
+              />
+              <div
+                style={{ top: `${rect.bottom + 4}px`, left: `${rect.left}px`, width: `${menuWidth}px` }}
+                className="fixed bg-white shadow-lg rounded-lg p-1 z-[1000] border border-divider flex flex-col"
+              >
+                {space && space.type === 'page' && (
+                  <>
+                    <div className="px-2 py-1 flex items-center justify-between border-b border-divider mb-1">
+                      <span className="text-[10px] uppercase font-bold text-default-400">Page Settings</span>
+                    </div>
+                    <div
+                      onClick={() => {
+                        const currentShow = space.metadata?.showProperties === true;
+                        spacesState.updateSpace(space.id, {
+                          metadata: { ...space.metadata, showProperties: !currentShow }
+                        });
+                        setHamburgerMenuAnchor(null);
+                      }}
+                      className="p-2 rounded-md cursor-pointer flex items-center gap-2 hover:bg-default-100 transition-colors"
+                    >
+                      <Settings2 size={16} />
+                      <span className="text-small">
+                        {space.metadata?.showProperties === true ? 'Nascondi Proprietà' : 'Mostra Proprietà'}
+                      </span>
+                    </div>
+                    <div className="my-1 h-[1px] bg-divider" />
+                  </>
+                )}
+                <div className="px-2 py-1 flex items-center justify-between border-b border-divider mb-1">
+                  <span className="text-[10px] uppercase font-bold text-default-400">Navigation</span>
+                </div>
+                {/* Add other hamburger menu items here if needed */}
+                <div
+                  onClick={() => {
+                    setHamburgerMenuAnchor(null);
+                  }}
+                  className="p-2 rounded-md cursor-pointer flex items-center gap-2 hover:bg-default-100 transition-colors opacity-50"
+                >
+                  <File size={16} />
+                  <span className="text-small">Altre opzioni...</span>
+                </div>
+              </div>
+            </>
+          );
+        })(),
+        document.body
+      )}
+
       {/* Tabs - Centrate */}
-      <div className="flex-1 min-w-0 flex gap-1 items-center justify-center">
-        {viewport.tabs?.map(tab => {
+      <div 
+        ref={dropTabArea}
+        className={`flex-1 min-w-0 overflow-x-auto no-scrollbar flex gap-2 items-center justify-center h-full transition-colors rounded-lg ${isOverTabArea ? 'bg-primary/5' : ''}`}
+      >
+        {viewport.tabs?.map((tab, index) => {
           const isActive = tab.id === viewport.activeTabId;
           const tabSpace = tab.spaceId ? spacesState.spaces.find((s: Space) => s.id === tab.spaceId) : null;
-          const showTitle = viewport.tabs.length <= 4; // Mostra titolo se ci sono poche tab
           
-          // Nascondi il pulsante chiudi se c'è solo una tab di benvenuto
+          // Logica di collasso: se ci sono molte tab, mostra solo l'icona per quelle non attive
+          const totalTabs = viewport.tabs.length;
+          const showTitle = isActive || totalTabs <= 3;
+          
           const isOnlyWelcomeTab = viewport.tabs.length === 1 && !tab.spaceId && !tab.appType;
           
-          // Determina l'icona da mostrare
-          let IconComponent = null;
+          let IconComponent: any = null;
           let iconColor = 'currentColor';
           
-          // Se è la welcome page (nessuno space e nessuna app)
           if (!tab.spaceId && !tab.appType) {
             IconComponent = DiamondPlus;
-          } else if (tabSpace?.icon) {
-            IconComponent = (LucideIcons as any)[tabSpace.icon];
-            iconColor = tabSpace.iconColor || 'currentColor';
+          } else if (tab.appType) {
+            const appIcons: any = {
+              calendar: Calendar,
+              browser: Globe,
+              chat: MessageSquare,
+              mail: Mail,
+              settings: SettingsIcon,
+              clock: Clock,
+              archive: Archive,
+              notifications: Bell,
+              trash: Trash2
+            };
+            IconComponent = appIcons[tab.appType] || File;
+          } else if (tabSpace) {
+            if (tabSpace.icon) {
+              IconComponent = (LucideIcons as any)[tabSpace.icon];
+              iconColor = tabSpace.iconColor || 'currentColor';
+            }
+            
+            // Fallback icons per tipo se l'icona non è risolta
+            if (!IconComponent) {
+              const defaultIcons: any = {
+                page: FileText,
+                canvas: Pencil,
+                database: Database,
+                dashboard: LayoutDashboard
+              };
+              IconComponent = defaultIcons[tabSpace.type] || File;
+              iconColor = tabSpace.iconColor || 'currentColor';
+            }
           }
           
-          // Usa il titolo dello space se esiste, altrimenti usa il titolo del tab
           const displayTitle = tabSpace?.title || tab.title;
           
           return (
-            <Tooltip key={tab.id} content={tab.title} size="sm">
-              <Button
-                size="sm"
-                variant={isActive ? 'flat' : 'light'}
-                onClick={() => {
-                  viewportsState.setActiveTab(viewport.id, tab.id);
-                  viewportsState.setFocusedViewportId(viewport.id);
-                }}
-                endContent={
-                  isActive && !isOnlyWelcomeTab ? (
-                    <span
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleCloseTab(tab.id);
-                      }}
-                      className="ml-1 flex items-center cursor-pointer hover:opacity-70"
-                    >
-                      <X size={12} />
-                    </span>
-                  ) : undefined
-                }
-                style={{
-                  borderRadius: settings.tabBorderRadius,
-                  paddingLeft: (isActive || showTitle) ? settings.tabPaddingLeft : 8,
-                  paddingTop: settings.tabPaddingTop,
-                  paddingBottom: settings.tabPaddingBottom,
-                  paddingRight: (isActive || showTitle) ? settings.tabPaddingRight : 8,
-                }}
-                className={`
-                  flex-shrink-0 flex items-center
-                  ${isActive ? 'bg-default-100' : ''}
-                  ${isActive || showTitle ? 'min-w-[100px] max-w-[200px] justify-between' : 'min-w-0 max-w-auto px-2 justify-center'}
-                `}
-                onContextMenu={(e) => handleTabContextMenu(e, tab.id, tab.title)}
-              >
-                {(isActive || showTitle) ? (
-                  <div className="flex items-center w-full overflow-hidden">
-                    {IconComponent ? (
-                      <IconComponent size={16} style={{ marginRight: 4, color: iconColor }} className="shrink-0" />
-                    ) : (
-                      tabSpace?.icon && <span style={{ marginRight: 4 }} className="shrink-0">{tabSpace.icon}</span>
-                    )}
-                    <span className="truncate text-left flex-1 text-small">
-                      {displayTitle}
-                    </span>
-                  </div>
-                ) : (
-                  IconComponent ? (
-                    <IconComponent size={16} style={{ color: iconColor }} />
-                  ) : (
-                    tabSpace?.icon || '📄'
-                  )
-                )}
-              </Button>
-            </Tooltip>
+            <TabItem 
+              key={tab.id}
+              tab={tab}
+              viewport={viewport}
+              isActive={isActive}
+              tabSpace={tabSpace}
+              showTitle={showTitle}
+              isOnlyWelcomeTab={isOnlyWelcomeTab}
+              IconComponent={IconComponent}
+              iconColor={iconColor}
+              displayTitle={displayTitle}
+              settings={settings}
+              viewportsState={viewportsState}
+              onCloseTab={handleCloseTab}
+              onContextMenu={handleTabContextMenu}
+              index={index}
+            />
           );
         })}
         
@@ -196,10 +442,10 @@ export function ViewportHeader({ viewport, space, spacesState, viewportsState, s
           <Button
             isIconOnly
             size="sm"
-            variant="bordered"
+            variant="light"
             color="primary"
             onClick={() => viewportsState.addTab(viewport.id, undefined, undefined, 'New Tab')}
-            className="flex-shrink-0 w-8 h-8 min-w-0 border-small"
+            className="flex-shrink-0 w-8 h-8 min-w-0 rounded-full"
           >
             <Plus size={16} />
           </Button>
@@ -207,14 +453,14 @@ export function ViewportHeader({ viewport, space, spacesState, viewportsState, s
       </div>
 
       {/* Actions */}
-      <div className="flex gap-1">
+      <div className="flex gap-1 shrink-0">
         <Tooltip content="Azioni viewport" size="sm">
           <Button
             isIconOnly
             size="sm"
             variant="light"
             onClick={(e) => setActionsMenuAnchor(e.currentTarget)}
-            className="min-w-0 w-8 h-8"
+            className="min-w-0 w-8 h-8 rounded-full"
           >
             <LayoutGrid size={16} />
           </Button>
@@ -230,7 +476,7 @@ export function ViewportHeader({ viewport, space, spacesState, viewportsState, s
           
           // Calcola la posizione ottimale
           let top = rect.bottom + 4;
-          let left = rect.right - menuWidth;
+          let left = rect.left;
           
           // Se il menu esce dal bordo destro della finestra
           if (left + menuWidth > window.innerWidth) {
@@ -259,11 +505,15 @@ export function ViewportHeader({ viewport, space, spacesState, viewportsState, s
                 className="fixed inset-0 z-[999]"
               />
               <div
-                style={{ top: `${top}px`, left: `${left}px` }}
-                className="fixed bg-white shadow-lg rounded-lg p-1 z-[1000] min-w-[200px] max-h-[250px] overflow-auto border border-divider"
+                style={{ top: `${top}px`, left: `${left}px`, width: `${menuWidth}px` }}
+                className="fixed bg-white shadow-lg rounded-lg p-1 z-[1000] max-h-[80vh] overflow-y-auto border border-divider flex flex-col"
               >
                 {space && (
                   <>
+                    <div className="px-2 py-1 flex items-center justify-between border-b border-divider mb-1">
+                      <span className="text-[10px] uppercase font-bold text-default-400">Page Actions</span>
+                    </div>
+
                     <div
                       onClick={() => {
                         spacesState.toggleFavorite(space.id);
@@ -319,10 +569,10 @@ export function ViewportHeader({ viewport, space, spacesState, viewportsState, s
                       viewportsState.closeViewport(viewport.id);
                       setActionsMenuAnchor(null);
                     }}
-                    className="p-2 rounded-md cursor-pointer flex items-center gap-2 text-danger hover:bg-danger-50 transition-colors"
+                    className="p-2 rounded-md cursor-pointer flex items-center gap-2 text-red-600 hover:bg-red-50 transition-colors"
                   >
-                    <X size={16} />
-                    <span className="text-small">Chiudi viewport</span>
+                    <X size={16} className="text-red-600" />
+                    <span className="text-small text-red-600">Chiudi viewport</span>
                   </div>
                 )}
               </div>
@@ -386,10 +636,10 @@ export function ViewportHeader({ viewport, space, spacesState, viewportsState, s
             </div>
             <div
               onClick={handleDelete}
-              className="p-2 rounded-md cursor-pointer flex items-center gap-2 text-danger hover:bg-danger-50 transition-colors"
+              className="p-2 rounded-md cursor-pointer flex items-center gap-2 text-red-600 hover:bg-red-50 transition-colors"
             >
-              <Trash2 size={14} />
-              <span className="text-small">Elimina</span>
+              <Trash2 size={14} className="text-red-600" />
+              <span className="text-small text-red-600">Elimina</span>
             </div>
           </div>
         </>

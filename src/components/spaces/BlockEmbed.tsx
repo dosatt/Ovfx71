@@ -5,13 +5,15 @@ import {
   Heading1, 
   Heading2, 
   Heading3, 
+  Heading4,
   List as ListIcon, 
   ListOrdered, 
   CheckSquare, 
   Quote, 
   Code,
   AlertCircle,
-  ExternalLink
+  ExternalLink,
+  Sigma
 } from 'lucide-react';
 import { Button } from '@heroui/react';
 
@@ -31,6 +33,8 @@ export function BlockEmbed({ block, sourceSpaceName, onNavigate, sourceSpaceId }
         return Heading2;
       case 'heading3':
         return Heading3;
+      case 'heading4':
+        return Heading4;
       case 'bulletList':
         return ListIcon;
       case 'numberedList':
@@ -41,6 +45,8 @@ export function BlockEmbed({ block, sourceSpaceName, onNavigate, sourceSpaceId }
         return Quote;
       case 'code':
         return Code;
+      case 'math':
+        return Sigma;
       case 'callout':
         return AlertCircle;
       default:
@@ -54,21 +60,27 @@ export function BlockEmbed({ block, sourceSpaceName, onNavigate, sourceSpaceId }
     switch (block.type) {
       case 'heading1':
         return (
-          <h2 className="text-2xl font-bold text-center">
+          <h2 className="text-2xl font-bold">
             {block.content || '(vuoto)'}
           </h2>
         );
       case 'heading2':
         return (
-          <h3 className="text-xl font-bold text-center">
+          <h3 className="text-xl font-bold">
             {block.content || '(vuoto)'}
           </h3>
         );
       case 'heading3':
         return (
-          <h4 className="text-lg font-bold text-center">
+          <h4 className="text-lg font-bold">
             {block.content || '(vuoto)'}
           </h4>
+        );
+      case 'heading4':
+        return (
+          <h5 className="text-base font-bold">
+            {block.content || '(vuoto)'}
+          </h5>
         );
       case 'bulletList':
         return (
@@ -109,6 +121,14 @@ export function BlockEmbed({ block, sourceSpaceName, onNavigate, sourceSpaceId }
             </span>
           </div>
         );
+      case 'math':
+        return (
+          <div className="font-mono bg-default-50 p-3 rounded-md border-l-4 border-primary text-sm">
+             <span className="font-mono">
+              {block.content || '(vuoto)'}
+            </span>
+          </div>
+        );
       case 'callout':
         const calloutColor = block.calloutColor || 'default';
         const colorClassMap: Record<string, string> = {
@@ -133,7 +153,14 @@ export function BlockEmbed({ block, sourceSpaceName, onNavigate, sourceSpaceId }
   };
 
   return (
-    <div className="p-4 rounded-lg border border-neutral-300 bg-white shadow-sm">
+    <div 
+      className="p-4 bg-white shadow-sm"
+      style={{
+        borderRadius: '32px',
+        border: '2px solid #D4AF37',
+        pointerEvents: 'auto'
+      }}
+    >
       <div className="flex items-start gap-3 mb-3">
         <div className="w-8 h-8 rounded-md bg-default-100 flex items-center justify-center shrink-0">
           <BlockIcon size={16} />

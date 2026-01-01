@@ -1,6 +1,6 @@
 import { useRef, useEffect, useState } from 'react';
-import { Tooltip } from '@heroui/react';
 import { storageToDisplay, displayToStorage, LinkInfo } from '../../utils/linkConverter';
+import { SpacePreview } from './SpacePreview';
 
 interface RichTextEditorProps {
   content: string;
@@ -29,7 +29,7 @@ export function RichTextEditor({
   onKeyDown,
   onFocus,
   onBlur,
-  placeholder = 'Type something...',
+  placeholder = 'Type something',
   spacesState,
   viewportsState,
   className = '',
@@ -46,6 +46,8 @@ export function RichTextEditor({
   const contentEditableRef = externalContentEditableRef || useRef<HTMLDivElement>(null);
   const isComposingRef = useRef(false);
   const [hoveredBrokenLink, setHoveredBrokenLink] = useState<string | null>(null);
+  const [previewSpaceId, setPreviewSpaceId] = useState<string | null>(null);
+  const [previewPosition, setPreviewPosition] = useState<{ x: number, y: number } | null>(null);
 
   // Converti storage → display
   const { displayContent, links } = storageToDisplay(content);
@@ -107,54 +109,32 @@ export function RichTextEditor({
               onLinkContextMenu(link.spaceId, linkText, { x: e.clientX, y: e.clientY });
             }
           }}
-          onMouseEnter={() => setHoveredBrokenLink(isBroken ? link.spaceId : null)}
-          onMouseLeave={() => setHoveredBrokenLink(null)}
-          style={{
-            color: isBroken ? '#d32f2f' : '#0b6bcb',
-            fontWeight: 600,
-            cursor: 'pointer',
-            userSelect: 'none',
-            display: 'inline-flex',
-            alignItems: 'center',
-            gap: '4px',
-            textDecoration: isBroken ? 'line-through' : 'none'
+          onMouseEnter={(e) => {
+            setHoveredBrokenLink(isBroken ? link.spaceId : null);
+            if (e.ctrlKey || e.metaKey) {
+               setPreviewSpaceId(link.spaceId);
+               setPreviewPosition({ x: e.clientX, y: e.clientY });
+            }
           }}
+          onMouseMove={(e) => {
+             if (e.ctrlKey || e.metaKey) {
+                 if (previewSpaceId !== link.spaceId) {
+                     setPreviewSpaceId(link.spaceId);
+                 }
+                 setPreviewPosition({ x: e.clientX, y: e.clientY });
+             } else {
+                 setPreviewSpaceId(null);
+             }
+          }}
+          onMouseLeave={() => {
+            setHoveredBrokenLink(null);
+            setPreviewSpaceId(null);
+          }}
+          className={`font-semibold cursor-pointer select-none inline-flex items-center gap-1 hover:underline ${isBroken ? 'text-[#d32f2f] line-through' : 'text-[#0b6bcb]'}`}
         >
           {linkText}
           {isBroken && (
-            <Tooltip 
-              content="Right-click for options" 
-              size="sm"
-              placement="top"
-            >
-              <span
-                onClick={(e) => {
-                  e.preventDefault();
-                  e.stopPropagation();
-                  if (onBrokenLinkClick) {
-                    const rect = (e.target as HTMLElement).getBoundingClientRect();
-                    onBrokenLinkClick(link.spaceId, { x: rect.left, y: rect.bottom + 4 });
-                  }
-                }}
-                onContextMenu={(e) => {
-                  e.preventDefault();
-                  e.stopPropagation();
-                  if (onBrokenLinkClick) {
-                    const rect = (e.target as HTMLElement).getBoundingClientRect();
-                    onBrokenLinkClick(link.spaceId, { x: rect.left, y: rect.bottom + 4 });
-                  }
-                }}
-                style={{
-                  fontSize: '14px',
-                  cursor: 'pointer',
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  marginLeft: '2px'
-                }}
-              >
-                ⛔
-              </span>
-            </Tooltip>
+            <span data-is-broken="true">⛔</span>
           )}
         </span>
       );
@@ -224,6 +204,39 @@ export function RichTextEditor({
     
     const caretPos = saveCaretPosition();
     const newText = contentEditableRef.current.innerText || '';
+
+    // Funzione helper per estrarre i link attuali dal DOM e rimapparli sul nuovo testo
+    const getLinksFromDOM = (textToMatch: string) => {
+        if (!contentEditableRef.current) return [];
+        
+        const linkElements = contentEditableRef.current.querySelectorAll('span[data-link-id]');
+        const foundLinks: LinkInfo[] = [];
+        let lastSearchIndex = 0;
+
+        linkElements.forEach((el) => {
+            const span = el as HTMLElement;
+            const id = span.getAttribute('data-link-id');
+            const title = span.getAttribute('data-link-text') || span.innerText;
+            
+            if (!id || !title) return;
+
+            // Cerca il testo del link nel testo completo a partire dall'ultimo punto
+            const index = textToMatch.indexOf(title, lastSearchIndex);
+            
+            if (index !== -1) {
+                foundLinks.push({
+                    spaceId: id,
+                    title: title,
+                    startIndex: index,
+                    endIndex: index + title.length,
+                    storageStartIndex: 0, // Verrà ricalcolato da displayToStorage
+                    storageEndIndex: 0 // Verrà ricalcolato da displayToStorage
+                });
+                lastSearchIndex = index + title.length;
+            }
+        });
+        return foundLinks;
+    };
     
     // Controlla se l'utente ha appena digitato ">>"
     if (newText.endsWith('>>') && !displayContent.endsWith('>>')) {
@@ -234,56 +247,53 @@ export function RichTextEditor({
       const contentWithoutTrigger = newText.slice(0, -2);
       
       // Trova link esistenti nel nuovo testo
-      const newLinks: LinkInfo[] = [];
-      links.forEach((link) => {
-        const linkText = displayContent.substring(link.startIndex, link.endIndex);
-        const index = contentWithoutTrigger.indexOf(linkText);
-        if (index !== -1) {
-          newLinks.push({
-            spaceId: link.spaceId,
-            title: link.title,
-            startIndex: index,
-            endIndex: index + linkText.length,
-            storageStartIndex: link.storageStartIndex,
-            storageEndIndex: link.storageEndIndex,
-          });
-        }
-      });
+      const newLinks = getLinksFromDOM(contentWithoutTrigger);
 
       const storageContent = displayToStorage(contentWithoutTrigger, newLinks);
       onChange(storageContent);
 
       // Trigger autocomplete
-      if (onTriggerSpaceLink && contentEditableRef.current) {
-        const rect = contentEditableRef.current.getBoundingClientRect();
-        onTriggerSpaceLink(
-          {
-            top: rect.bottom + 4,
-            left: rect.left + 20,
-          },
-          cursorPosition
-        );
+      if (onTriggerSpaceLink) {
+        // Use standard selection API to get accurate cursor position
+        const selection = window.getSelection();
+        if (selection && selection.rangeCount > 0) {
+            const range = selection.getRangeAt(0);
+            const rect = range.getBoundingClientRect();
+            
+            // Check if rect is valid (it might be 0,0,0,0 if cursor is in an empty line sometimes)
+            // If invalid, fallback to the element's bottom left or simple calculation
+            if (rect.width === 0 && rect.height === 0 && contentEditableRef.current) {
+                // Try to get position from the text node
+                const span = document.createElement('span');
+                span.appendChild(document.createTextNode('\u200b')); // Zero width space
+                range.insertNode(span);
+                const spanRect = span.getBoundingClientRect();
+                span.parentNode?.removeChild(span);
+                
+                onTriggerSpaceLink(
+                  {
+                    top: spanRect.bottom + 4,
+                    left: spanRect.left,
+                  },
+                  cursorPosition
+                );
+            } else {
+                onTriggerSpaceLink(
+                  {
+                    top: rect.bottom + 4,
+                    left: rect.left,
+                  },
+                  cursorPosition
+                );
+            }
+        }
       }
 
       return;
     }
     
-    // Trova link esistenti nel nuovo testo
-    const newLinks: LinkInfo[] = [];
-    links.forEach((link) => {
-      const linkText = displayContent.substring(link.startIndex, link.endIndex);
-      const index = newText.indexOf(linkText);
-      if (index !== -1) {
-        newLinks.push({
-          spaceId: link.spaceId,
-          title: link.title,
-          startIndex: index,
-          endIndex: index + linkText.length,
-          storageStartIndex: link.storageStartIndex,
-          storageEndIndex: link.storageEndIndex,
-        });
-      }
-    });
+    // Trova link esistenti nel nuovo testo normale
+    const newLinks = getLinksFromDOM(newText);
 
     const storageContent = displayToStorage(newText, newLinks);
     onChange(storageContent);
@@ -318,14 +328,7 @@ export function RichTextEditor({
           
           const isBroken = brokenLinks?.has((part as JSX.Element).props['data-link-id']);
           
-          span.style.color = isBroken ? '#d32f2f' : '#0b6bcb';
-          span.style.fontWeight = '600';
-          span.style.cursor = 'pointer';
-          span.style.userSelect = 'none';
-          span.style.display = 'inline-flex';
-          span.style.alignItems = 'center';
-          span.style.gap = '4px';
-          span.style.textDecoration = isBroken ? 'line-through' : 'none';
+          span.className = `font-semibold cursor-pointer select-none inline-flex items-center gap-1 hover:underline ${isBroken ? 'text-[#d32f2f] line-through' : 'text-[#0b6bcb]'}`;
           
           const linkId = (part as JSX.Element).props['data-link-id'];
           const linkText = (part as JSX.Element).props['data-link-text'];
@@ -348,8 +351,27 @@ export function RichTextEditor({
             }
           };
           
-          span.onmouseenter = () => setHoveredBrokenLink(isBroken ? linkId : null);
-          span.onmouseleave = () => setHoveredBrokenLink(null);
+          span.onmouseenter = (e) => {
+             setHoveredBrokenLink(isBroken ? linkId : null);
+             if (e.ctrlKey || e.metaKey) {
+                setPreviewSpaceId(linkId);
+                setPreviewPosition({ x: e.clientX, y: e.clientY });
+             }
+          };
+          span.onmousemove = (e) => {
+              if (e.ctrlKey || e.metaKey) {
+                  if (previewSpaceId !== linkId) {
+                      setPreviewSpaceId(linkId);
+                  }
+                  setPreviewPosition({ x: e.clientX, y: e.clientY });
+              } else {
+                  setPreviewSpaceId(null);
+              }
+          };
+          span.onmouseleave = () => {
+             setHoveredBrokenLink(null);
+             setPreviewSpaceId(null);
+          };
           
           if (isBroken) {
             const brokenIcon = document.createElement('span');
@@ -546,12 +568,16 @@ export function RichTextEditor({
       }
     }
 
+    // Stop propagation to prevent global shortcuts from firing while editing
+    e.stopPropagation();
+
     if (onKeyDown) {
       onKeyDown(e as any);
     }
   };
 
   return (
+    <>
     <div
       ref={contentEditableRef}
       contentEditable
@@ -565,15 +591,26 @@ export function RichTextEditor({
       onKeyDown={handleKeyDownInternal}
       onFocus={onFocus}
       onBlur={onBlur}
-      data-placeholder={!displayContent ? placeholder : ''}
+      data-placeholder={placeholder}
       className={`
-        min-h-[24px] py-[2px] px-3
+        min-h-[24px] py-[2px] px-0
         bg-transparent
         leading-[1.2] whitespace-pre-wrap break-words cursor-text
         outline-none border-none shadow-none
-        empty:before:content-[attr(data-placeholder)] empty:before:text-default-400 empty:before:pointer-events-none empty:before:absolute
+        relative
+        ${(!displayContent && placeholder && placeholder.trim() !== '') ? 'before:content-[attr(data-placeholder)] before:text-zinc-300 before:pointer-events-none before:absolute before:left-0 before:right-0 before:text-inherit' : ''}
         ${className}
       `}
     />
+    
+    {previewSpaceId && previewPosition && (
+        <SpacePreview
+          spaceId={previewSpaceId}
+          spacesState={spacesState}
+          position={previewPosition}
+          onClose={() => setPreviewSpaceId(null)}
+        />
+    )}
+    </>
   );
 }

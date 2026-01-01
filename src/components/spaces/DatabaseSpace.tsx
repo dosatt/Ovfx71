@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { Button, Input, Checkbox, Modal, ModalContent, ModalHeader, ModalBody, ModalFooter, Card, CardBody, Select, SelectItem } from '@heroui/react';
+import { Button, Input, Modal, ModalContent, ModalHeader, ModalBody, ModalFooter, Card, CardBody, Select, SelectItem } from '@heroui/react';
+import { Checkbox } from '../ui/checkbox';
 import { Plus, Trash2, Settings, Table, LayoutGrid, Calendar, ListOrdered, X } from 'lucide-react';
 import { Space } from '../../types';
 
@@ -172,8 +173,8 @@ export function DatabaseSpace({ space, spacesState }: DatabaseSpaceProps) {
       case 'checkbox':
         return (
           <Checkbox
-            isSelected={value || false}
-            onValueChange={(checked) => updateCell(row.id, column.id, checked)}
+            checked={value || false}
+            onCheckedChange={(checked) => updateCell(row.id, column.id, checked === true)}
           />
         );
       case 'select':
@@ -453,8 +454,8 @@ export function DatabaseSpace({ space, spacesState }: DatabaseSpaceProps) {
                       className="flex items-center gap-3 p-2 rounded-lg hover:bg-default-100 transition-colors"
                     >
                       <Checkbox
-                        isSelected={column.visible !== false}
-                        onValueChange={() => toggleColumnVisibility(column.id)}
+                        checked={column.visible !== false}
+                        onCheckedChange={() => toggleColumnVisibility(column.id)}
                       />
                       <div className="flex-1">
                         <span className="text-small font-medium">{column.name}</span>

@@ -204,10 +204,10 @@ export function SpaceContextMenu({
 
           <div
             onClick={handleDeleteClick}
-            className="p-2 rounded-md cursor-pointer flex items-center gap-2 text-danger hover:bg-danger-50 transition-colors overflow-hidden"
+            className="p-2 rounded-md cursor-pointer flex items-center gap-2 text-red-600 hover:bg-red-50 transition-colors overflow-hidden"
           >
-            <Trash2 size={14} className="shrink-0" />
-            <span className="text-small truncate">Delete</span>
+            <Trash2 size={14} className="shrink-0 text-red-600" />
+            <span className="text-small truncate text-red-600">Delete</span>
           </div>
         </div>
       )}

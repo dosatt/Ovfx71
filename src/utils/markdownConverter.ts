@@ -18,7 +18,7 @@ export function blocksToMarkdown(blocks: Block[]): string {
       case 'quote':
         return `> ${block.content}`;
       case 'divider':
-        return '---';
+        return block.metadata?.dividerVariant === 'stop' ? '___' : '---';
       case 'callout':
         return `> 💡 ${block.content}`;
       case 'code':
@@ -123,11 +123,20 @@ export function markdownToBlocks(markdown: string): Block[] {
       });
     }
     // Divider
+    else if (line.trim() === '___') {
+      blocks.push({
+        id: `block_${Date.now()}_${blocks.length}`,
+        type: 'divider',
+        content: '',
+        metadata: { dividerVariant: 'stop' }
+      });
+    }
     else if (line.trim() === '---') {
       blocks.push({
         id: `block_${Date.now()}_${blocks.length}`,
         type: 'divider',
-        content: ''
+        content: '',
+        metadata: { dividerVariant: 'regular' }
       });
     }
     // Text
