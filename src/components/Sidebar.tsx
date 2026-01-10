@@ -1,10 +1,10 @@
 import { useState, useRef, useEffect } from 'react';
 import { Button, Input, ScrollShadow } from '@heroui/react';
-import { 
+import {
   ChevronLeft,
   ChevronRight,
   ChevronDown,
-  Plus, 
+  Plus,
   Calendar,
   Globe,
   MessageSquare,
@@ -53,7 +53,7 @@ export function Sidebar({ open, onToggle, spacesState, viewportsState, settings,
   const [searchQuery, setSearchQuery] = useState('');
   const searchInputRef = useRef<HTMLInputElement>(null);
   const sidebarRef = useRef<HTMLDivElement>(null);
-  
+
   const favorites = spacesState.getFavorites().filter((s: Space) => !s.metadata?.isHidden);
   const rootSpaces = spacesState.getChildren().filter((s: Space) => !s.metadata?.isHidden);
 
@@ -61,24 +61,24 @@ export function Sidebar({ open, onToggle, spacesState, viewportsState, settings,
   const filterSpaces = (spaces: Space[], query: string): Space[] => {
     const baseSpaces = spaces.filter(s => !s.metadata?.isHidden);
     if (!query) return baseSpaces;
-    
+
     const lowerQuery = query.toLowerCase();
     const filtered: Space[] = [];
-    
+
     for (const space of baseSpaces) {
       const children = spacesState.getChildren(space.id).filter((s: Space) => !s.metadata?.isHidden);
       const filteredChildren = filterSpaces(children, query);
-      
+
       if (space.title.toLowerCase().includes(lowerQuery) || filteredChildren.length > 0) {
         filtered.push(space);
       }
     }
-    
+
     return filtered;
   };
 
   const filteredSpaces = filterSpaces(rootSpaces, searchQuery);
-  const filteredFavorites = favorites.filter((space: Space) => 
+  const filteredFavorites = favorites.filter((space: Space) =>
     space.title.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
@@ -128,22 +128,22 @@ export function Sidebar({ open, onToggle, spacesState, viewportsState, settings,
       }
       return null;
     };
-    
+
     const findLeafViewport = (vp: any): any => {
       if (!vp.children) return vp;
       return findLeafViewport(vp.children[0]);
     };
-    
+
     let targetViewport = focusedId ? findViewportById(viewportsState.rootViewport, focusedId) : null;
-    
+
     if (targetViewport && targetViewport.children) {
       targetViewport = findLeafViewport(targetViewport);
     }
-    
+
     if (!targetViewport) {
       targetViewport = findLeafViewport(viewportsState.rootViewport);
     }
-    
+
     viewportsState.openSpaceInViewport(targetViewport.id, space.id, space.title);
   };
 
@@ -159,22 +159,22 @@ export function Sidebar({ open, onToggle, spacesState, viewportsState, settings,
       }
       return null;
     };
-    
+
     const findLeafViewport = (vp: any): any => {
       if (!vp.children) return vp;
       return findLeafViewport(vp.children[0]);
     };
-    
+
     let targetViewport = focusedId ? findViewportById(viewportsState.rootViewport, focusedId) : null;
-    
+
     if (targetViewport && targetViewport.children) {
       targetViewport = findLeafViewport(targetViewport);
     }
-    
+
     if (!targetViewport) {
       targetViewport = findLeafViewport(viewportsState.rootViewport);
     }
-    
+
     viewportsState.addTab(targetViewport.id, undefined, appType, title);
   };
 
@@ -190,22 +190,22 @@ export function Sidebar({ open, onToggle, spacesState, viewportsState, settings,
       }
       return null;
     };
-    
+
     const findLeafViewport = (vp: any): any => {
       if (!vp.children) return vp;
       return findLeafViewport(vp.children[0]);
     };
-    
+
     let targetViewport = focusedId ? findViewportById(viewportsState.rootViewport, focusedId) : null;
-    
+
     if (targetViewport && targetViewport.children) {
       targetViewport = findLeafViewport(targetViewport);
     }
-    
+
     if (!targetViewport) {
       targetViewport = findLeafViewport(viewportsState.rootViewport);
     }
-    
+
     viewportsState.addTab(targetViewport.id, undefined, type as AppType, title);
   };
 
@@ -247,9 +247,9 @@ export function Sidebar({ open, onToggle, spacesState, viewportsState, settings,
           </div>
           <div className="flex items-center gap-1">
             <div className="flex items-center mr-1">
-              <Button 
+              <Button
                 isIconOnly
-                size="sm" 
+                size="sm"
                 variant="light"
                 onPress={() => viewportsState.navigateHistory && viewportsState.navigateHistory(viewportsState.focusedViewportId, 'back')}
                 isDisabled={!viewportsState.canNavigateBack || !viewportsState.canNavigateBack(viewportsState.focusedViewportId)}
@@ -257,9 +257,9 @@ export function Sidebar({ open, onToggle, spacesState, viewportsState, settings,
               >
                 <ChevronLeft size={18} />
               </Button>
-              <Button 
+              <Button
                 isIconOnly
-                size="sm" 
+                size="sm"
                 variant="light"
                 onPress={() => viewportsState.navigateHistory && viewportsState.navigateHistory(viewportsState.focusedViewportId, 'forward')}
                 isDisabled={!viewportsState.canNavigateForward || !viewportsState.canNavigateForward(viewportsState.focusedViewportId)}
@@ -268,10 +268,10 @@ export function Sidebar({ open, onToggle, spacesState, viewportsState, settings,
                 <ChevronRight size={18} />
               </Button>
             </div>
-            
-            <Button 
+
+            <Button
               isIconOnly
-              size="sm" 
+              size="sm"
               color="primary"
               variant="solid"
               onPress={() => setNewSpaceModalOpen(true)}
@@ -412,7 +412,7 @@ export function Sidebar({ open, onToggle, spacesState, viewportsState, settings,
                   };
                   IconComponent = defaultIcons[space.type];
                 }
-                
+
                 return (
                   <div
                     key={space.id}
@@ -420,8 +420,8 @@ export function Sidebar({ open, onToggle, spacesState, viewportsState, settings,
                     className="flex items-center gap-2 py-1.5 px-2 rounded-lg cursor-pointer hover:bg-default-100 transition-colors"
                   >
                     {IconComponent ? (
-                      <IconComponent 
-                        size={16} 
+                      <IconComponent
+                        size={16}
                         className="shrink-0"
                         style={{ color: space.iconColor || 'currentColor' }}
                       />

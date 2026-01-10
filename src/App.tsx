@@ -9,7 +9,7 @@ import { Workspace } from './components/Workspace';
 import { HistoryProvider } from './contexts/HistoryContext';
 import { TextElementDragLayer } from './components/spaces/TextElementDragLayer';
 import { CommandPalette } from './components/CommandPalette';
-import { Toaster } from 'sonner@2.0.3';
+import { Toaster } from 'sonner';
 import './styles/globals.css';
 
 export default function App() {
@@ -54,15 +54,15 @@ export default function App() {
       <HistoryProvider>
         <DndProvider>
           <Toaster />
-          <CommandPalette 
+          <CommandPalette
             spacesState={spacesState}
             viewportsState={viewportsState}
             settings={settings}
             onUpdateSettings={updateSettings}
           />
-          <div 
+          <div
             className="flex h-screen overflow-hidden relative transition-all duration-300 bg-background"
-            style={{ 
+            style={{
               background: getBackgroundStyle(),
               gap: sidebarOpen ? '2px' : 0,
             }}
@@ -76,7 +76,7 @@ export default function App() {
               onUpdateSettings={updateSettings}
               onResetSettings={resetSettings}
             />
-            
+
             <Workspace
               sidebarOpen={sidebarOpen}
               spacesState={spacesState}

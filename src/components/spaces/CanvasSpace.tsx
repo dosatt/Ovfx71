@@ -85,7 +85,7 @@ const getSvgPathFromStroke = (pointsStr: string | undefined) => {
     const yc = (points[i].y + points[i + 1].y) / 2;
     res += ` Q ${points[i].x},${points[i].y} ${xc},${yc}`;
   }
-  
+
   res += ` Q ${points[points.length - 2].x},${points[points.length - 2].y} ${points[points.length - 1].x},${points[points.length - 1].y}`;
 
   return res;
@@ -132,12 +132,12 @@ interface CanvasSpaceProps {
   onUpdateSettings?: (updates: Partial<Settings>) => void;
 }
 
-const ACCEPT_TYPES = [ITEM_TYPE_TO_WORKSPACE, ITEM_TYPE_TEXT_ELEMENT, NativeTypes.FILE];
+const ACCEPT_TYPES = [ITEM_TYPE_TO_WORKSPACE, ITEM_TYPE_TEXT_ELEMENT, 'CALENDAR_EVENT', NativeTypes.FILE];
 
-export function CanvasSpace({ 
-  space, 
-  spacesState, 
-  onNavigateToSpace, 
+export function CanvasSpace({
+  space,
+  spacesState,
+  onNavigateToSpace,
   isActive = true,
   settings,
   onUpdateSettings
@@ -205,7 +205,7 @@ export function CanvasSpace({
   const handleFileDrop = async (files: any[], clientOffset: { x: number, y: number } | null = null) => {
     if (!svgRef.current) return;
     const svg = svgRef.current;
-    
+
     let svgX = 0;
     let svgY = 0;
 
@@ -221,7 +221,7 @@ export function CanvasSpace({
     }
 
     const newElements: CanvasElement[] = [];
-    
+
     for (let i = 0; i < files.length; i++) {
       const file = files[i];
       const offsetX = (i % 5) * 40; // Spaced out grid for multiple files
@@ -235,18 +235,18 @@ export function CanvasSpace({
             reader.onerror = reject;
             reader.readAsDataURL(file);
           });
-          
+
           // Pre-load image to get dimensions
           const img = new Image();
           await new Promise((resolve) => {
             img.onload = resolve;
             img.src = dataUrl;
           });
-          
+
           const aspectRatio = img.width / img.height;
           let width = 400; // Larger default for images
           let height = 400;
-          
+
           if (img.width > img.height) {
             height = width / aspectRatio;
           } else {
@@ -258,7 +258,7 @@ export function CanvasSpace({
             type: 'image',
             x: svgX + offsetX - width / 2,
             y: svgY + offsetY - height / 2,
-            width: width, 
+            width: width,
             height: height,
             color: '#000000',
             strokeWidth: 0,
@@ -293,9 +293,9 @@ export function CanvasSpace({
     if (newElements.length > 0) {
       const oldElements = [...elements];
       const updated = [...elements, ...newElements];
-      
+
       saveElementsWithHistory(updated, oldElements, `Aggiunti ${newElements.length} file`);
-      
+
       // Animate new elements
       setTimeout(() => {
         newElements.forEach(el => {
@@ -386,7 +386,7 @@ export function CanvasSpace({
         } else {
           const isFile = item.blockType === 'file';
           const isCalendar = item.blockType === 'calendar';
-          
+
           newElement = {
             id: `el_${Date.now()}`,
             type: 'blockEmbed',
@@ -402,6 +402,21 @@ export function CanvasSpace({
             blockContent: item.content || '',
           };
         }
+      } else if (item.itemType === 'CALENDAR_EVENT' || item.type === 'CALENDAR_EVENT') {
+        newElement = {
+          id: `el_${Date.now()}`,
+          type: 'blockEmbed',
+          x: svgX - 150,
+          y: svgY - 75,
+          width: 300,
+          height: 150,
+          color: '#1976d2',
+          strokeWidth: 2,
+          blockId: item.id,
+          sourceSpaceId: item.spaceId,
+          blockType: 'calendar',
+          blockContent: item.title || '',
+        };
       } else {
         const droppedSpaceId = item.spaceId || item.id;
         if (droppedSpaceId === space.id) {
@@ -422,18 +437,18 @@ export function CanvasSpace({
           spaceType: item.spaceData?.type || 'page'
         };
       }
-      
+
       const elementId = newElement.id;
-      
+
       setElements(prevElements => {
         const updatedElements = [...prevElements, newElement];
-        
+
         // Schedule side effects outside of the state updater
         setTimeout(() => {
           spacesState.updateSpace(space.id, {
             content: { elements: updatedElements }
           });
-          
+
           const svgElement = document.querySelector(`[data-element-id="${elementId}"]`);
           if (svgElement) {
             svgElement.animate([
@@ -445,7 +460,7 @@ export function CanvasSpace({
             });
           }
         }, 0);
-        
+
         return updatedElements;
       });
     },
@@ -471,15 +486,15 @@ export function CanvasSpace({
   }, [space.id, spacesState]);
 
   const saveElementsWithHistory = useCallback((
-    newElements: CanvasElement[], 
-    oldElements: CanvasElement[], 
+    newElements: CanvasElement[],
+    oldElements: CanvasElement[],
     description: string
   ) => {
     const oldElementsCopy = JSON.parse(JSON.stringify(oldElements));
     const newElementsCopy = JSON.parse(JSON.stringify(newElements));
-    
+
     saveElements(newElements);
-    
+
     pushAction({
       type: 'canvas',
       description,
@@ -496,7 +511,7 @@ export function CanvasSpace({
     if (selectedIds.length > 0) {
       setElements(prevElements => {
         const oldElements = [...prevElements];
-        
+
         // Find all descendants of selected items
         const getAllDescendants = (ids: string[]): string[] => {
           let descendants: string[] = [...ids];
@@ -516,16 +531,16 @@ export function CanvasSpace({
         const idsToDelete = getAllDescendants(selectedIds);
         const newElements = prevElements.filter(e => !idsToDelete.includes(e.id));
         const count = idsToDelete.length;
-        
+
         // Save to spaces state
         spacesState.updateSpace(space.id, {
           content: { elements: newElements }
         });
-        
+
         // Push to history
         const oldElementsCopy = JSON.parse(JSON.stringify(oldElements));
         const newElementsCopy = JSON.parse(JSON.stringify(newElements));
-        
+
         pushAction({
           type: 'canvas',
           description: `Eliminat${count > 1 ? 'i' : 'o'} ${count} element${count > 1 ? 'i' : 'o'}`,
@@ -542,7 +557,7 @@ export function CanvasSpace({
             });
           }
         });
-        
+
         return newElements;
       });
       setSelectedIds([]);
@@ -551,22 +566,22 @@ export function CanvasSpace({
 
   const zoomToSelection = useCallback(() => {
     if (selectedIds.length === 0) return;
-    
+
     const selectedElements = elements.filter(el => selectedIds.includes(el.id));
     const allBounds = selectedElements.map(el => getElementBounds(el)).filter(b => b !== null) as { x: number; y: number; width: number; height: number }[];
-    
+
     if (allBounds.length === 0) return;
-    
+
     const minX = Math.min(...allBounds.map(b => b.x));
     const minY = Math.min(...allBounds.map(b => b.y));
     const maxX = Math.max(...allBounds.map(b => b.x + b.width));
     const maxY = Math.max(...allBounds.map(b => b.y + b.height));
-    
+
     const width = maxX - minX;
     const height = maxY - minY;
-    
+
     const padding = Math.max(width, height) * 0.2 || 100;
-    
+
     const newViewBox = {
       x: minX - padding,
       y: minY - padding,
@@ -575,7 +590,7 @@ export function CanvasSpace({
     };
 
     setViewBox(newViewBox);
-    
+
     if (svgRef.current) {
       const rect = svgRef.current.getBoundingClientRect();
       const newZoom = rect.width / newViewBox.width;
@@ -618,9 +633,9 @@ export function CanvasSpace({
 
     const svg = svgRef.current;
     const rect = svg.getBoundingClientRect();
-    
+
     if (!rect.width || !rect.height) return;
-    
+
     const aspectRatio = rect.width / rect.height;
     const contentAspectRatio = newWidth / newHeight;
 
@@ -654,10 +669,10 @@ export function CanvasSpace({
 
   const zoomToElement = useCallback((elementId: string) => {
     if (!svgRef.current) return;
-    
+
     const element = elements.find(el => el.id === elementId);
     if (!element) return;
-    
+
     const bounds = getElementBounds(element);
     if (!bounds) return;
 
@@ -672,9 +687,9 @@ export function CanvasSpace({
 
     const svg = svgRef.current;
     const rect = svg.getBoundingClientRect();
-    
+
     if (!rect.width || !rect.height) return;
-    
+
     const aspectRatio = rect.width / rect.height;
     const contentAspectRatio = newWidth / newHeight;
 
@@ -711,7 +726,7 @@ export function CanvasSpace({
     const rect = svgRef.current.getBoundingClientRect();
     const newZoom = percentage / 100;
     const scaleFactor = zoom / newZoom;
-    
+
     setZoom(newZoom);
     setViewBox(prev => ({
       ...prev,
@@ -727,23 +742,23 @@ export function CanvasSpace({
     const svg = svgRef.current;
     const rect = svg.getBoundingClientRect();
     const aspectRatio = rect.width / rect.height;
-    
+
     let finalWidth = CANVAS_WIDTH;
     let finalHeight = CANVAS_HEIGHT;
-    
+
     if (CANVAS_WIDTH / CANVAS_HEIGHT > aspectRatio) {
       finalHeight = CANVAS_WIDTH / aspectRatio;
     } else {
       finalWidth = CANVAS_HEIGHT * aspectRatio;
     }
-    
+
     const newViewBox = {
       x: -finalWidth / 2,
       y: -finalHeight / 2,
       width: finalWidth,
       height: finalHeight
     };
-    
+
     setViewBox(newViewBox);
     setZoom(rect.width / finalWidth);
   }, []);
@@ -753,7 +768,7 @@ export function CanvasSpace({
       if (!isActive) return;
       const target = e.target as HTMLElement;
       if (editingTextId || target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable) return;
-      
+
       const key = e.key.toLowerCase();
 
       // Tool selection
@@ -825,13 +840,13 @@ export function CanvasSpace({
 
   const canElementSnap = (element: CanvasElement) => {
     // Only allow snapping to rectangles, circles, ellipses, text, images and files
-    return element.type === 'rectangle' || 
-           element.type === 'circle' || 
-           element.type === 'text' || 
-           element.type === 'spaceEmbed' || 
-           element.type === 'blockEmbed' ||
-           element.type === 'image' ||
-           element.type === 'file';
+    return element.type === 'rectangle' ||
+      element.type === 'circle' ||
+      element.type === 'text' ||
+      element.type === 'spaceEmbed' ||
+      element.type === 'blockEmbed' ||
+      element.type === 'image' ||
+      element.type === 'file';
   };
 
   // Helper for point rotation
@@ -893,8 +908,8 @@ export function CanvasSpace({
   const getElementAtPosition = (pos: { x: number; y: number }): CanvasElement | null => {
     // Add padding for easier selection of thin elements like lines/arrows
     // Use a fixed visual padding divided by zoom to maintain screen size
-    const hitPadding = 20 / zoom; 
-    
+    const hitPadding = 20 / zoom;
+
     const distToSegment = (px: number, py: number, x1: number, y1: number, x2: number, y2: number) => {
       const l2 = (x1 - x2) ** 2 + (y1 - y2) ** 2;
       if (l2 === 0) return Math.hypot(px - x1, py - y1);
@@ -905,7 +920,7 @@ export function CanvasSpace({
 
     for (let i = elements.length - 1; i >= 0; i--) {
       const element = elements[i];
-      
+
       if (element.type === 'line' || element.type === 'arrow') {
         const coords = element.type === 'arrow' ? getArrowCoordinates(element) : { startX: element.x, startY: element.y, endX: element.x + (element.width || 0), endY: element.y + (element.height || 0) };
         if (distToSegment(pos.x, pos.y, coords.startX, coords.startY, coords.endX, coords.endY) < hitPadding / 2) {
@@ -1033,7 +1048,7 @@ export function CanvasSpace({
           setClipboard(selectedElements);
         }
       }
-      
+
       // Paste: Ctrl+V
       if ((e.ctrlKey || e.metaKey) && e.key === 'v') {
         if (clipboard.length > 0) {
@@ -1044,7 +1059,7 @@ export function CanvasSpace({
             y: el.y + 20,
             groupId: el.groupId ? `group_${Date.now()}_${Math.random()}` : undefined // Simple group regen
           }));
-          
+
           const oldElements = [...elements];
           const updatedElements = [...elements, ...newElements];
           saveElementsWithHistory(updatedElements, oldElements, 'Incolla elementi');
@@ -1074,7 +1089,7 @@ export function CanvasSpace({
 
       // No special hold behavior for Z anymore, unified in the main listener
     };
-    
+
     const handleKeyUp = (e: KeyboardEvent) => {
       if (!isActive) return;
       if (e.key.toLowerCase() === 'z' && selectedIds.length === 0) {
@@ -1093,251 +1108,251 @@ export function CanvasSpace({
   const handleMouseDown = useCallback((e: React.MouseEvent<SVGSVGElement>) => {
     try {
       hasMouseMovedRef.current = false;
-    
-    if (contextMenu) {
-      setContextMenu(null);
-    }
-    
-    if (e.button === 2 && selectedIds.length > 0 && tool === 'select') {
-      e.preventDefault();
-      handleContextMenu(e, selectedIds);
-      return;
-    }
-    
-    if (e.button === 1 || (e.button === 0 && e.altKey && !isDraggingElement)) { // Allow alt-panning if not on element
-      // For middle mouse button (1), always pan regardless of what's under the cursor
-      if (e.button === 1) {
-        setIsPanning(true);
-        setPanStart({ x: e.clientX, y: e.clientY });
+
+      if (contextMenu) {
+        setContextMenu(null);
+      }
+
+      if (e.button === 2 && selectedIds.length > 0 && tool === 'select') {
+        e.preventDefault();
+        handleContextMenu(e, selectedIds);
         return;
       }
-      
-      // For Alt + Left Click, pan only if not on an element
+
+      if (e.button === 1 || (e.button === 0 && e.altKey && !isDraggingElement)) { // Allow alt-panning if not on element
+        // For middle mouse button (1), always pan regardless of what's under the cursor
+        if (e.button === 1) {
+          setIsPanning(true);
+          setPanStart({ x: e.clientX, y: e.clientY });
+          return;
+        }
+
+        // For Alt + Left Click, pan only if not on an element
+        const pos = getMousePos(e);
+        const clickedElement = getElementAtPosition(pos);
+
+        if (!clickedElement || tool !== 'select') {
+          setIsPanning(true);
+          setPanStart({ x: e.clientX, y: e.clientY });
+          return;
+        }
+      }
+
       const pos = getMousePos(e);
-      const clickedElement = getElementAtPosition(pos);
-      
-      if (!clickedElement || tool !== 'select') {
-        setIsPanning(true);
-        setPanStart({ x: e.clientX, y: e.clientY });
-        return;
-      }
-    }
 
-    const pos = getMousePos(e);
+      if (tool === 'select') {
+        const clickedElement = getElementAtPosition(pos);
 
-    if (tool === 'select') {
-      const clickedElement = getElementAtPosition(pos);
-      
-      if (clickedElement) {
-        // Handle element selection and dragging
-        
-        // Handle Nested Groups: Find the top-most group
-        let topMostId = clickedElement.id;
-        let current = clickedElement;
-        while (current.parentId) {
-          const parent = elements.find(el => el.id === current.parentId);
-          if (parent) {
-            topMostId = parent.id;
-            current = parent;
-          } else {
-            break;
-          }
-        }
-        
-        const idsToSelect = getFullHierarchy(topMostId, elements);
+        if (clickedElement) {
+          // Handle element selection and dragging
 
-        // Handle Alt-Drag Copy
-        if (e.altKey) {
-             const newIds: string[] = [];
-             const newElementsList = [...elements];
-             
-             // Create copies of all selected elements (or just the clicked group)
-             // If we are dragging an existing selection, copy all of them?
-             // For simplicity, let's just copy the clicked group/element as per original logic
-             // But original logic only copied ONE element.
-             // Let's stick to copying the clicked element/group.
-             
-             idsToSelect.forEach(id => {
-               const el = elements.find(e => e.id === id);
-               if (el) {
-                 const newId = `el_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`;
-                 newIds.push(newId);
-                 newElementsList.push({ ...el, id: newId });
-               }
-             });
-
-             setElements(newElementsList);
-             setSelectedIds(newIds);
-             draggingIdsRef.current = newIds;
-             setHoveredId(null);
-             setIsDraggingElement(true);
-             setDragStart(pos);
-             elementsDragStartRef.current = newElementsList;
-             return;
-        }
-
-        // Handle Shift-Click (Add to selection) or Regular Click
-        if (e.shiftKey) {
-           const newSelection = Array.from(new Set([...selectedIds, ...idsToSelect]));
-           setSelectedIds(newSelection);
-           draggingIdsRef.current = newSelection;
-        } else {
-           // If clicking an unselected element, replace selection
-           // If clicking a selected element, keep selection (to allow dragging the group)
-           const isAlreadySelected = idsToSelect.some(id => selectedIds.includes(id));
-           if (!isAlreadySelected) {
-               setSelectedIds(idsToSelect);
-               draggingIdsRef.current = idsToSelect;
-           } else {
-               draggingIdsRef.current = selectedIds;
-           }
-        }
-
-        setHoveredId(null);
-        setIsDraggingElement(true);
-        setDragStart(pos);
-        dragStartRef.current = pos;
-        elementsDragStartRef.current = [...elements];
-        return;
-      }
-
-      // If no element clicked, start selection box
-      setSelectionStart(pos);
-      setIsRightToLeftSelection(false); // Reset selection direction
-      if (!e.shiftKey) {
-        setSelectedIds([]);
-      }
-      return;
-    }
-    
-    if (tool === 'text') {
-      const newElement: CanvasElement = {
-        id: `el_${Date.now()}`,
-        type: 'text',
-        x: pos.x,
-        y: pos.y,
-        color,
-        strokeWidth,
-        text: 'Inserisci testo qui'
-      };
-      const oldElements = [...elements];
-      const newElements = [...elements, newElement];
-      saveElementsWithHistory(newElements, oldElements, 'Testo aggiunto');
-      setEditingTextId(newElement.id);
-      setEditingTextValue('Inserisci testo qui');
-      setTool('select');
-      return;
-    }
-    
-    if (tool === 'arrow') {
-      // First try to find element at position
-      let elementAt = getElementAtPosition(pos);
-      let snapPoint: { x: number; y: number; side: 'top' | 'right' | 'bottom' | 'left' } | null = null;
-      
-      if (elementAt) {
-        snapPoint = getClosestSnapPoint(pos, elementAt);
-      }
-      
-      // If no element found or snap point not close enough, search all elements for nearby snap points
-      if (!snapPoint || !elementAt) {
-        for (const el of elements) {
-          if (!canElementSnap(el)) continue;
-          const snapPoints = getSnapPoints(el);
-          if (!snapPoints) continue;
-          
-          for (const side of ['top', 'right', 'bottom', 'left'] as const) {
-            const sp = snapPoints[side];
-            const distance = Math.hypot(pos.x - sp.x, pos.y - sp.y);
-            if (distance < 20) { // Snap threshold for clicking
-              elementAt = el;
-              snapPoint = { ...sp, side };
+          // Handle Nested Groups: Find the top-most group
+          let topMostId = clickedElement.id;
+          let current = clickedElement;
+          while (current.parentId) {
+            const parent = elements.find(el => el.id === current.parentId);
+            if (parent) {
+              topMostId = parent.id;
+              current = parent;
+            } else {
               break;
             }
           }
-          if (snapPoint) break;
+
+          const idsToSelect = getFullHierarchy(topMostId, elements);
+
+          // Handle Alt-Drag Copy
+          if (e.altKey) {
+            const newIds: string[] = [];
+            const newElementsList = [...elements];
+
+            // Create copies of all selected elements (or just the clicked group)
+            // If we are dragging an existing selection, copy all of them?
+            // For simplicity, let's just copy the clicked group/element as per original logic
+            // But original logic only copied ONE element.
+            // Let's stick to copying the clicked element/group.
+
+            idsToSelect.forEach(id => {
+              const el = elements.find(e => e.id === id);
+              if (el) {
+                const newId = `el_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`;
+                newIds.push(newId);
+                newElementsList.push({ ...el, id: newId });
+              }
+            });
+
+            setElements(newElementsList);
+            setSelectedIds(newIds);
+            draggingIdsRef.current = newIds;
+            setHoveredId(null);
+            setIsDraggingElement(true);
+            setDragStart(pos);
+            elementsDragStartRef.current = newElementsList;
+            return;
+          }
+
+          // Handle Shift-Click (Add to selection) or Regular Click
+          if (e.shiftKey) {
+            const newSelection = Array.from(new Set([...selectedIds, ...idsToSelect]));
+            setSelectedIds(newSelection);
+            draggingIdsRef.current = newSelection;
+          } else {
+            // If clicking an unselected element, replace selection
+            // If clicking a selected element, keep selection (to allow dragging the group)
+            const isAlreadySelected = idsToSelect.some(id => selectedIds.includes(id));
+            if (!isAlreadySelected) {
+              setSelectedIds(idsToSelect);
+              draggingIdsRef.current = idsToSelect;
+            } else {
+              draggingIdsRef.current = selectedIds;
+            }
+          }
+
+          setHoveredId(null);
+          setIsDraggingElement(true);
+          setDragStart(pos);
+          dragStartRef.current = pos;
+          elementsDragStartRef.current = [...elements];
+          return;
         }
+
+        // If no element clicked, start selection box
+        setSelectionStart(pos);
+        setIsRightToLeftSelection(false); // Reset selection direction
+        if (!e.shiftKey) {
+          setSelectedIds([]);
+        }
+        return;
       }
-      
-      if (elementAt && snapPoint) {
-        // If we already have a start point, complete the arrow with a click
-        if (arrowSnapStart && arrowSnapStart.elementId !== elementAt.id) {
+
+      if (tool === 'text') {
+        const newElement: CanvasElement = {
+          id: `el_${Date.now()}`,
+          type: 'text',
+          x: pos.x,
+          y: pos.y,
+          color,
+          strokeWidth,
+          text: 'Inserisci testo qui'
+        };
+        const oldElements = [...elements];
+        const newElements = [...elements, newElement];
+        saveElementsWithHistory(newElements, oldElements, 'Testo aggiunto');
+        setEditingTextId(newElement.id);
+        setEditingTextValue('Inserisci testo qui');
+        setTool('select');
+        return;
+      }
+
+      if (tool === 'arrow') {
+        // First try to find element at position
+        let elementAt = getElementAtPosition(pos);
+        let snapPoint: { x: number; y: number; side: 'top' | 'right' | 'bottom' | 'left' } | null = null;
+
+        if (elementAt) {
+          snapPoint = getClosestSnapPoint(pos, elementAt);
+        }
+
+        // If no element found or snap point not close enough, search all elements for nearby snap points
+        if (!snapPoint || !elementAt) {
+          for (const el of elements) {
+            if (!canElementSnap(el)) continue;
+            const snapPoints = getSnapPoints(el);
+            if (!snapPoints) continue;
+
+            for (const side of ['top', 'right', 'bottom', 'left'] as const) {
+              const sp = snapPoints[side];
+              const distance = Math.hypot(pos.x - sp.x, pos.y - sp.y);
+              if (distance < 20) { // Snap threshold for clicking
+                elementAt = el;
+                snapPoint = { ...sp, side };
+                break;
+              }
+            }
+            if (snapPoint) break;
+          }
+        }
+
+        if (elementAt && snapPoint) {
+          // If we already have a start point, complete the arrow with a click
+          if (arrowSnapStart && arrowSnapStart.elementId !== elementAt.id) {
+            const newArrow: CanvasElement = {
+              id: `el_${Date.now()}`,
+              type: 'arrow',
+              x: arrowSnapStart.x,
+              y: arrowSnapStart.y,
+              width: snapPoint.x - arrowSnapStart.x,
+              height: snapPoint.y - arrowSnapStart.y,
+              color,
+              strokeWidth,
+              arrowType: arrowType,
+              curvature: arrowType === 'curved' ? 0.5 : undefined,
+              anchorStart: { elementId: arrowSnapStart.elementId, side: arrowSnapStart.side },
+              anchorEnd: { elementId: elementAt.id, side: snapPoint.side }
+            };
+
+            const oldElements = [...elements];
+            const newElements = [...elements, newArrow];
+            saveElementsWithHistory(newElements, oldElements, 'Freccia aggiunta');
+
+            // Reset arrow tool state
+            setArrowSnapStart(null);
+            setArrowSnapPreview(null);
+            setCurrentElement(null);
+            setTool('select');
+            return;
+          }
+
+          // Otherwise, set the start point
+          setArrowSnapStart({ ...snapPoint, elementId: elementAt.id });
+          setIsDrawing(false);
+          setSelectedIds([]);
+          return;
+        } else if (arrowSnapStart) {
+          // Clicking in empty space creates an arrow ending here
           const newArrow: CanvasElement = {
             id: `el_${Date.now()}`,
             type: 'arrow',
             x: arrowSnapStart.x,
             y: arrowSnapStart.y,
-            width: snapPoint.x - arrowSnapStart.x,
-            height: snapPoint.y - arrowSnapStart.y,
+            width: pos.x - arrowSnapStart.x,
+            height: pos.y - arrowSnapStart.y,
             color,
             strokeWidth,
             arrowType: arrowType,
             curvature: arrowType === 'curved' ? 0.5 : undefined,
-            anchorStart: { elementId: arrowSnapStart.elementId, side: arrowSnapStart.side },
-            anchorEnd: { elementId: elementAt.id, side: snapPoint.side }
+            anchorStart: { elementId: arrowSnapStart.elementId, side: arrowSnapStart.side }
           };
-          
+
           const oldElements = [...elements];
           const newElements = [...elements, newArrow];
           saveElementsWithHistory(newElements, oldElements, 'Freccia aggiunta');
-          
-          // Reset arrow tool state
+
           setArrowSnapStart(null);
           setArrowSnapPreview(null);
           setCurrentElement(null);
           setTool('select');
           return;
         }
-        
-        // Otherwise, set the start point
-        setArrowSnapStart({ ...snapPoint, elementId: elementAt.id });
-        setIsDrawing(false);
-        setSelectedIds([]);
-        return;
-      } else if (arrowSnapStart) {
-        // Clicking in empty space creates an arrow ending here
-        const newArrow: CanvasElement = {
-          id: `el_${Date.now()}`,
-          type: 'arrow',
-          x: arrowSnapStart.x,
-          y: arrowSnapStart.y,
-          width: pos.x - arrowSnapStart.x,
-          height: pos.y - arrowSnapStart.y,
-          color,
-          strokeWidth,
-          arrowType: arrowType,
-          curvature: arrowType === 'curved' ? 0.5 : undefined,
-          anchorStart: { elementId: arrowSnapStart.elementId, side: arrowSnapStart.side }
-        };
-        
-        const oldElements = [...elements];
-        const newElements = [...elements, newArrow];
-        saveElementsWithHistory(newElements, oldElements, 'Freccia aggiunta');
-        
-        setArrowSnapStart(null);
-        setArrowSnapPreview(null);
-        setCurrentElement(null);
-        setTool('select');
-        return;
       }
-    }
 
-    setIsDrawing(true);
-    setSelectedIds([]);
+      setIsDrawing(true);
+      setSelectedIds([]);
 
-    const newElement: CanvasElement = {
-      id: `el_${Date.now()}`,
-      type: tool === 'pen' ? 'path' : tool as any,
-      x: tool === 'arrow' && arrowSnapStart ? arrowSnapStart.x : pos.x,
-      y: tool === 'arrow' && arrowSnapStart ? arrowSnapStart.y : pos.y,
-      color,
-      strokeWidth,
-      radius: tool === 'rectangle' ? 32 : undefined,
-      points: tool === 'pen' ? `${pos.x},${pos.y}` : undefined,
-      arrowType: tool === 'arrow' ? arrowType : undefined,
-      curvature: tool === 'arrow' && arrowType === 'curved' ? 0.5 : undefined
-    };
+      const newElement: CanvasElement = {
+        id: `el_${Date.now()}`,
+        type: tool === 'pen' ? 'path' : tool as any,
+        x: tool === 'arrow' && arrowSnapStart ? arrowSnapStart.x : pos.x,
+        y: tool === 'arrow' && arrowSnapStart ? arrowSnapStart.y : pos.y,
+        color,
+        strokeWidth,
+        radius: tool === 'rectangle' ? 32 : undefined,
+        points: tool === 'pen' ? `${pos.x},${pos.y}` : undefined,
+        arrowType: tool === 'arrow' ? arrowType : undefined,
+        curvature: tool === 'arrow' && arrowType === 'curved' ? 0.5 : undefined
+      };
 
-    setCurrentElement(newElement);
+      setCurrentElement(newElement);
     } catch (error) {
       console.error('Error in handleMouseDown:', error);
     }
@@ -1345,14 +1360,14 @@ export function CanvasSpace({
 
   const handleMouseMove = useCallback((e: any) => {
     hasMouseMovedRef.current = true;
-    
+
     if (isPanning) {
       const dx = (panStart.x - e.clientX) * 2;
       const dy = (panStart.y - e.clientY) * 2;
       setViewBox(prev => {
         let newX = prev.x + dx;
         let newY = prev.y + dy;
-        
+
         if (prev.width >= CANVAS_WIDTH) {
           newX = -CANVAS_WIDTH / 2 - (prev.width - CANVAS_WIDTH) / 2;
         } else {
@@ -1360,7 +1375,7 @@ export function CanvasSpace({
           const maxX = CANVAS_WIDTH / 2 - prev.width;
           newX = Math.max(minX, Math.min(maxX, newX));
         }
-        
+
         if (prev.height >= CANVAS_HEIGHT) {
           newY = -CANVAS_HEIGHT / 2 - (prev.height - CANVAS_HEIGHT) / 2;
         } else {
@@ -1368,7 +1383,7 @@ export function CanvasSpace({
           const maxY = CANVAS_HEIGHT / 2 - prev.height;
           newY = Math.max(minY, Math.min(maxY, newY));
         }
-        
+
         return {
           ...prev,
           x: newX,
@@ -1383,7 +1398,7 @@ export function CanvasSpace({
       const pos = getMousePos(e);
       const arrow = elements.find(el => el.id === isDraggingArrowHandle.arrowId);
       if (!arrow) return;
-      
+
       // Handle waypoint dragging
       if (isDraggingArrowHandle.end === 'waypoint' && typeof isDraggingArrowHandle.index === 'number') {
         const index = isDraggingArrowHandle.index;
@@ -1405,10 +1420,10 @@ export function CanvasSpace({
         // Don't snap to the element on the other end
         if (isDraggingArrowHandle.end === 'start' && arrow.anchorEnd?.elementId === el.id) continue;
         if (isDraggingArrowHandle.end === 'end' && arrow.anchorStart?.elementId === el.id) continue;
-        
+
         const snapPoints = getSnapPoints(el);
         if (!snapPoints) continue;
-        
+
         for (const side of ['top', 'right', 'bottom', 'left'] as const) {
           const sp = snapPoints[side];
           const distance = Math.hypot(pos.x - sp.x, pos.y - sp.y);
@@ -1419,19 +1434,19 @@ export function CanvasSpace({
         }
         if (snapTarget) break;
       }
-      
+
       if (snapTarget) {
         setArrowSnapPreview({ x: snapTarget.x, y: snapTarget.y, side: snapTarget.side });
       } else {
         setArrowSnapPreview(null);
       }
-      
+
       // Update arrow position in real-time
       setElements(prev => prev.map(el => {
         if (el.id !== isDraggingArrowHandle.arrowId) return el;
-        
+
         const targetPos = snapTarget || pos;
-        
+
         if (isDraggingArrowHandle.end === 'start') {
           // Moving start point
           const oldEndX = el.x + (el.width || 0);
@@ -1452,7 +1467,7 @@ export function CanvasSpace({
           };
         }
       }));
-      
+
       return;
     }
 
@@ -1476,7 +1491,7 @@ export function CanvasSpace({
     if (tool === 'select' && selectionStart) {
       const width = pos.x - selectionStart.x;
       const height = pos.y - selectionStart.y;
-      
+
       const isRightToLeft = width < 0;
       // Stability: only update selection direction if we are not in zoom mode
       if (!isZKeyPressed) {
@@ -1495,7 +1510,7 @@ export function CanvasSpace({
     if (tool === 'arrow') {
       let elementAt = getElementAtPosition(pos);
       let snapPoint: { x: number; y: number; side: 'top' | 'right' | 'bottom' | 'left' } | null = null;
-      
+
       if (elementAt) {
         snapPoint = getClosestSnapPoint(pos, elementAt);
       } else {
@@ -1504,7 +1519,7 @@ export function CanvasSpace({
           if (!canElementSnap(el)) continue;
           const snapPoints = getSnapPoints(el);
           if (!snapPoints) continue;
-          
+
           for (const side of ['top', 'right', 'bottom', 'left'] as const) {
             const sp = snapPoints[side];
             const distance = Math.hypot(pos.x - sp.x, pos.y - sp.y);
@@ -1517,13 +1532,13 @@ export function CanvasSpace({
           if (snapPoint) break;
         }
       }
-      
+
       if (snapPoint) {
         setArrowSnapPreview(snapPoint);
       } else {
         setArrowSnapPreview(null);
       }
-      
+
       if (arrowSnapStart && !isDrawing) {
         setCurrentElement({
           id: 'preview',
@@ -1566,7 +1581,7 @@ export function CanvasSpace({
         // First try to find element at position
         let elementAt = getElementAtPosition(pos);
         let snapPoint: { x: number; y: number; side: 'top' | 'right' | 'bottom' | 'left' } | null = null;
-        
+
         // If we found an element, get closest snap point
         if (elementAt && elementAt.id !== arrowSnapStart.elementId) {
           snapPoint = getClosestSnapPoint(pos, elementAt);
@@ -1576,7 +1591,7 @@ export function CanvasSpace({
             if (!canElementSnap(el) || el.id === arrowSnapStart.elementId) continue;
             const snapPoints = getSnapPoints(el);
             if (!snapPoints) continue;
-            
+
             // Check each snap point to see if we're close
             for (const side of ['top', 'right', 'bottom', 'left'] as const) {
               const sp = snapPoints[side];
@@ -1590,7 +1605,7 @@ export function CanvasSpace({
             if (snapPoint) break;
           }
         }
-        
+
         if (snapPoint && elementAt) {
           setArrowSnapPreview(snapPoint);
           setCurrentElement({
@@ -1603,7 +1618,7 @@ export function CanvasSpace({
           setArrowSnapPreview(null);
         }
       }
-      
+
       setCurrentElement({
         ...currentElement,
         width: pos.x - currentElement.x,
@@ -1626,7 +1641,7 @@ export function CanvasSpace({
         setTool('select');
         return;
       }
-      
+
       const arrow = elements.find(el => el.id === isDraggingArrowHandle.arrowId);
       if (!arrow) {
         setIsDraggingArrowHandle(null);
@@ -1634,7 +1649,7 @@ export function CanvasSpace({
         setTool('select');
         return;
       }
-      
+
       // Check for snap target
       let snapTarget: { elementId: string; side: 'top' | 'right' | 'bottom' | 'left'; x: number; y: number } | null = null;
       for (const el of elements) {
@@ -1642,10 +1657,10 @@ export function CanvasSpace({
         // Don't snap to the element on the other end
         if (isDraggingArrowHandle.end === 'start' && arrow.anchorEnd?.elementId === el.id) continue;
         if (isDraggingArrowHandle.end === 'end' && arrow.anchorStart?.elementId === el.id) continue;
-        
+
         const snapPoints = getSnapPoints(el);
         if (!snapPoints) continue;
-        
+
         for (const side of ['top', 'right', 'bottom', 'left'] as const) {
           const sp = snapPoints[side];
           const distance = Math.hypot(pos.x - sp.x, pos.y - sp.y);
@@ -1656,10 +1671,10 @@ export function CanvasSpace({
         }
         if (snapTarget) break;
       }
-      
+
       // Update arrow with new anchor or waypoint
       const oldElements = [...elements];
-      
+
       // Handle waypoint completion
       if (isDraggingArrowHandle.end === 'waypoint') {
         saveElementsWithHistory(elements, oldElements, 'Waypoint spostato');
@@ -1671,7 +1686,7 @@ export function CanvasSpace({
 
       const newElements = elements.map(el => {
         if (el.id !== isDraggingArrowHandle.arrowId) return el;
-        
+
         if (isDraggingArrowHandle.end === 'start') {
           if (snapTarget) {
             // Update start point and anchor
@@ -1706,7 +1721,7 @@ export function CanvasSpace({
           }
         }
       });
-      
+
       saveElementsWithHistory(newElements, oldElements, 'Freccia riconnessa');
       setIsDraggingArrowHandle(null);
       setArrowSnapPreview(null);
@@ -1734,13 +1749,13 @@ export function CanvasSpace({
         // Selection Zoom
         const padding = Math.max(selectionBox.width, selectionBox.height) * 0.1;
         const newViewBox = {
-            x: selectionBox.x - padding,
-            y: selectionBox.y - padding,
-            width: selectionBox.width + padding * 2,
-            height: selectionBox.height + padding * 2
+          x: selectionBox.x - padding,
+          y: selectionBox.y - padding,
+          width: selectionBox.width + padding * 2,
+          height: selectionBox.height + padding * 2
         };
         setViewBox(newViewBox);
-        
+
         if (svgRef.current) {
           const rect = svgRef.current.getBoundingClientRect();
           const newZoom = rect.width / newViewBox.width;
@@ -1748,7 +1763,7 @@ export function CanvasSpace({
             setZoom(newZoom);
           }
         }
-        
+
         setSelectionBox(null);
         setSelectionStart(null);
         setIsZKeyPressed(false); // Reset mode after zoom
@@ -1766,7 +1781,7 @@ export function CanvasSpace({
           bounds.y > selectionBox.y + selectionBox.height
         );
 
-        const isContained = 
+        const isContained =
           bounds.x >= selectionBox.x &&
           bounds.x + bounds.width <= selectionBox.x + selectionBox.width &&
           bounds.y >= selectionBox.y &&
@@ -1776,7 +1791,7 @@ export function CanvasSpace({
           // Crossing Selection: intersect for shapes, but for lines/arrows we want segment intersection if possible
           if (el.type === 'line' || el.type === 'arrow') {
             const coords = el.type === 'arrow' ? getArrowCoordinates(el) : { startX: el.x, startY: el.y, endX: el.x + (el.width || 0), endY: el.y + (el.height || 0) };
-            
+
             const segmentIntersectsRect = (x1: number, y1: number, x2: number, y2: number, rx: number, ry: number, rw: number, rh: number) => {
               const pinr = (px: number, py: number) => px >= rx && px <= rx + rw && py >= ry && py <= ry + rh;
               if (pinr(x1, y1) || pinr(x2, y2)) return true;
@@ -1788,9 +1803,9 @@ export function CanvasSpace({
                 return t >= 0 && t <= 1 && u >= 0 && u <= 1;
               };
               return lli(x1, y1, x2, y2, rx, ry, rx + rw, ry) || lli(x1, y1, x2, y2, rx, ry + rh, rx + rw, ry + rh) ||
-                     lli(x1, y1, x2, y2, rx, ry, rx, ry + rh) || lli(x1, y1, x2, y2, rx + rw, ry, rx + rw, ry + rh);
+                lli(x1, y1, x2, y2, rx, ry, rx, ry + rh) || lli(x1, y1, x2, y2, rx + rw, ry, rx + rw, ry + rh);
             };
-            
+
             return segmentIntersectsRect(coords.startX, coords.startY, coords.endX, coords.endY, selectionBox.x, selectionBox.y, selectionBox.width, selectionBox.height);
           }
           return isIntersecting;
@@ -1799,13 +1814,13 @@ export function CanvasSpace({
           return isContained;
         }
       });
-      
+
       if (selectedElements.length > 0) {
         const newIds = selectedElements.map(el => el.id);
-        
+
         if (e?.altKey) {
-           // Remove selection
-           setSelectedIds(prev => prev.filter(id => !newIds.includes(id)));
+          // Remove selection
+          setSelectedIds(prev => prev.filter(id => !newIds.includes(id)));
         } else if (e?.shiftKey) {
           setSelectedIds(prev => {
             const combined = [...prev, ...newIds];
@@ -1817,9 +1832,9 @@ export function CanvasSpace({
       } else if (!e?.shiftKey && !e?.altKey) {
         // Clear selection if nothing selected (standard behavior)
         // But only if we weren't just adding to selection
-         setSelectedIds([]);
+        setSelectedIds([]);
       }
-      
+
       setSelectionBox(null);
       setSelectionStart(null);
       return;
@@ -1850,13 +1865,13 @@ export function CanvasSpace({
           let targetElement: CanvasElement | null = null;
           const endX = currentElement.x + (currentElement.width || 0);
           const endY = currentElement.y + (currentElement.height || 0);
-          
+
           // Check each element to see if the end point is near any of its snap points
           for (const el of elements) {
             if (!canElementSnap(el) || el.id === arrowSnapStart.elementId) continue;
             const snapPoints = getSnapPoints(el);
             if (!snapPoints) continue;
-            
+
             // Check if we're close to any snap point of this element
             for (const side of ['top', 'right', 'bottom', 'left'] as const) {
               const sp = snapPoints[side];
@@ -1868,7 +1883,7 @@ export function CanvasSpace({
             }
             if (targetElement) break;
           }
-          
+
           if (targetElement) {
             const snapPoint = arrowSnapPreview;
             const arrowWithAnchors = {
@@ -1889,7 +1904,7 @@ export function CanvasSpace({
             return;
           }
         }
-        
+
         const arrowWithOneAnchor = {
           ...currentElement,
           anchorStart: { elementId: arrowSnapStart.elementId, side: arrowSnapStart.side }
@@ -1911,7 +1926,7 @@ export function CanvasSpace({
         };
         const description = typeMap[tool] ? `${typeMap[tool]} aggiunto` : 'Elemento aggiunto';
         saveElementsWithHistory(newElements, oldElements, description);
-        
+
         // Auto-switch to select tool after placing rectangle, circle, or line (but not pen)
         if (tool === 'rectangle' || tool === 'circle' || tool === 'line' || tool === 'arrow') {
           setTool('select');
@@ -1970,7 +1985,7 @@ export function CanvasSpace({
 
   const alignElements = (type: 'left' | 'center-h' | 'right' | 'top' | 'center-v' | 'bottom') => {
     if (selectedIds.length < 2) return;
-    
+
     const selected = elements.filter(el => selectedIds.includes(el.id));
     if (selected.length === 0) return;
 
@@ -1978,7 +1993,7 @@ export function CanvasSpace({
       const b = getElementBounds(el);
       return b ? { ...b, el } : null;
     }).filter(item => item !== null) as { x: number; y: number; width: number; height: number; el: CanvasElement }[];
-    
+
     if (boundsList.length === 0) return;
 
     const minX = Math.min(...boundsList.map(b => b.x));
@@ -1990,7 +2005,7 @@ export function CanvasSpace({
 
     const newElements = elements.map(el => {
       if (!selectedIds.includes(el.id)) return el;
-      
+
       const boundsItem = boundsList.find(b => b.el.id === el.id);
       if (!boundsItem) return el;
       const bounds = boundsItem;
@@ -2012,11 +2027,11 @@ export function CanvasSpace({
           newY = minY - (bounds.y - el.y);
           break;
         case 'center-v':
-           newY = el.y + (centerY - (bounds.y + bounds.height / 2));
-           break;
+          newY = el.y + (centerY - (bounds.y + bounds.height / 2));
+          break;
         case 'bottom':
-           newY = el.y + (maxY - (bounds.y + bounds.height));
-           break;
+          newY = el.y + (maxY - (bounds.y + bounds.height));
+          break;
       }
 
       return { ...el, x: newX, y: newY };
@@ -2027,48 +2042,48 @@ export function CanvasSpace({
   };
 
   const distributeElements = (type: 'horizontal' | 'vertical') => {
-     if (selectedIds.length < 3) return;
-     
-     const selected = elements.filter(el => selectedIds.includes(el.id));
-     const boundsList = selected.map(el => {
+    if (selectedIds.length < 3) return;
+
+    const selected = elements.filter(el => selectedIds.includes(el.id));
+    const boundsList = selected.map(el => {
       const b = getElementBounds(el);
       return b ? { ...b, el } : null;
     }).filter(item => item !== null) as { x: number; y: number; width: number; height: number; el: CanvasElement }[];
 
-     if (boundsList.length < 3) return;
+    if (boundsList.length < 3) return;
 
-     // Sort by position
-     const sorted = [...boundsList].sort((a, b) => {
-        return type === 'horizontal' ? a.x - b.x : a.y - b.y;
-     });
-     
-     const first = sorted[0];
-     const last = sorted[sorted.length - 1];
-     
-     const centerFirst = type === 'horizontal' ? first.x + first.width / 2 : first.y + first.height / 2;
-     const centerLast = type === 'horizontal' ? last.x + last.width / 2 : last.y + last.height / 2;
-     const totalDist = centerLast - centerFirst;
-     const step = totalDist / (sorted.length - 1);
+    // Sort by position
+    const sorted = [...boundsList].sort((a, b) => {
+      return type === 'horizontal' ? a.x - b.x : a.y - b.y;
+    });
 
-     const newElementMap = new Map();
-     
-     sorted.forEach((item, index) => {
-        if (index === 0 || index === sorted.length - 1) return; // Keep ends fixed
-        
-        const currentCenter = type === 'horizontal' ? item.x + item.width / 2 : item.y + item.height / 2;
-        const targetCenter = centerFirst + step * index;
-        const diff = targetCenter - currentCenter;
-        
-        if (type === 'horizontal') {
-            newElementMap.set(item.el.id, { ...item.el, x: item.el.x + diff });
-        } else {
-            newElementMap.set(item.el.id, { ...item.el, y: item.el.y + diff });
-        }
-     });
+    const first = sorted[0];
+    const last = sorted[sorted.length - 1];
 
-     const newElements = elements.map(el => newElementMap.get(el.id) || el);
-     saveElementsWithHistory(newElements, [...elements], `Distribuzione ${type}`);
-     setContextMenu(null);
+    const centerFirst = type === 'horizontal' ? first.x + first.width / 2 : first.y + first.height / 2;
+    const centerLast = type === 'horizontal' ? last.x + last.width / 2 : last.y + last.height / 2;
+    const totalDist = centerLast - centerFirst;
+    const step = totalDist / (sorted.length - 1);
+
+    const newElementMap = new Map();
+
+    sorted.forEach((item, index) => {
+      if (index === 0 || index === sorted.length - 1) return; // Keep ends fixed
+
+      const currentCenter = type === 'horizontal' ? item.x + item.width / 2 : item.y + item.height / 2;
+      const targetCenter = centerFirst + step * index;
+      const diff = targetCenter - currentCenter;
+
+      if (type === 'horizontal') {
+        newElementMap.set(item.el.id, { ...item.el, x: item.el.x + diff });
+      } else {
+        newElementMap.set(item.el.id, { ...item.el, y: item.el.y + diff });
+      }
+    });
+
+    const newElements = elements.map(el => newElementMap.get(el.id) || el);
+    saveElementsWithHistory(newElements, [...elements], `Distribuzione ${type}`);
+    setContextMenu(null);
   };
 
   // Helper to find descendants
@@ -2090,28 +2105,28 @@ export function CanvasSpace({
       topParentId = current.parentId;
       current = allElements.find(el => el.id === current.parentId);
     }
-    
+
     // Get all descendants of that top parent
     return [topParentId, ...getDescendants(topParentId, allElements)];
   }, [getDescendants]);
 
   const groupElements = () => {
     if (selectedIds.length < 2) return;
-    
+
     const oldElements = [...elements];
     const groupId = `group_${Date.now()}`;
-    
+
     // Calculate bounds for the new group element
     const selectedElements = elements.filter(el => selectedIds.includes(el.id));
     const allBounds = selectedElements.map(el => getElementBounds(el)).filter(b => b !== null) as { x: number; y: number; width: number; height: number }[];
-    
+
     if (allBounds.length === 0) return;
-    
+
     const minX = Math.min(...allBounds.map(b => b.x));
     const minY = Math.min(...allBounds.map(b => b.y));
     const maxX = Math.max(...allBounds.map(b => b.x + b.width));
     const maxY = Math.max(...allBounds.map(b => b.y + b.height));
-    
+
     const newGroup: CanvasElement = {
       id: groupId,
       type: 'group',
@@ -2124,31 +2139,31 @@ export function CanvasSpace({
     };
 
     const newElements = [
-      ...elements.map(el => 
+      ...elements.map(el =>
         selectedIds.includes(el.id) ? { ...el, parentId: groupId } : el
       ),
       newGroup
     ];
-    
+
     saveElementsWithHistory(newElements, oldElements, 'Elementi raggruppati');
     setSelectedIds([groupId]);
   };
 
   const ungroupElements = () => {
     if (selectedIds.length === 0) return;
-    
+
     const oldElements = [...elements];
     const newSelectedIds: string[] = [];
-    
+
     // Find which groups are selected
     const selectedGroups = elements.filter(el => el.type === 'group' && selectedIds.includes(el.id));
     const selectedGroupIds = selectedGroups.map(g => g.id);
-    
+
     if (selectedGroupIds.length === 0) {
       // If no group is selected but elements are, check if they have parents
       const elementParents = Array.from(new Set(
         elements.filter(el => selectedIds.includes(el.id) && el.parentId)
-                .map(el => el.parentId!)
+          .map(el => el.parentId!)
       ));
       if (elementParents.length > 0) {
         selectedGroupIds.push(...elementParents);
@@ -2167,7 +2182,7 @@ export function CanvasSpace({
         }
         return el;
       });
-      
+
     saveElementsWithHistory(newElements, oldElements, 'Gruppo separato');
     setSelectedIds(newSelectedIds);
   };
@@ -2201,7 +2216,7 @@ export function CanvasSpace({
           maxY = Math.max(maxY, y);
         });
         return { x: minX, y: minY, width: maxX - minX, height: maxY - minY };
-      
+
       case 'rectangle':
       case 'spaceEmbed':
       case 'blockEmbed':
@@ -2213,11 +2228,11 @@ export function CanvasSpace({
         const rw = Math.abs(element.width);
         const rh = Math.abs(element.height);
         const rot = element.rotation || 0;
-        
+
         if (rot === 0) {
           return { x: rx, y: ry, width: rw, height: rh };
         }
-        
+
         const rcx = rx + rw / 2;
         const rcy = ry + rh / 2;
         const corners = [
@@ -2226,7 +2241,7 @@ export function CanvasSpace({
           rotatePoint(rx + rw, ry + rh, rcx, rcy, rot),
           rotatePoint(rx, ry + rh, rcx, rcy, rot)
         ];
-        
+
         let rectMinX = corners[0].x, rectMinY = corners[0].y, rectMaxX = corners[0].x, rectMaxY = corners[0].y;
         corners.forEach(p => {
           rectMinX = Math.min(rectMinX, p.x);
@@ -2234,9 +2249,9 @@ export function CanvasSpace({
           rectMaxX = Math.max(rectMaxX, p.x);
           rectMaxY = Math.max(rectMaxY, p.y);
         });
-        
+
         return { x: rectMinX, y: rectMinY, width: rectMaxX - rectMinX, height: rectMaxY - rectMinY };
-      
+
       case 'circle':
         if (!element.radius) return null;
         return {
@@ -2245,54 +2260,54 @@ export function CanvasSpace({
           width: element.radius * 2,
           height: element.radius * 2
         };
-      
+
       case 'line':
       case 'arrow':
         // Allow 0 width or height for orthogonal lines
         if (element.width === undefined || element.height === undefined) return null;
-        
+
         let pts: { x: number; y: number }[] = [];
-        
+
         if (element.type === 'arrow') {
           const coords = getArrowCoordinates(element);
           pts.push({ x: coords.startX, y: coords.startY });
           pts.push({ x: coords.endX, y: coords.endY });
-          
+
           if (element.waypoints && element.waypoints.length > 0) {
             pts.push(...element.waypoints);
           }
-          
+
           if (element.arrowType === 'electrical' || !element.arrowType || element.arrowType === 'straight') {
             const stubLength = 20;
             const startSide = element.anchorStart?.side || 'right';
             const endSide = element.anchorEnd?.side || 'left';
-            
+
             const getStub = (x: number, y: number, side: string) => {
               if (side === 'top') return { x, y: y - stubLength };
               if (side === 'bottom') return { x, y: y + stubLength };
               if (side === 'left') return { x: x - stubLength, y };
               return { x: x + stubLength, y };
             };
-            
+
             pts.push(getStub(coords.startX, coords.startY, startSide));
             pts.push(getStub(coords.endX, coords.endY, endSide));
           }
-          
+
           if (element.arrowType === 'curved') {
-             const dx = coords.endX - coords.startX;
-             const dy = coords.endY - coords.startY;
-             const midX = (coords.startX + coords.endX) / 2;
-             const midY = (coords.startY + coords.endY) / 2;
-             const len = Math.sqrt(dx * dx + dy * dy);
-             if (len > 0) {
-               const normPerpX = -dy / len;
-               const normPerpY = dx / len;
-               const offset = (element.curvature || 0.5) * 100;
-               pts.push({ 
-                 x: midX + normPerpX * offset, 
-                 y: midY + normPerpY * offset 
-               });
-             }
+            const dx = coords.endX - coords.startX;
+            const dy = coords.endY - coords.startY;
+            const midX = (coords.startX + coords.endX) / 2;
+            const midY = (coords.startY + coords.endY) / 2;
+            const len = Math.sqrt(dx * dx + dy * dy);
+            if (len > 0) {
+              const normPerpX = -dy / len;
+              const normPerpY = dx / len;
+              const offset = (element.curvature || 0.5) * 100;
+              pts.push({
+                x: midX + normPerpX * offset,
+                y: midY + normPerpY * offset
+              });
+            }
           }
         } else {
           pts.push({ x: element.x, y: element.y });
@@ -2303,7 +2318,7 @@ export function CanvasSpace({
         let lineMinY = pts[0].y;
         let lineMaxX = pts[0].x;
         let lineMaxY = pts[0].y;
-        
+
         pts.forEach(p => {
           lineMinX = Math.min(lineMinX, p.x);
           lineMinY = Math.min(lineMinY, p.y);
@@ -2317,7 +2332,7 @@ export function CanvasSpace({
           width: lineMaxX - lineMinX,
           height: lineMaxY - lineMinY
         };
-      
+
       case 'image':
         return {
           x: element.x,
@@ -2325,7 +2340,7 @@ export function CanvasSpace({
           width: element.width || 0,
           height: element.height || 0
         };
-      
+
       case 'file':
         return {
           x: element.x,
@@ -2333,7 +2348,7 @@ export function CanvasSpace({
           width: element.width || 200,
           height: element.height || 200
         };
-      
+
       case 'group':
         // Calculate bounds based on all descendants
         const descendants = elements.filter(el => {
@@ -2344,9 +2359,9 @@ export function CanvasSpace({
           }
           return false;
         });
-        
+
         if (descendants.length === 0) return { x: element.x, y: element.y, width: element.width || 0, height: element.height || 0 };
-        
+
         let gMinX = Infinity, gMinY = Infinity, gMaxX = -Infinity, gMaxY = -Infinity;
         descendants.forEach(d => {
           const b = getElementBounds(d);
@@ -2357,7 +2372,7 @@ export function CanvasSpace({
             gMaxY = Math.max(gMaxY, b.y + b.height);
           }
         });
-        
+
         if (gMinX === Infinity) return { x: element.x, y: element.y, width: element.width || 0, height: element.height || 0 };
         return { x: gMinX, y: gMinY, width: gMaxX - gMinX, height: gMaxY - gMinY };
 
@@ -2372,7 +2387,7 @@ export function CanvasSpace({
           width: textWidth + 10,
           height: textHeight + 10
         };
-      
+
       default:
         return null;
     }
@@ -2387,11 +2402,11 @@ export function CanvasSpace({
           return `${x + dx},${y + dy}`;
         }).join(' ');
         return { ...element, points: newPoints };
-      
+
       case 'circle':
       case 'text':
         return { ...element, x: element.x + dx, y: element.y + dy };
-      
+
       default:
         return { ...element, x: element.x + dx, y: element.y + dy };
     }
@@ -2420,9 +2435,9 @@ export function CanvasSpace({
     const pos = getMousePos(e as any);
     const dx = pos.x - dragStartRef.current.x;
     const dy = pos.y - dragStartRef.current.y;
-    
+
     const idsToMove = draggingIdsRef.current.length > 0 ? draggingIdsRef.current : selectedIds;
-    
+
     // Expand idsToMove to include all descendants
     const getAllDescendants = (ids: string[]): string[] => {
       let result = [...ids];
@@ -2437,78 +2452,78 @@ export function CanvasSpace({
       }
       return result;
     };
-    
+
     const finalIdsToMove = getAllDescendants(idsToMove);
     const startElements = elementsDragStartRef.current;
-    
+
     setElements(prevElements => {
       // Create a map of moved elements for quick lookup of their NEW positions
       const movedElementsMap = new Map<string, CanvasElement>();
-      
+
       // Calculate new positions for all moved elements based on their START positions
       finalIdsToMove.forEach(id => {
-         const startEl = startElements.find(e => e.id === id);
-         if (startEl) {
-             movedElementsMap.set(id, moveElement(startEl, dx, dy));
-         }
+        const startEl = startElements.find(e => e.id === id);
+        if (startEl) {
+          movedElementsMap.set(id, moveElement(startEl, dx, dy));
+        }
       });
 
       return prevElements.map(el => {
         // If this element is being moved, return the pre-calculated new position
         if (finalIdsToMove.includes(el.id)) {
-           return movedElementsMap.get(el.id) || el;
+          return movedElementsMap.get(el.id) || el;
         }
-        
+
         // Update arrows connected to moving elements
         if (el.type === 'arrow') {
-           const startMoved = el.anchorStart?.elementId && idsToMove.includes(el.anchorStart.elementId);
-           const endMoved = el.anchorEnd?.elementId && idsToMove.includes(el.anchorEnd.elementId);
-           
-           if (!startMoved && !endMoved) return el;
-           
-           // Find the referenced elements (either moved or original)
-           let startEl = prevElements.find(e => e.id === el.anchorStart?.elementId);
-           let endEl = prevElements.find(e => e.id === el.anchorEnd?.elementId);
-           
-           if (startMoved && el.anchorStart?.elementId) {
-               startEl = movedElementsMap.get(el.anchorStart.elementId);
-           }
-           if (endMoved && el.anchorEnd?.elementId) {
-               endEl = movedElementsMap.get(el.anchorEnd.elementId);
-           }
-           
-           let startX = el.x; 
-           let startY = el.y;
-           let endX = el.x + (el.width || 0);
-           let endY = el.y + (el.height || 0);
-           
-           // Update start point if anchored
-           if (startEl && el.anchorStart) {
-             const snapPoints = getSnapPoints(startEl);
-             if (snapPoints) {
-                const pt = snapPoints[el.anchorStart.side];
-                startX = pt.x;
-                startY = pt.y;
-             }
-           }
-           
-           // Update end point if anchored
-           if (endEl && el.anchorEnd) {
-             const snapPoints = getSnapPoints(endEl);
-             if (snapPoints) {
-                const pt = snapPoints[el.anchorEnd.side];
-                endX = pt.x;
-                endY = pt.y;
-             }
-           }
-           
-           return {
-             ...el,
-             x: startX,
-             y: startY,
-             width: endX - startX,
-             height: endY - startY
-           };
+          const startMoved = el.anchorStart?.elementId && idsToMove.includes(el.anchorStart.elementId);
+          const endMoved = el.anchorEnd?.elementId && idsToMove.includes(el.anchorEnd.elementId);
+
+          if (!startMoved && !endMoved) return el;
+
+          // Find the referenced elements (either moved or original)
+          let startEl = prevElements.find(e => e.id === el.anchorStart?.elementId);
+          let endEl = prevElements.find(e => e.id === el.anchorEnd?.elementId);
+
+          if (startMoved && el.anchorStart?.elementId) {
+            startEl = movedElementsMap.get(el.anchorStart.elementId);
+          }
+          if (endMoved && el.anchorEnd?.elementId) {
+            endEl = movedElementsMap.get(el.anchorEnd.elementId);
+          }
+
+          let startX = el.x;
+          let startY = el.y;
+          let endX = el.x + (el.width || 0);
+          let endY = el.y + (el.height || 0);
+
+          // Update start point if anchored
+          if (startEl && el.anchorStart) {
+            const snapPoints = getSnapPoints(startEl);
+            if (snapPoints) {
+              const pt = snapPoints[el.anchorStart.side];
+              startX = pt.x;
+              startY = pt.y;
+            }
+          }
+
+          // Update end point if anchored
+          if (endEl && el.anchorEnd) {
+            const snapPoints = getSnapPoints(endEl);
+            if (snapPoints) {
+              const pt = snapPoints[el.anchorEnd.side];
+              endX = pt.x;
+              endY = pt.y;
+            }
+          }
+
+          return {
+            ...el,
+            x: startX,
+            y: startY,
+            width: endX - startX,
+            height: endY - startY
+          };
         }
         return el;
       });
@@ -2519,13 +2534,13 @@ export function CanvasSpace({
   const handleBoundingBoxMouseUp = () => {
     setIsDraggingElement(false);
     draggingIdsRef.current = [];
-    
+
     correctArrowIntersections(selectedIds);
 
     const oldElements = elementsDragStartRef.current;
     const newElements = [...elements];
     const count = selectedIds.length;
-    
+
     if (JSON.stringify(oldElements) !== JSON.stringify(newElements)) {
       saveElementsWithHistory(
         newElements,
@@ -2544,10 +2559,10 @@ export function CanvasSpace({
 
     setElements(prevElements => {
       // Find all arrows connected to moved elements
-      const connectedArrows = prevElements.filter(el => 
-        el.type === 'arrow' && 
-        ((el.anchorStart?.elementId && movedIds.includes(el.anchorStart.elementId)) || 
-         (el.anchorEnd?.elementId && movedIds.includes(el.anchorEnd.elementId)))
+      const connectedArrows = prevElements.filter(el =>
+        el.type === 'arrow' &&
+        ((el.anchorStart?.elementId && movedIds.includes(el.anchorStart.elementId)) ||
+          (el.anchorEnd?.elementId && movedIds.includes(el.anchorEnd.elementId)))
       );
 
       if (connectedArrows.length === 0) return prevElements;
@@ -2578,46 +2593,46 @@ export function CanvasSpace({
         const { startX, startY, endX, endY } = coords;
         const startSide = el.anchorStart?.side || 'right';
         const endSide = el.anchorEnd?.side || 'left';
-        
+
         const stubLength = 20;
         const getStub = (x: number, y: number, side: string) => {
-             if (side === 'top') return { x, y: y - stubLength };
-             if (side === 'bottom') return { x, y: y + stubLength };
-             if (side === 'left') return { x: x - stubLength, y };
-             return { x: x + stubLength, y };
+          if (side === 'top') return { x, y: y - stubLength };
+          if (side === 'bottom') return { x, y: y + stubLength };
+          if (side === 'left') return { x: x - stubLength, y };
+          return { x: x + stubLength, y };
         };
         const sS = getStub(startX, startY, startSide);
         const eS = getStub(endX, endY, endSide);
 
         if (newControlPoint !== undefined) {
-           const isVert = (startSide === 'right' || startSide === 'left') && (endSide === 'right' || endSide === 'left');
-           const pMid1 = isVert ? { x: newControlPoint, y: sS.y } : { x: sS.x, y: newControlPoint };
-           const pMid2 = isVert ? { x: newControlPoint, y: eS.y } : { x: eS.x, y: newControlPoint };
-           
-           if (isSegmentBlocked(sS, pMid1) || isSegmentBlocked(pMid1, pMid2) || isSegmentBlocked(pMid2, eS)) {
-              const searchOffsets = [40, -40, 80, -80, 120, -120];
-              for (const offset of searchOffsets) {
-                const testVal = newControlPoint + offset;
-                const tp1 = isVert ? { x: testVal, y: sS.y } : { x: sS.x, y: testVal };
-                const tp2 = isVert ? { x: testVal, y: eS.y } : { x: eS.x, y: testVal };
-                if (!isSegmentBlocked(sS, tp1) && !isSegmentBlocked(tp1, tp2) && !isSegmentBlocked(tp2, eS)) {
-                   newControlPoint = testVal;
-                   updated = true;
-                   break;
-                }
+          const isVert = (startSide === 'right' || startSide === 'left') && (endSide === 'right' || endSide === 'left');
+          const pMid1 = isVert ? { x: newControlPoint, y: sS.y } : { x: sS.x, y: newControlPoint };
+          const pMid2 = isVert ? { x: newControlPoint, y: eS.y } : { x: eS.x, y: newControlPoint };
+
+          if (isSegmentBlocked(sS, pMid1) || isSegmentBlocked(pMid1, pMid2) || isSegmentBlocked(pMid2, eS)) {
+            const searchOffsets = [40, -40, 80, -80, 120, -120];
+            for (const offset of searchOffsets) {
+              const testVal = newControlPoint + offset;
+              const tp1 = isVert ? { x: testVal, y: sS.y } : { x: sS.x, y: testVal };
+              const tp2 = isVert ? { x: testVal, y: eS.y } : { x: eS.x, y: testVal };
+              if (!isSegmentBlocked(sS, tp1) && !isSegmentBlocked(tp1, tp2) && !isSegmentBlocked(tp2, eS)) {
+                newControlPoint = testVal;
+                updated = true;
+                break;
               }
-           }
+            }
+          }
         }
 
         if (newWaypoints && newWaypoints.length > 0) {
-           newWaypoints = newWaypoints.map((wp, i) => {
-              const isInside = obstacles.some(obs => wp.x > obs.x && wp.x < obs.x + obs.width && wp.y > obs.y && wp.y < obs.y + obs.height);
-              if (isInside) {
-                updated = true;
-                return { x: wp.x + 50, y: wp.y + 50 };
-              }
-              return wp;
-           });
+          newWaypoints = newWaypoints.map((wp, i) => {
+            const isInside = obstacles.some(obs => wp.x > obs.x && wp.x < obs.x + obs.width && wp.y > obs.y && wp.y < obs.y + obs.height);
+            if (isInside) {
+              updated = true;
+              return { x: wp.x + 50, y: wp.y + 50 };
+            }
+            return wp;
+          });
         }
 
         if (updated) {
@@ -2631,21 +2646,21 @@ export function CanvasSpace({
 
   const handleRotateMouseDown = (e: React.MouseEvent) => {
     if (selectedIds.length === 0) return;
-    
+
     const element = elements.find(el => el.id === selectedIds[0]);
     if (!element || element.type === 'file') return; // Prevent file rotation but allow images
-    
+
     e.stopPropagation();
     setIsRotatingElement(true);
-    
+
     const pos = getMousePos(e as any);
-    
+
     const bounds = getElementBounds(element);
     if (!bounds) return;
-    
+
     const centerX = bounds.x + bounds.width / 2;
     const centerY = bounds.y + bounds.height / 2;
-    
+
     const angle = Math.atan2(pos.y - centerY, pos.x - centerX) * (180 / Math.PI);
     setRotateStartAngle(angle);
     setElementStartRotation(element.rotation || 0);
@@ -2659,23 +2674,23 @@ export function CanvasSpace({
       setIsRotatingElement(false);
       return;
     }
-    
+
     const bounds = getElementBounds(element);
     if (!bounds) return;
-    
+
     const centerX = bounds.x + bounds.width / 2;
     const centerY = bounds.y + bounds.height / 2;
-    
+
     const currentAngle = Math.atan2(pos.y - centerY, pos.x - centerX) * (180 / Math.PI);
     const angleDelta = currentAngle - rotateStartAngle;
-    
+
     let newRotation = (elementStartRotation || 0) + angleDelta;
-    
+
     if (e.shiftKey) {
       newRotation = Math.round(newRotation / 15) * 15;
     }
-    
-    setElements(prev => prev.map(el => 
+
+    setElements(prev => prev.map(el =>
       el.id === element.id ? { ...el, rotation: newRotation } : el
     ));
   };
@@ -2711,7 +2726,7 @@ export function CanvasSpace({
     const dx = pos.x - dragStart.x;
     const dy = pos.y - dragStart.y;
     const isCenterScaling = e.altKey;
-    
+
     setElements(prevElements => {
       return prevElements.map(el => {
         if (el.id === selectedIds[0]) {
@@ -2750,7 +2765,7 @@ export function CanvasSpace({
             // Apply proportional constraint if needed (always for images)
             if (el.type === 'image' || e.shiftKey) {
               const startAR = elementStartBounds.width / elementStartBounds.height;
-              
+
               if (['nw', 'ne', 'sw', 'se'].includes(resizeHandle)) {
                 // If it's a corner, we match the larger change or the one that keeps AR
                 if (Math.abs(newWidth / elementStartBounds.width) > Math.abs(newHeight / elementStartBounds.height)) {
@@ -2761,9 +2776,9 @@ export function CanvasSpace({
               } else if (el.type === 'image') {
                 // For images, even side handles should scale proportionally
                 if (['n', 's'].includes(resizeHandle)) {
-                   newWidth = newHeight * startAR;
+                  newWidth = newHeight * startAR;
                 } else {
-                   newHeight = newWidth / startAR;
+                  newHeight = newWidth / startAR;
                 }
               }
             }
@@ -2791,21 +2806,21 @@ export function CanvasSpace({
               newY = elementStartBounds.y + (elementStartBounds.height - newHeight) / 2;
             } else {
               switch (resizeHandle) {
-                case 'nw': 
-                  newX = elementStartBounds.x + (elementStartBounds.width - newWidth); 
-                  newY = elementStartBounds.y + (elementStartBounds.height - newHeight); 
+                case 'nw':
+                  newX = elementStartBounds.x + (elementStartBounds.width - newWidth);
+                  newY = elementStartBounds.y + (elementStartBounds.height - newHeight);
                   break;
-                case 'ne': 
-                  newY = elementStartBounds.y + (elementStartBounds.height - newHeight); 
+                case 'ne':
+                  newY = elementStartBounds.y + (elementStartBounds.height - newHeight);
                   break;
-                case 'sw': 
-                  newX = elementStartBounds.x + (elementStartBounds.width - newWidth); 
+                case 'sw':
+                  newX = elementStartBounds.x + (elementStartBounds.width - newWidth);
                   break;
-                case 'w': 
-                  newX = elementStartBounds.x + (elementStartBounds.width - newWidth); 
+                case 'w':
+                  newX = elementStartBounds.x + (elementStartBounds.width - newWidth);
                   break;
-                case 'n': 
-                  newY = elementStartBounds.y + (elementStartBounds.height - newHeight); 
+                case 'n':
+                  newY = elementStartBounds.y + (elementStartBounds.height - newHeight);
                   break;
               }
             }
@@ -2842,11 +2857,11 @@ export function CanvasSpace({
     // Calculate the clicked position in canvas coordinates
     const svg = e.currentTarget.ownerSVGElement;
     if (!svg) return;
-    
+
     const rect = svg.getBoundingClientRect();
     const x = ((e.clientX - rect.left) / rect.width) * CANVAS_WIDTH - CANVAS_WIDTH / 2;
     const y = ((e.clientY - rect.top) / rect.height) * CANVAS_HEIGHT - CANVAS_HEIGHT / 2;
-    
+
     // Center the viewbox on the clicked position
     setViewBox(prev => ({
       ...prev,
@@ -2857,12 +2872,12 @@ export function CanvasSpace({
 
   const handleMinimapMouseMove = (e: React.MouseEvent<SVGSVGElement>) => {
     if (!isDraggingMinimap) return;
-    
+
     const svg = e.currentTarget;
     const rect = svg.getBoundingClientRect();
     const x = ((e.clientX - rect.left) / rect.width) * CANVAS_WIDTH - CANVAS_WIDTH / 2;
     const y = ((e.clientY - rect.top) / rect.height) * CANVAS_HEIGHT - CANVAS_HEIGHT / 2;
-    
+
     setViewBox(prev => ({
       ...prev,
       x: x - prev.width / 2,
@@ -2876,7 +2891,7 @@ export function CanvasSpace({
 
   const handleWheel = (e: React.WheelEvent<SVGSVGElement>) => {
     e.preventDefault();
-    
+
     const svg = svgRef.current;
     if (!svg) return;
 
@@ -2888,7 +2903,7 @@ export function CanvasSpace({
 
     const isPinch = e.ctrlKey;
     const isTrackpad = e.deltaMode === 0; // Pixel-precise scrolling (Trackpad, Magic Mouse)
-    
+
     // Improved logic to allow scroll wheel zoom on smooth mice (which report deltaMode 0)
     // If it's a pure vertical scroll (deltaX is 0) and Shift is NOT pressed, 
     // we treat it as a zoom request for standard CAD behavior, 
@@ -2913,7 +2928,7 @@ export function CanvasSpace({
         // Step zoom for mouse wheel
         nextZoom = zoom * (e.deltaY > 0 ? 0.9 : 1.1);
       }
-      
+
       // Clamp zoom levels
       nextZoom = Math.min(Math.max(nextZoom, 0.1), 10);
 
@@ -2923,7 +2938,7 @@ export function CanvasSpace({
       setZoom(nextZoom);
 
       const scaleFactor = zoom / nextZoom;
-      
+
       const newWidth = viewBox.width * scaleFactor;
       const newHeight = viewBox.height * scaleFactor;
 
@@ -2940,7 +2955,7 @@ export function CanvasSpace({
         const maxX = CANVAS_WIDTH / 2 - newWidth;
         newX = Math.max(minX, Math.min(maxX, newX));
       }
-      
+
       if (newHeight >= CANVAS_HEIGHT) {
         newY = -CANVAS_HEIGHT / 2 - (newHeight - CANVAS_HEIGHT) / 2;
       } else {
@@ -2959,11 +2974,11 @@ export function CanvasSpace({
       // Pan Logic
       // Trackpads usually pan 1:1, mouse wheel with shift might be faster
       const panSpeed = isTrackpad ? 1.0 : 1.5;
-      
+
       setViewBox(prev => {
         let newX = prev.x + e.deltaX * panSpeed;
         let newY = prev.y + e.deltaY * panSpeed;
-        
+
         if (prev.width >= CANVAS_WIDTH) {
           newX = -CANVAS_WIDTH / 2 - (prev.width - CANVAS_WIDTH) / 2;
         } else {
@@ -2971,7 +2986,7 @@ export function CanvasSpace({
           const maxX = CANVAS_WIDTH / 2 - prev.width;
           newX = Math.max(minX, Math.min(maxX, newX));
         }
-        
+
         if (prev.height >= CANVAS_HEIGHT) {
           newY = -CANVAS_HEIGHT / 2 - (prev.height - CANVAS_HEIGHT) / 2;
         } else {
@@ -2979,7 +2994,7 @@ export function CanvasSpace({
           const maxY = CANVAS_HEIGHT / 2 - prev.height;
           newY = Math.max(minY, Math.min(maxY, newY));
         }
-        
+
         return {
           ...prev,
           x: newX,
@@ -2995,7 +3010,7 @@ export function CanvasSpace({
     let startY = arrow.y;
     let endX = arrow.x + (arrow.width || 0);
     let endY = arrow.y + (arrow.height || 0);
-    
+
     // If arrow has anchor start, use the snap point of the anchored element
     if (arrow.anchorStart) {
       const anchoredElement = elements.find(el => el.id === arrow.anchorStart!.elementId);
@@ -3008,7 +3023,7 @@ export function CanvasSpace({
         }
       }
     }
-    
+
     // If arrow has anchor end, use the snap point of the anchored element
     if (arrow.anchorEnd) {
       const anchoredElement = elements.find(el => el.id === arrow.anchorEnd!.elementId);
@@ -3021,7 +3036,7 @@ export function CanvasSpace({
         }
       }
     }
-    
+
     return { startX, startY, endX, endY };
   };
 
@@ -3053,23 +3068,23 @@ export function CanvasSpace({
         // Schematic (PCB) routing with Bevels and Collision Avoidance
         const anchorStart = element.anchorStart;
         const anchorEnd = element.anchorEnd;
-        
+
         const startSide = anchorStart?.side || 'right';
         const endSide = anchorEnd?.side || 'left';
 
         // Calculate stubs (lead wires perpendicular to anchor)
         const stubLength = 20;
-        
+
         const getStub = (x: number, y: number, side: string) => {
-             if (side === 'top') return { x, y: y - stubLength };
-             if (side === 'bottom') return { x, y: y + stubLength };
-             if (side === 'left') return { x: x - stubLength, y };
-             return { x: x + stubLength, y }; // right
+          if (side === 'top') return { x, y: y - stubLength };
+          if (side === 'bottom') return { x, y: y + stubLength };
+          if (side === 'left') return { x: x - stubLength, y };
+          return { x: x + stubLength, y }; // right
         };
 
         const startStub = getStub(x1, y1, startSide);
         const endStub = getStub(x2, y2, endSide);
-        
+
         // Collect points for the polyline
         const points = [{ x: x1, y: y1 }, { x: startStub.x, y: startStub.y }];
 
@@ -3082,17 +3097,17 @@ export function CanvasSpace({
 
         const obstacles = elements
           .filter(el => {
-             if (el.id === element.id) return false;
-             if (anchorStart && el.id === anchorStart.elementId) return false;
-             if (anchorEnd && el.id === anchorEnd.elementId) return false;
-             if (el.type === 'group' || el.type === 'arrow') return false; // Ignore groups and other arrows for routing
-             return true;
+            if (el.id === element.id) return false;
+            if (anchorStart && el.id === anchorStart.elementId) return false;
+            if (anchorEnd && el.id === anchorEnd.elementId) return false;
+            if (el.type === 'group' || el.type === 'arrow') return false; // Ignore groups and other arrows for routing
+            return true;
           })
           .map(el => getElementBounds(el))
           .filter((b): b is { x: number; y: number; width: number; height: number } => {
-             if (!b) return false;
-             // Pruning: Skip obstacles that cannot possibly intersect the routing area
-             return !(b.x > maxSegX || b.x + b.width < minSegX || b.y > maxSegY || b.y + b.height < minSegY);
+            if (!b) return false;
+            // Pruning: Skip obstacles that cannot possibly intersect the routing area
+            return !(b.x > maxSegX || b.x + b.width < minSegX || b.y > maxSegY || b.y + b.height < minSegY);
           });
 
         const isBlocked = (p1: { x: number; y: number }, p2: { x: number; y: number }) => {
@@ -3100,14 +3115,14 @@ export function CanvasSpace({
           const xmax = Math.max(p1.x, p2.x) + 8;
           const ymin = Math.min(p1.y, p2.y) - 8;
           const ymax = Math.max(p1.y, p2.y) + 8;
-          
+
           return obstacles.some(obs => {
             // Collision if segment AABB intersects obstacle AABB
             return !(xmax < obs.x || xmin > obs.x + obs.width || ymax < obs.y || ymin > obs.y + obs.height);
           });
         };
 
-        const findClearMid = (start: {x: number, y: number}, end: {x: number, y: number}, horizontal: boolean, baseVal: number) => {
+        const findClearMid = (start: { x: number, y: number }, end: { x: number, y: number }, horizontal: boolean, baseVal: number) => {
           const searchOffsets = [0, 40, -40, 80, -80, 120, -120, 160, -160, 200, -200];
           for (const offset of searchOffsets) {
             const val = baseVal + offset;
@@ -3133,12 +3148,12 @@ export function CanvasSpace({
         // Check if manual waypoints exist
         if (element.waypoints && element.waypoints.length > 0) {
           let lastPoint = startStub;
-          
+
           element.waypoints.forEach((wp) => {
             // Try both L-shapes and pick the clear one
             let pMidA = { x: wp.x, y: lastPoint.y };
             let pMidB = { x: lastPoint.x, y: wp.y };
-            
+
             let pMid = pMidA;
             if (isBlocked(lastPoint, pMidA) || isBlocked(pMidA, wp)) {
               if (!isBlocked(lastPoint, pMidB) && !isBlocked(pMidB, wp)) {
@@ -3150,15 +3165,15 @@ export function CanvasSpace({
             points.push({ x: wp.x, y: wp.y });
             lastPoint = wp;
           });
-          
+
           // Connect final waypoint to endStub orthogonally
           let pEndMidA = { x: endStub.x, y: lastPoint.y };
           let pEndMidB = { x: lastPoint.x, y: endStub.y };
           let pEndMid = pEndMidA;
           if (isBlocked(lastPoint, pEndMidA) || isBlocked(pEndMidA, endStub)) {
-             if (!isBlocked(lastPoint, pEndMidB) && !isBlocked(pEndMidB, endStub)) {
-               pEndMid = pEndMidB;
-             }
+            if (!isBlocked(lastPoint, pEndMidB) && !isBlocked(pEndMidB, endStub)) {
+              pEndMid = pEndMidB;
+            }
           }
           points.push(pEndMid);
         } else {
@@ -3173,26 +3188,26 @@ export function CanvasSpace({
           if (startSide === 'left' && endSide === 'right' && startStub.x < endStub.x) goAround = true;
           if (startSide === 'bottom' && endSide === 'top' && startStub.y > endStub.y) goAround = true;
           if (startSide === 'top' && endSide === 'bottom' && startStub.y < endStub.y) goAround = true;
-          
+
           if (goAround) {
             const isHorizontalMove = startSide === 'right' || startSide === 'left';
             let baseDetour;
             if (isHorizontalMove) {
-               if (element.controlPoint !== undefined) {
-                 baseDetour = element.controlPoint;
-               } else {
-                 const bottomY = Math.max(startBounds?.y! + startBounds?.height! || -Infinity, endBounds?.y! + endBounds?.height! || -Infinity) + 40;
-                 const topY = Math.min(startBounds?.y! || Infinity, endBounds?.y! || Infinity) - 40;
-                 baseDetour = Math.abs(startStub.y - bottomY) < Math.abs(startStub.y - topY) ? bottomY : topY;
-               }
+              if (element.controlPoint !== undefined) {
+                baseDetour = element.controlPoint;
+              } else {
+                const bottomY = Math.max(startBounds?.y! + startBounds?.height! || -Infinity, endBounds?.y! + endBounds?.height! || -Infinity) + 40;
+                const topY = Math.min(startBounds?.y! || Infinity, endBounds?.y! || Infinity) - 40;
+                baseDetour = Math.abs(startStub.y - bottomY) < Math.abs(startStub.y - topY) ? bottomY : topY;
+              }
             } else {
-               if (element.controlPoint !== undefined) {
-                 baseDetour = element.controlPoint;
-               } else {
-                 const rightX = Math.max(startBounds?.x! + startBounds?.width! || -Infinity, endBounds?.x! + endBounds?.width! || -Infinity) + 40;
-                 const leftX = Math.min(startBounds?.x! || Infinity, endBounds?.x! || Infinity) - 40;
-                 baseDetour = Math.abs(startStub.x - rightX) < Math.abs(startStub.x - leftX) ? rightX : leftX;
-               }
+              if (element.controlPoint !== undefined) {
+                baseDetour = element.controlPoint;
+              } else {
+                const rightX = Math.max(startBounds?.x! + startBounds?.width! || -Infinity, endBounds?.x! + endBounds?.width! || -Infinity) + 40;
+                const leftX = Math.min(startBounds?.x! || Infinity, endBounds?.x! || Infinity) - 40;
+                baseDetour = Math.abs(startStub.x - rightX) < Math.abs(startStub.x - leftX) ? rightX : leftX;
+              }
             }
 
             const { pM1, pM2 } = findClearMid(startStub, endStub, !isHorizontalMove, baseDetour);
@@ -3202,7 +3217,7 @@ export function CanvasSpace({
             // Standard Manhattan
             const isVerticalMid = (startSide === 'right' || startSide === 'left') && (endSide === 'right' || endSide === 'left');
             const isHorizontalMid = (startSide === 'top' || startSide === 'bottom') && (endSide === 'top' || endSide === 'bottom');
-            
+
             if (isVerticalMid) {
               const baseVal = element.controlPoint ?? (startStub.x + endStub.x) / 2;
               const { pM1, pM2 } = findClearMid(startStub, endStub, true, baseVal);
@@ -3214,12 +3229,12 @@ export function CanvasSpace({
               points.push(pM1);
               points.push(pM2);
             } else {
-               // Orthogonal (e.g. Right to Bottom)
-               let pMid = { x: endStub.x, y: startStub.y };
-               if (isBlocked(startStub, pMid) || isBlocked(pMid, endStub)) {
-                 pMid = { x: startStub.x, y: endStub.y };
-               }
-               points.push(pMid);
+              // Orthogonal (e.g. Right to Bottom)
+              let pMid = { x: endStub.x, y: startStub.y };
+              if (isBlocked(startStub, pMid) || isBlocked(pMid, endStub)) {
+                pMid = { x: startStub.x, y: endStub.y };
+              }
+              points.push(pMid);
             }
           }
         }
@@ -3237,15 +3252,15 @@ export function CanvasSpace({
 
           const distPrev = Math.hypot(curr.x - prev.x, curr.y - prev.y);
           const distNext = Math.hypot(next.x - curr.x, next.y - curr.y);
-          
+
           // Big straight chamfers (PCB Style)
           // Limit chamfer size to fit within segments, but aim for 5000px
-          const chamferSize = 5000; 
+          const chamferSize = 5000;
           const actualBevel = Math.min(distPrev / 2, distNext / 2, chamferSize);
 
           if (actualBevel < 2) {
-             path += ` L ${curr.x},${curr.y}`;
-             continue;
+            path += ` L ${curr.x},${curr.y}`;
+            continue;
           }
 
           const anglePrev = Math.atan2(prev.y - curr.y, prev.x - curr.x);
@@ -3253,7 +3268,7 @@ export function CanvasSpace({
 
           const bevelStartX = curr.x + actualBevel * Math.cos(anglePrev);
           const bevelStartY = curr.y + actualBevel * Math.sin(anglePrev);
-          
+
           const bevelEndX = curr.x + actualBevel * Math.cos(angleNext);
           const bevelEndY = curr.y + actualBevel * Math.sin(angleNext);
 
@@ -3279,17 +3294,17 @@ export function CanvasSpace({
   const getArrowEndAngle = (element: CanvasElement, x1: number, y1: number, x2: number, y2: number) => {
     // If we have an anchor, use the normal of the anchor side to determine perpendicularity
     if (element.anchorEnd) {
-       const side = element.anchorEnd.side;
-       switch (side) {
-         case 'right': return Math.PI; // Pointing Left (into the element)
-         case 'left': return 0; // Pointing Right
-         case 'top': return Math.PI / 2; // Pointing Down
-         case 'bottom': return -Math.PI / 2; // Pointing Up
-       }
+      const side = element.anchorEnd.side;
+      switch (side) {
+        case 'right': return Math.PI; // Pointing Left (into the element)
+        case 'left': return 0; // Pointing Right
+        case 'top': return Math.PI / 2; // Pointing Down
+        case 'bottom': return -Math.PI / 2; // Pointing Up
+      }
     }
 
     const arrowType = (element.arrowType === 'straight' || !element.arrowType) ? 'electrical' : element.arrowType;
-    
+
     if (arrowType === 'curved') {
       const curvature = element.curvature || 0.5;
       const dx = x2 - x1;
@@ -3307,15 +3322,15 @@ export function CanvasSpace({
       const controlY = midY + normPerpY * offset;
       return Math.atan2(y2 - controlY, x2 - controlX);
     }
-    
+
     return Math.atan2(y2 - y1, x2 - x1);
   };
 
   const renderElement = (element: CanvasElement, isCurrent = false) => {
     let opacity = isCurrent ? 0.7 : 1;
-    if (isDraggingElement && element.type === 'arrow' && 
-        (element.anchorStart?.elementId && selectedIds.includes(element.anchorStart.elementId) || 
-         element.anchorEnd?.elementId && selectedIds.includes(element.anchorEnd.elementId))) {
+    if (isDraggingElement && element.type === 'arrow' &&
+      (element.anchorStart?.elementId && selectedIds.includes(element.anchorStart.elementId) ||
+        element.anchorEnd?.elementId && selectedIds.includes(element.anchorEnd.elementId))) {
       opacity = 0.5;
     }
     const strokeDasharray = undefined;
@@ -3326,14 +3341,14 @@ export function CanvasSpace({
 
       if (tool === 'select') {
         e.stopPropagation();
-        
+
         let idsToSelect = [element.id];
         if (element.groupId) {
           idsToSelect = elements
             .filter(el => el.groupId === element.groupId)
             .map(el => el.id);
         }
-        
+
         if (e.shiftKey) {
           setSelectedIds(prev => {
             const allSelected = idsToSelect.every(id => prev.includes(id));
@@ -3348,11 +3363,11 @@ export function CanvasSpace({
         }
       }
     };
-    
+
     const handleRightClick = (e: React.MouseEvent) => {
       e.preventDefault();
       e.stopPropagation();
-      
+
       if (tool === 'select') {
         if (!selectedIds.includes(element.id)) {
           if (element.groupId) {
@@ -3492,10 +3507,10 @@ export function CanvasSpace({
               onMouseEnter={handleMouseEnter}
               onMouseLeave={handleMouseLeave}
             >
-              <div 
-                style={{ 
-                  width: '100%', 
-                  height: '100%', 
+              <div
+                style={{
+                  width: '100%',
+                  height: '100%',
                   transform: `rotate(${element.rotation || 0}deg)`,
                   transformOrigin: 'center',
                   pointerEvents: 'none'
@@ -3513,7 +3528,7 @@ export function CanvasSpace({
                     settings={settings}
                     onUpdateSettings={onUpdateSettings}
                     onUpdate={(updates) => {
-                      const newElements = elements.map(el => 
+                      const newElements = elements.map(el =>
                         el.id === element.id ? { ...el, fileMetadata: { ...el.fileMetadata, ...updates } } : el
                       );
                       setElements(newElements);
@@ -3638,26 +3653,26 @@ export function CanvasSpace({
         );
       case 'arrow': {
         if (!element.width || !element.height) return null;
-        
+
         // Get actual coordinates considering anchors
         const { startX, startY, endX, endY } = getArrowCoordinates(element);
-        
+
         const arrowPath = getArrowPath(element, startX, startY, endX, endY);
         const angle = getArrowEndAngle(element, startX, startY, endX, endY);
         const arrowSize = 16;
         const arrowHitboxWidth = 20 / zoom;
-        
+
         // Chamfered arrowhead calculation (4-point polygon with recessed back)
         const shoulderDist = arrowSize * 1.1;
         const shoulder1X = endX - shoulderDist * Math.cos(angle - Math.PI / 6);
         const shoulder1Y = endY - shoulderDist * Math.sin(angle - Math.PI / 6);
         const shoulder2X = endX - shoulderDist * Math.cos(angle + Math.PI / 6);
         const shoulder2Y = endY - shoulderDist * Math.sin(angle + Math.PI / 6);
-        
+
         // The "chamfer" is created by pulling the base of the arrow head slightly inward
         const innerBackX = endX - arrowSize * 0.7 * Math.cos(angle);
         const innerBackY = endY - arrowSize * 0.7 * Math.sin(angle);
-        
+
         return (
           <g key={element.id} data-element-id={element.id}>
             {/* Hitbox path */}
@@ -3799,9 +3814,9 @@ export function CanvasSpace({
           </span>
         </div>
       )}
-      
+
       {/* Toolbar */}
-      <div 
+      <div
         className="absolute top-6 left-1/2 -translate-x-1/2 z-[100] p-1.5 rounded-2xl shadow-xl border border-white/40 flex items-center bg-white/80 backdrop-blur-md hover:bg-white/90 transition-colors w-fit"
       >
         <div className="flex flex-row gap-1 items-center px-1">
@@ -3809,15 +3824,14 @@ export function CanvasSpace({
           <button
             title="Select (S)"
             onClick={() => setTool('select')}
-            className={`w-8 h-8 rounded-xl flex items-center justify-center transition-all cursor-pointer shrink-0 ${
-              tool === 'select'
-                ? 'bg-purple-500 text-white shadow-lg'
-                : 'bg-transparent text-slate-600 hover:bg-black/5'
-            }`}
+            className={`w-8 h-8 rounded-xl flex items-center justify-center transition-all cursor-pointer shrink-0 ${tool === 'select'
+              ? 'bg-purple-500 text-white shadow-lg'
+              : 'bg-transparent text-slate-600 hover:bg-black/5'
+              }`}
           >
             <MousePointer size={18} />
           </button>
-          
+
           {/* Tools Menu (Merged) */}
           <div className="relative shrink-0">
             <button
@@ -3827,11 +3841,10 @@ export function CanvasSpace({
                 setIsOptionsOpen(false);
                 setIsViewMenuOpen(false);
               }}
-              className={`toolbar-button w-8 h-8 rounded-xl flex items-center justify-center transition-all cursor-pointer ${
-                ['pen', 'rectangle', 'circle', 'line', 'arrow', 'text'].includes(tool)
-                  ? 'bg-purple-500 text-white shadow-lg'
-                  : 'bg-transparent text-slate-600 hover:bg-black/5'
-              }`}
+              className={`toolbar-button w-8 h-8 rounded-xl flex items-center justify-center transition-all cursor-pointer ${['pen', 'rectangle', 'circle', 'line', 'arrow', 'text'].includes(tool)
+                ? 'bg-purple-500 text-white shadow-lg'
+                : 'bg-transparent text-slate-600 hover:bg-black/5'
+                }`}
             >
               {tool === 'pen' && <Pencil size={18} />}
               {tool === 'rectangle' && <Square size={18} />}
@@ -3841,9 +3854,9 @@ export function CanvasSpace({
               {tool === 'text' && <Type size={18} />}
               {!['pen', 'rectangle', 'circle', 'line', 'arrow', 'text'].includes(tool) && <PencilRuler size={18} />}
             </button>
-            
+
             {isDrawingMenuOpen && (
-              <div 
+              <div
                 className="toolbar-menu absolute top-full mt-2 left-1/2 -translate-x-1/2 bg-white/90 backdrop-blur-xl border border-white/20 rounded-xl shadow-2xl p-1 flex flex-col gap-1 z-[9999] min-w-[180px]"
                 onMouseLeave={() => setIsDrawingMenuOpen(false)}
               >
@@ -3939,15 +3952,14 @@ export function CanvasSpace({
                 setIsViewMenuOpen(false);
                 setIsDrawingMenuOpen(false);
               }}
-              className={`toolbar-button w-8 h-8 rounded-xl flex items-center justify-center transition-all cursor-pointer ${
-                isOptionsOpen ? 'bg-black/10' : 'text-slate-600 hover:bg-black/5'
-              }`}
+              className={`toolbar-button w-8 h-8 rounded-xl flex items-center justify-center transition-all cursor-pointer ${isOptionsOpen ? 'bg-black/10' : 'text-slate-600 hover:bg-black/5'
+                }`}
             >
               <Settings2 size={18} />
             </button>
-            
+
             {isOptionsOpen && (
-              <div 
+              <div
                 className="toolbar-menu absolute top-full mt-2 left-1/2 -translate-x-1/2 bg-white/90 backdrop-blur-xl border border-white/20 rounded-xl shadow-2xl p-3 z-[9999] w-[260px] flex flex-col gap-4"
                 onMouseLeave={() => setIsOptionsOpen(false)}
               >
@@ -3978,7 +3990,7 @@ export function CanvasSpace({
                     <span className="text-[10px] font-bold text-slate-500 uppercase">Tratto</span>
                     <span className="text-[10px] font-medium text-slate-500">{strokeWidth}px</span>
                   </div>
-                  <input 
+                  <input
                     type="range"
                     min="1"
                     max="20"
@@ -3989,7 +4001,7 @@ export function CanvasSpace({
                   />
                   <div className="flex gap-1 justify-between">
                     {STROKE_PRESETS.map(w => (
-                      <button 
+                      <button
                         key={w}
                         className={`w-7 h-6 rounded-md text-[10px] flex items-center justify-center border cursor-pointer transition-all ${strokeWidth === w ? 'border-purple-500 bg-purple-500/10 text-purple-600' : 'border-slate-200 text-slate-600 hover:bg-slate-100'}`}
                         onClick={() => setStrokeWidth(w)}
@@ -4028,16 +4040,15 @@ export function CanvasSpace({
                 setIsOptionsOpen(false);
                 setIsDrawingMenuOpen(false);
               }}
-              className={`toolbar-button h-8 px-2 rounded-xl flex items-center gap-1 transition-all cursor-pointer shrink-0 ${
-                isViewMenuOpen ? 'bg-black/10' : 'text-slate-600 hover:bg-black/5'
-              }`}
+              className={`toolbar-button h-8 px-2 rounded-xl flex items-center gap-1 transition-all cursor-pointer shrink-0 ${isViewMenuOpen ? 'bg-black/10' : 'text-slate-600 hover:bg-black/5'
+                }`}
             >
               <span className="text-xs font-medium w-9 text-center">{Math.round(zoom * 100)}%</span>
               <ChevronDown size={14} />
             </button>
-            
+
             {isViewMenuOpen && (
-              <div 
+              <div
                 className="toolbar-menu absolute top-full mt-2 left-1/2 -translate-x-1/2 bg-white/90 backdrop-blur-xl border border-white/20 rounded-xl shadow-2xl p-3 flex flex-col gap-3 z-[9999] min-w-[200px]"
                 onMouseLeave={() => setIsViewMenuOpen(false)}
               >
@@ -4046,7 +4057,7 @@ export function CanvasSpace({
                     <span className="text-[10px] font-bold text-slate-500 uppercase">Zoom</span>
                     <span className="text-[10px] font-medium text-slate-500">{Math.round(zoom * 100)}%</span>
                   </div>
-                  <input 
+                  <input
                     type="range"
                     min="0.1"
                     max="5"
@@ -4072,9 +4083,8 @@ export function CanvasSpace({
 
                 <div className="flex flex-col gap-1">
                   <button
-                    className={`flex items-center gap-2 px-2 py-1.5 rounded-lg transition-colors text-left cursor-pointer hover:bg-black/5 text-xs font-medium ${
-                      elements.length === 0 ? 'opacity-50 cursor-not-allowed' : ''
-                    }`}
+                    className={`flex items-center gap-2 px-2 py-1.5 rounded-lg transition-colors text-left cursor-pointer hover:bg-black/5 text-xs font-medium ${elements.length === 0 ? 'opacity-50 cursor-not-allowed' : ''
+                      }`}
                     onClick={() => {
                       zoomToFit();
                       setIsViewMenuOpen(false);
@@ -4144,10 +4154,10 @@ export function CanvasSpace({
           style={{
             width: '100%',
             height: '100%',
-            cursor: isPanning 
-              ? 'grabbing' 
-              : tool === 'select' 
-                ? 'default' 
+            cursor: isPanning
+              ? 'grabbing'
+              : tool === 'select'
+                ? 'default'
                 : tool === 'text'
                   ? 'text'
                   : tool === 'pen'
@@ -4159,7 +4169,7 @@ export function CanvasSpace({
         >
           {/* Import Mischief-style pencil filters */}
           <PencilFilters />
-          
+
           {/* Canvas boundary rectangle */}
           <rect
             x={-CANVAS_WIDTH / 2}
@@ -4173,7 +4183,7 @@ export function CanvasSpace({
             opacity={0.3}
             pointerEvents="none"
           />
-          
+
           {/* Render existing elements */}
           {elements.map(el => {
             const content = renderElement(el);
@@ -4191,7 +4201,7 @@ export function CanvasSpace({
             }
             return content;
           })}
-          
+
           {/* Render current element being drawn */}
           {currentElement && (
             <g key="current-drawing">
@@ -4204,12 +4214,12 @@ export function CanvasSpace({
             const scale = 1 / zoom;
             const selectedElements = elements.filter(el => selectedIds.includes(el.id));
             if (selectedElements.length === 0) return null;
-            
+
             // Check if all selected elements are lines, arrows or paths
-            const allStrokeElements = selectedElements.every(el => 
+            const allStrokeElements = selectedElements.every(el =>
               el.type === 'line' || el.type === 'arrow' || el.type === 'path'
             );
-            
+
             // For stroke elements (lines, arrows, paths), render outline instead of bounding box
             if (allStrokeElements && selectedIds.length === 1) {
               const element = selectedElements[0];
@@ -4222,7 +4232,7 @@ export function CanvasSpace({
                     // Use getArrowCoordinates to get actual arrow position (considering anchors)
                     const { startX, startY, endX, endY } = getArrowCoordinates(element);
                     const arrowPath = getArrowPath(element, startX, startY, endX, endY);
-                    
+
                     return (
                       <>
                         <path
@@ -4251,7 +4261,7 @@ export function CanvasSpace({
                     const y1 = element.y;
                     const x2 = element.x + (element.width || 0);
                     const y2 = element.y + (element.height || 0);
-                    
+
                     return (
                       <>
                         <line
@@ -4310,29 +4320,29 @@ export function CanvasSpace({
                 </g>
               );
             }
-            
+
             // For other elements, render normal bounding box
             const allBounds = selectedElements.map(el => getElementBounds(el)).filter(b => b !== null) as { x: number; y: number; width: number; height: number }[];
             if (allBounds.length === 0) return null;
-            
+
             const minX = Math.min(...allBounds.map(b => b.x));
             const minY = Math.min(...allBounds.map(b => b.y));
             const maxX = Math.max(...allBounds.map(b => b.x + b.width));
             const maxY = Math.max(...allBounds.map(b => b.y + b.height));
-            
+
             const bounds = {
               x: minX,
               y: minY,
               width: maxX - minX,
               height: maxY - minY
             };
-            
+
             // Adjusted constants for better visibility at any zoom level
-            const padding = 16 * scale; 
+            const padding = 16 * scale;
             const strokeWidthLine = 2 * scale; // Clean selection line
             const handleRadius = 8 * scale; // w-4 diameter (16px)
             const handleStrokeWidth = 2 * scale;
-            const arcRadius = 40 * scale; 
+            const arcRadius = 40 * scale;
             const rotation = selectedIds.length === 1 ? elements.find(el => el.id === selectedIds[0])?.rotation : 0;
             const cx = bounds.x + bounds.width / 2;
             const cy = bounds.y + bounds.height / 2;
@@ -4382,137 +4392,137 @@ export function CanvasSpace({
                   const selectedElement = elements.find(el => el.id === selectedIds[0]);
                   return selectedElement && selectedElement.type !== 'text';
                 })() && (
-                  <>
-                    {/* Corner handles with rotation indicators */}
-                    {[
-                  { x: bounds.x - padding, y: bounds.y - padding, angle: 225 }, // top-left
-                  { x: bounds.x + bounds.width + padding, y: bounds.y - padding, angle: 315 }, // top-right
-                  { x: bounds.x - padding, y: bounds.y + bounds.height + padding, angle: 135 }, // bottom-left
-                  { x: bounds.x + bounds.width + padding, y: bounds.y + bounds.height + padding, angle: 45 } // bottom-right
-                ].map((corner, i) => {
-                  const arcStartAngle = corner.angle - 30;
-                  const arcEndAngle = corner.angle + 30;
-                  const startX = corner.x + arcRadius * Math.cos(arcStartAngle * Math.PI / 180);
-                  const startY = corner.y + arcRadius * Math.sin(arcStartAngle * Math.PI / 180);
-                  const endX = corner.x + arcRadius * Math.cos(arcEndAngle * Math.PI / 180);
-                  const endY = corner.y + arcRadius * Math.sin(arcEndAngle * Math.PI / 180);
-                  
-                  const selectedElement = elements.find(el => el.id === selectedIds[0]);
-                  const isMedia = selectedElement?.type === 'image' || selectedElement?.type === 'file';
+                    <>
+                      {/* Corner handles with rotation indicators */}
+                      {[
+                        { x: bounds.x - padding, y: bounds.y - padding, angle: 225 }, // top-left
+                        { x: bounds.x + bounds.width + padding, y: bounds.y - padding, angle: 315 }, // top-right
+                        { x: bounds.x - padding, y: bounds.y + bounds.height + padding, angle: 135 }, // bottom-left
+                        { x: bounds.x + bounds.width + padding, y: bounds.y + bounds.height + padding, angle: 45 } // bottom-right
+                      ].map((corner, i) => {
+                        const arcStartAngle = corner.angle - 30;
+                        const arcEndAngle = corner.angle + 30;
+                        const startX = corner.x + arcRadius * Math.cos(arcStartAngle * Math.PI / 180);
+                        const startY = corner.y + arcRadius * Math.sin(arcStartAngle * Math.PI / 180);
+                        const endX = corner.x + arcRadius * Math.cos(arcEndAngle * Math.PI / 180);
+                        const endY = corner.y + arcRadius * Math.sin(arcEndAngle * Math.PI / 180);
 
-                  return (
-                    <g key={i}>
-                      {/* Rotation Arc (Thick Curve, No Chevron) */}
-                      {true && (
-                        <>
-                          <path
-                            d={`M ${startX},${startY} A ${arcRadius},${arcRadius} 0 0 1 ${endX},${endY}`}
-                            fill="none"
-                            stroke="#1976d2"
-                            strokeWidth={4 * scale}
-                            strokeLinecap="round"
-                            opacity={0.6}
-                            pointerEvents="none"
-                          />
-                          
-                          {/* Interactive Invisible Arc for easier grabbing */}
-                          <path
-                            d={`M ${startX},${startY} A ${arcRadius},${arcRadius} 0 0 1 ${endX},${endY}`}
-                            fill="none"
-                            stroke="transparent"
-                            strokeWidth={10 * scale}
-                            style={{ cursor: rotateCursor }}
-                            onMouseDown={handleRotateMouseDown}
-                          />
-                        </>
-                      )}
-                      
-                      {/* Resize Handle */}
-                      <circle
-                        cx={corner.x}
-                        cy={corner.y}
-                        r={handleRadius}
-                        fill="white"
-                        stroke="#1976d2"
-                        strokeWidth={handleStrokeWidth}
-                        style={{ cursor: 'nwse-resize' }}
-                        onMouseDown={(e) => {
-                          if (e.shiftKey) {
-                            handleRotateMouseDown(e);
-                          } else {
-                            handleResizeMouseDown(e, i < 2 ? (i % 2 === 0 ? 'nw' : 'ne') : (i % 2 === 0 ? 'sw' : 'se'));
-                          }
-                        }}
-                      />
-                    </g>
-                  );
-                })}
-                {/* Edge handles with rotation indicators */}
-                {[
-                  { x: bounds.x + bounds.width / 2, y: bounds.y - padding, angle: 270 }, // top
-                  { x: bounds.x + bounds.width / 2, y: bounds.y + bounds.height + padding, angle: 90 }, // bottom
-                  { x: bounds.x - padding, y: bounds.y + bounds.height / 2, angle: 180 }, // left
-                  { x: bounds.x + bounds.width + padding, y: bounds.y + bounds.height / 2, angle: 0 } // right
-                ].map((edge, i) => {
-                  const arcStartAngle = edge.angle - 30;
-                  const arcEndAngle = edge.angle + 30;
-                  const startX = edge.x + arcRadius * Math.cos(arcStartAngle * Math.PI / 180);
-                  const startY = edge.y + arcRadius * Math.sin(arcStartAngle * Math.PI / 180);
-                  const endX = edge.x + arcRadius * Math.cos(arcEndAngle * Math.PI / 180);
-                  const endY = edge.y + arcRadius * Math.sin(arcEndAngle * Math.PI / 180);
-                  
-                  const selectedElement = elements.find(el => el.id === selectedIds[0]);
-                  const isMedia = selectedElement?.type === 'image' || selectedElement?.type === 'file';
+                        const selectedElement = elements.find(el => el.id === selectedIds[0]);
+                        const isMedia = selectedElement?.type === 'image' || selectedElement?.type === 'file';
 
-                  return (
-                    <g key={i + 4}>
-                      {/* Rotation Arc (Thick Curve, No Chevron) */}
-                      {true && (
-                        <>
-                          <path
-                            d={`M ${startX},${startY} A ${arcRadius},${arcRadius} 0 0 1 ${endX},${endY}`}
-                            fill="none"
-                            stroke="#1976d2"
-                            strokeWidth={4 * scale}
-                            strokeLinecap="round"
-                            opacity={0.6}
-                            pointerEvents="none"
-                          />
-                          
-                          {/* Interactive Invisible Arc for easier grabbing */}
-                          <path
-                            d={`M ${startX},${startY} A ${arcRadius},${arcRadius} 0 0 1 ${endX},${endY}`}
-                            fill="none"
-                            stroke="transparent"
-                            strokeWidth={10 * scale}
-                            style={{ cursor: rotateCursor }}
-                            onMouseDown={handleRotateMouseDown}
-                          />
-                        </>
-                      )}
-                      
-                      {/* Resize Handle */}
-                      <circle
-                        cx={edge.x}
-                        cy={edge.y}
-                        r={handleRadius}
-                        fill="white"
-                        stroke="#1976d2"
-                        strokeWidth={handleStrokeWidth}
-                        style={{ cursor: i < 2 ? 'ns-resize' : 'ew-resize' }}
-                        onMouseDown={(e) => {
-                          if (e.shiftKey) {
-                            handleRotateMouseDown(e);
-                          } else {
-                            handleResizeMouseDown(e, i < 2 ? (i % 2 === 0 ? 'n' : 's') : (i % 2 === 0 ? 'w' : 'e'));
-                          }
-                        }}
-                      />
-                    </g>
-                  );
-                })}
-                  </>
-                )}
+                        return (
+                          <g key={i}>
+                            {/* Rotation Arc (Thick Curve, No Chevron) */}
+                            {true && (
+                              <>
+                                <path
+                                  d={`M ${startX},${startY} A ${arcRadius},${arcRadius} 0 0 1 ${endX},${endY}`}
+                                  fill="none"
+                                  stroke="#1976d2"
+                                  strokeWidth={4 * scale}
+                                  strokeLinecap="round"
+                                  opacity={0.6}
+                                  pointerEvents="none"
+                                />
+
+                                {/* Interactive Invisible Arc for easier grabbing */}
+                                <path
+                                  d={`M ${startX},${startY} A ${arcRadius},${arcRadius} 0 0 1 ${endX},${endY}`}
+                                  fill="none"
+                                  stroke="transparent"
+                                  strokeWidth={10 * scale}
+                                  style={{ cursor: rotateCursor }}
+                                  onMouseDown={handleRotateMouseDown}
+                                />
+                              </>
+                            )}
+
+                            {/* Resize Handle */}
+                            <circle
+                              cx={corner.x}
+                              cy={corner.y}
+                              r={handleRadius}
+                              fill="white"
+                              stroke="#1976d2"
+                              strokeWidth={handleStrokeWidth}
+                              style={{ cursor: 'nwse-resize' }}
+                              onMouseDown={(e) => {
+                                if (e.shiftKey) {
+                                  handleRotateMouseDown(e);
+                                } else {
+                                  handleResizeMouseDown(e, i < 2 ? (i % 2 === 0 ? 'nw' : 'ne') : (i % 2 === 0 ? 'sw' : 'se'));
+                                }
+                              }}
+                            />
+                          </g>
+                        );
+                      })}
+                      {/* Edge handles with rotation indicators */}
+                      {[
+                        { x: bounds.x + bounds.width / 2, y: bounds.y - padding, angle: 270 }, // top
+                        { x: bounds.x + bounds.width / 2, y: bounds.y + bounds.height + padding, angle: 90 }, // bottom
+                        { x: bounds.x - padding, y: bounds.y + bounds.height / 2, angle: 180 }, // left
+                        { x: bounds.x + bounds.width + padding, y: bounds.y + bounds.height / 2, angle: 0 } // right
+                      ].map((edge, i) => {
+                        const arcStartAngle = edge.angle - 30;
+                        const arcEndAngle = edge.angle + 30;
+                        const startX = edge.x + arcRadius * Math.cos(arcStartAngle * Math.PI / 180);
+                        const startY = edge.y + arcRadius * Math.sin(arcStartAngle * Math.PI / 180);
+                        const endX = edge.x + arcRadius * Math.cos(arcEndAngle * Math.PI / 180);
+                        const endY = edge.y + arcRadius * Math.sin(arcEndAngle * Math.PI / 180);
+
+                        const selectedElement = elements.find(el => el.id === selectedIds[0]);
+                        const isMedia = selectedElement?.type === 'image' || selectedElement?.type === 'file';
+
+                        return (
+                          <g key={i + 4}>
+                            {/* Rotation Arc (Thick Curve, No Chevron) */}
+                            {true && (
+                              <>
+                                <path
+                                  d={`M ${startX},${startY} A ${arcRadius},${arcRadius} 0 0 1 ${endX},${endY}`}
+                                  fill="none"
+                                  stroke="#1976d2"
+                                  strokeWidth={4 * scale}
+                                  strokeLinecap="round"
+                                  opacity={0.6}
+                                  pointerEvents="none"
+                                />
+
+                                {/* Interactive Invisible Arc for easier grabbing */}
+                                <path
+                                  d={`M ${startX},${startY} A ${arcRadius},${arcRadius} 0 0 1 ${endX},${endY}`}
+                                  fill="none"
+                                  stroke="transparent"
+                                  strokeWidth={10 * scale}
+                                  style={{ cursor: rotateCursor }}
+                                  onMouseDown={handleRotateMouseDown}
+                                />
+                              </>
+                            )}
+
+                            {/* Resize Handle */}
+                            <circle
+                              cx={edge.x}
+                              cy={edge.y}
+                              r={handleRadius}
+                              fill="white"
+                              stroke="#1976d2"
+                              strokeWidth={handleStrokeWidth}
+                              style={{ cursor: i < 2 ? 'ns-resize' : 'ew-resize' }}
+                              onMouseDown={(e) => {
+                                if (e.shiftKey) {
+                                  handleRotateMouseDown(e);
+                                } else {
+                                  handleResizeMouseDown(e, i < 2 ? (i % 2 === 0 ? 'n' : 's') : (i % 2 === 0 ? 'w' : 'e'));
+                                }
+                              }}
+                            />
+                          </g>
+                        );
+                      })}
+                    </>
+                  )}
               </g>
             );
           })()}
@@ -4521,7 +4531,7 @@ export function CanvasSpace({
           {hoveredId && !selectedIds.includes(hoveredId) && tool === 'select' && !isDraggingElement && !isResizingElement && (() => {
             const hoveredElement = elements.find(el => el.id === hoveredId);
             if (!hoveredElement) return null;
-            
+
             const scale = 1 / zoom;
 
             const renderHoverOutline = (el: CanvasElement) => {
@@ -4537,12 +4547,12 @@ export function CanvasSpace({
               switch (el.type) {
                 case 'line':
                   return (
-                    <line 
-                      x1={el.x} 
-                      y1={el.y} 
-                      x2={el.x + (el.width || 0)} 
-                      y2={el.y + (el.height || 0)} 
-                      {...commonProps} 
+                    <line
+                      x1={el.x}
+                      y1={el.y}
+                      x2={el.x + (el.width || 0)}
+                      y2={el.y + (el.height || 0)}
+                      {...commonProps}
                     />
                   );
                 case 'arrow':
@@ -4554,45 +4564,45 @@ export function CanvasSpace({
                   return <polyline points={el.points} {...commonProps} />;
                 case 'rectangle':
                   return (
-                    <rect 
-                      x={el.width && el.width < 0 ? el.x + el.width : el.x} 
-                      y={el.height && el.height < 0 ? el.y + el.height : el.y} 
-                      width={Math.abs(el.width || 0)} 
-                      height={Math.abs(el.height || 0)} 
+                    <rect
+                      x={el.width && el.width < 0 ? el.x + el.width : el.x}
+                      y={el.height && el.height < 0 ? el.y + el.height : el.y}
+                      width={Math.abs(el.width || 0)}
+                      height={Math.abs(el.height || 0)}
                       rx={el.radius || 0}
-                      {...commonProps} 
+                      {...commonProps}
                     />
                   );
                 case 'circle':
                   return (
-                    <circle 
-                      cx={el.x} 
-                      cy={el.y} 
-                      r={el.radius || 0} 
-                      {...commonProps} 
+                    <circle
+                      cx={el.x}
+                      cy={el.y}
+                      r={el.radius || 0}
+                      {...commonProps}
                     />
                   );
                 default:
                   const b = getElementBounds(el);
                   if (!b) return null;
                   return (
-                    <rect 
-                      x={b.x - 5} 
-                      y={b.y - 5} 
-                      width={b.width + 10} 
-                      height={b.height + 10} 
+                    <rect
+                      x={b.x - 5}
+                      y={b.y - 5}
+                      width={b.width + 10}
+                      height={b.height + 10}
                       rx={4}
-                      {...commonProps} 
+                      {...commonProps}
                     />
                   );
               }
             };
 
             if (hoveredElement.groupId) {
-               const groupEls = elements.filter(e => e.groupId === hoveredElement.groupId);
-               return <g>{groupEls.map(e => <React.Fragment key={e.id}>{renderHoverOutline(e)}</React.Fragment>)}</g>;
+              const groupEls = elements.filter(e => e.groupId === hoveredElement.groupId);
+              return <g>{groupEls.map(e => <React.Fragment key={e.id}>{renderHoverOutline(e)}</React.Fragment>)}</g>;
             }
-            
+
             return renderHoverOutline(hoveredElement);
           })()}
 
@@ -4631,29 +4641,29 @@ export function CanvasSpace({
             const hitRadius = 20 * scale; // Hitbox radius (40px visual)
             const strokeWidth = 4 * scale;
             const handleStrokeWidth = 2 * scale;
-            
-            const selectedStrokeElements = elements.filter(el => 
+
+            const selectedStrokeElements = elements.filter(el =>
               selectedIds.includes(el.id) && (el.type === 'arrow' || el.type === 'line')
             );
-            
+
             return selectedStrokeElements.map(element => {
               const indicators: JSX.Element[] = [];
-              
+
               let startX, startY, endX, endY;
-              
+
               if (element.type === 'arrow') {
-                 const coords = getArrowCoordinates(element);
-                 startX = coords.startX;
-                 startY = coords.startY;
-                 endX = coords.endX;
-                 endY = coords.endY;
+                const coords = getArrowCoordinates(element);
+                startX = coords.startX;
+                startY = coords.startY;
+                endX = coords.endX;
+                endY = coords.endY;
               } else {
-                 startX = element.x;
-                 startY = element.y;
-                 endX = element.x + (element.width || 0);
-                 endY = element.y + (element.height || 0);
+                startX = element.x;
+                startY = element.y;
+                endX = element.x + (element.width || 0);
+                endY = element.y + (element.height || 0);
               }
-              
+
               // Start handle
               indicators.push(
                 <g key={`anchor-start-${element.id}`}>
@@ -4684,11 +4694,11 @@ export function CanvasSpace({
                   />
                 </g>
               );
-              
+
               // End handle
               indicators.push(
                 <g key={`anchor-end-${element.id}`}>
-                   <circle
+                  <circle
                     cx={endX}
                     cy={endY}
                     r={handleRadius}
@@ -4698,7 +4708,7 @@ export function CanvasSpace({
                     opacity={1}
                     style={{ cursor: 'pointer' }}
                   />
-                   <circle
+                  <circle
                     cx={endX}
                     cy={endY}
                     r={hitRadius}
@@ -4713,7 +4723,7 @@ export function CanvasSpace({
                   />
                 </g>
               );
-              
+
               // Curvature handle for curved arrows
               if (element.type === 'arrow' && element.arrowType === 'curved') {
                 const curvature = element.curvature || 0.5;
@@ -4730,7 +4740,7 @@ export function CanvasSpace({
                   const offset = curvature * 100;
                   const controlX = midX + normPerpX * offset;
                   const controlY = midY + normPerpY * offset;
-                  
+
                   indicators.push(
                     <g key={`curvature-handle-${element.id}`}>
                       {/* Line from midpoint to control point */}
@@ -4763,48 +4773,48 @@ export function CanvasSpace({
                         fill="transparent"
                         stroke="none"
                         style={{ cursor: 'move' }}
-                         onMouseDown={(e) => {
+                        onMouseDown={(e) => {
                           e.stopPropagation();
                           const svg = svgRef.current;
                           if (!svg) return;
-                          
+
                           // Save current state BEFORE starting to drag
                           const oldElements = JSON.parse(JSON.stringify(elements));
-                          
+
                           const handleMouseMove = (moveEvent: MouseEvent) => {
                             const CTM = svg.getScreenCTM();
                             if (!CTM) return;
-                            
+
                             const svgX = (moveEvent.clientX - CTM.e) / CTM.a;
                             const svgY = (moveEvent.clientY - CTM.f) / CTM.d;
-                            
+
                             // Calculate new curvature based on distance from midpoint
                             const distX = svgX - midX;
                             const distY = svgY - midY;
-                            
+
                             // Project onto perpendicular direction
                             const projection = (distX * normPerpX + distY * normPerpY);
                             const newCurvature = projection / 100;
-                            
+
                             // Update arrow curvature
-                            setElements(prev => prev.map(el => 
-                              el.id === element.id 
+                            setElements(prev => prev.map(el =>
+                              el.id === element.id
                                 ? { ...el, curvature: newCurvature }
                                 : el
                             ));
                           };
-                          
+
                           const handleMouseUp = () => {
                             document.removeEventListener('mousemove', handleMouseMove);
                             document.removeEventListener('mouseup', handleMouseUp);
-                            
+
                             // Save to history with the state captured at mousedown
                             setElements(currentElements => {
                               saveElementsWithHistory(currentElements, oldElements, 'Curvatura freccia modificata');
                               return currentElements;
                             });
                           };
-                          
+
                           document.addEventListener('mousemove', handleMouseMove);
                           document.addEventListener('mouseup', handleMouseUp);
                         }}
@@ -4815,7 +4825,7 @@ export function CanvasSpace({
               } else if (element.type === 'arrow' && element.arrowType === 'electrical') {
                 // Control handles for electrical arrows waypoints
                 const waypoints = element.waypoints || [];
-                
+
                 // If waypoints exist, render a handle for each
                 if (waypoints.length > 0) {
                   waypoints.forEach((wp, wpIndex) => {
@@ -4833,10 +4843,10 @@ export function CanvasSpace({
                           style={{ cursor: 'move' }}
                           onMouseDown={(e) => {
                             e.stopPropagation();
-                            setIsDraggingArrowHandle({ 
-                              arrowId: element.id, 
-                              end: 'waypoint', 
-                              index: wpIndex 
+                            setIsDraggingArrowHandle({
+                              arrowId: element.id,
+                              end: 'waypoint',
+                              index: wpIndex
                             });
                           }}
                         />
@@ -4851,16 +4861,16 @@ export function CanvasSpace({
                             e.stopPropagation();
                             const svg = svgRef.current;
                             if (!svg) return;
-                            
+
                             const oldElements = JSON.parse(JSON.stringify(elements));
-                            
+
                             const handleMouseMove = (moveEvent: MouseEvent) => {
                               const CTM = svg.getScreenCTM();
                               if (!CTM) return;
-                              
+
                               const svgX = (moveEvent.clientX - CTM.e) / CTM.a;
                               const svgY = (moveEvent.clientY - CTM.f) / CTM.d;
-                              
+
                               setElements(prev => prev.map(el => {
                                 if (el.id !== element.id) return el;
                                 const newWaypoints = [...(el.waypoints || [])];
@@ -4868,17 +4878,17 @@ export function CanvasSpace({
                                 return { ...el, waypoints: newWaypoints };
                               }));
                             };
-                            
+
                             const handleMouseUp = () => {
                               document.removeEventListener('mousemove', handleMouseMove);
                               document.removeEventListener('mouseup', handleMouseUp);
-                              
+
                               setElements(currentElements => {
                                 saveElementsWithHistory(currentElements, oldElements, 'Punto di controllo spostato');
                                 return currentElements;
                               });
                             };
-                            
+
                             document.addEventListener('mousemove', handleMouseMove);
                             document.addEventListener('mouseup', handleMouseUp);
                           }}
@@ -4893,21 +4903,21 @@ export function CanvasSpace({
                   const startSide = anchorStart?.side || 'right';
                   const endSide = anchorEnd?.side || 'left';
                   const stubLength = 20;
-                  
+
                   const getStub = (x: number, y: number, side: string) => {
-                       if (side === 'top') return { x, y: y - stubLength };
-                       if (side === 'bottom') return { x, y: y + stubLength };
-                       if (side === 'left') return { x: x - stubLength, y };
-                       return { x: x + stubLength, y };
+                    if (side === 'top') return { x, y: y - stubLength };
+                    if (side === 'bottom') return { x, y: y + stubLength };
+                    if (side === 'left') return { x: x - stubLength, y };
+                    return { x: x + stubLength, y };
                   };
-                  
+
                   const startStub = getStub(startX, startY, startSide);
                   const endStub = getStub(endX, endY, endSide);
-                  
+
                   let isVerticalControl = (startSide === 'right' || startSide === 'left') && (endSide === 'right' || endSide === 'left');
                   let controlX = isVerticalControl ? element.controlPoint : (startStub.x + endStub.x) / 2;
                   let controlY = isVerticalControl ? (startStub.y + endStub.y) / 2 : element.controlPoint;
-                  
+
                   indicators.push(
                     <g key={`control-handle-legacy-${element.id}`}>
                       <rect
@@ -4952,7 +4962,7 @@ export function CanvasSpace({
                   );
                 }
               }
-              
+
               return indicators;
             });
           })()}
@@ -4964,7 +4974,7 @@ export function CanvasSpace({
               if (!canElementSnap(element)) return null;
               const snapPoints = getSnapPoints(element);
               if (!snapPoints) return null;
-              
+
               return (
                 <g key={`snap-points-${element.id}`}>
                   {(['top', 'right', 'bottom', 'left'] as const).map(side => {
@@ -5010,15 +5020,15 @@ export function CanvasSpace({
           {editingTextId && (() => {
             const textElement = elements.find(el => el.id === editingTextId);
             if (!textElement) return null;
-            
+
             const bounds = getElementBounds(textElement);
             let transform = undefined;
             if (textElement.rotation && bounds) {
-               const cx = bounds.x + bounds.width/2;
-               const cy = bounds.y + bounds.height/2;
-               transform = `rotate(${textElement.rotation} ${cx} ${cy})`;
+              const cx = bounds.x + bounds.width / 2;
+              const cy = bounds.y + bounds.height / 2;
+              transform = `rotate(${textElement.rotation} ${cx} ${cy})`;
             }
-            
+
             return (
               <g transform={transform}>
                 <foreignObject
@@ -5080,162 +5090,161 @@ export function CanvasSpace({
 
         {/* Mini-map / Viewport indicator */}
         {showMinimap && (
-        <div
-          className="absolute bottom-[60px] right-4 w-[200px] h-[160px] bg-white border border-divider rounded-lg overflow-hidden shadow-md z-50 flex flex-col"
-        >
-          <div className="px-2 py-1 bg-default-100 border-b border-divider flex items-center justify-center gap-1">
-            <span className="text-xs font-bold">
-              {Math.round(zoom * 100)}%
-            </span>
-          </div>
-          
-          <svg
-            width="200"
-            height="140"
-            viewBox={`${-CANVAS_WIDTH / 2} ${-CANVAS_HEIGHT / 2} ${CANVAS_WIDTH} ${CANVAS_HEIGHT}`}
-            style={{ width: '100%', height: '100%', cursor: 'pointer' }}
-            onMouseMove={handleMinimapMouseMove}
-            onMouseUp={handleMinimapMouseUp}
-            onMouseLeave={handleMinimapMouseUp}
+          <div
+            className="absolute bottom-[60px] right-4 w-[200px] h-[160px] bg-white border border-divider rounded-lg overflow-hidden shadow-md z-50 flex flex-col"
           >
-            <rect
-              x={-CANVAS_WIDTH / 2}
-              y={-CANVAS_HEIGHT / 2}
-              width={CANVAS_WIDTH}
-              height={CANVAS_HEIGHT}
-              fill="rgba(0,0,0,0.02)"
-              stroke="rgba(0,0,0,0.1)"
-              strokeWidth={CANVAS_WIDTH / 100}
-            />
-            
-            {elements.map(el => {
-              switch (el.type) {
-                case 'rectangle':
-                  return (
-                    <rect
-                      key={el.id}
-                      x={el.x}
-                      y={el.y}
-                      width={el.width}
-                      height={el.height}
-                      rx={el.radius || 0}
-                      fill={el.color}
-                      opacity={0.5}
-                    />
-                  );
-                case 'circle':
-                  return (
-                    <circle
-                      key={el.id}
-                      cx={el.x}
-                      cy={el.y}
-                      r={el.radius}
-                      fill={el.color}
-                      opacity={0.5}
-                    />
-                  );
-                case 'text':
-                  return (
-                    <rect
-                      key={el.id}
-                      x={el.x}
-                      y={el.y - 12}
-                      width={60}
-                      height={20}
-                      fill={el.color}
-                      opacity={0.5}
-                    />
-                  );
-                case 'spaceEmbed':
-                case 'blockEmbed':
-                  return (
-                    <rect
-                      key={el.id}
-                      x={el.x}
-                      y={el.y}
-                      width={el.width}
-                      height={el.height}
-                      fill={el.color}
-                      opacity={0.5}
-                    />
-                  );
-                case 'path':
-                  return (
-                    <path
-                      key={el.id}
-                      d={el.points}
-                      fill="none"
-                      stroke={el.color}
-                      strokeWidth={el.strokeWidth}
-                      opacity={0.5}
-                    />
-                  );
-                case 'line':
-                case 'arrow':
-                  const points = el.points?.split(' ') || [];
-                  if (points.length >= 2) {
-                    const [x1, y1] = points[0].split(',').map(Number);
-                    const lastPoint = points[points.length - 1].split(',').map(Number);
+            <div className="px-2 py-1 bg-default-100 border-b border-divider flex items-center justify-center gap-1">
+              <span className="text-xs font-bold">
+                {Math.round(zoom * 100)}%
+              </span>
+            </div>
+
+            <svg
+              width="200"
+              height="140"
+              viewBox={`${-CANVAS_WIDTH / 2} ${-CANVAS_HEIGHT / 2} ${CANVAS_WIDTH} ${CANVAS_HEIGHT}`}
+              style={{ width: '100%', height: '100%', cursor: 'pointer' }}
+              onMouseMove={handleMinimapMouseMove}
+              onMouseUp={handleMinimapMouseUp}
+              onMouseLeave={handleMinimapMouseUp}
+            >
+              <rect
+                x={-CANVAS_WIDTH / 2}
+                y={-CANVAS_HEIGHT / 2}
+                width={CANVAS_WIDTH}
+                height={CANVAS_HEIGHT}
+                fill="rgba(0,0,0,0.02)"
+                stroke="rgba(0,0,0,0.1)"
+                strokeWidth={CANVAS_WIDTH / 100}
+              />
+
+              {elements.map(el => {
+                switch (el.type) {
+                  case 'rectangle':
                     return (
-                      <line
+                      <rect
                         key={el.id}
-                        x1={x1}
-                        y1={y1}
-                        x2={lastPoint[0]}
-                        y2={lastPoint[1]}
+                        x={el.x}
+                        y={el.y}
+                        width={el.width}
+                        height={el.height}
+                        rx={el.radius || 0}
+                        fill={el.color}
+                        opacity={0.5}
+                      />
+                    );
+                  case 'circle':
+                    return (
+                      <circle
+                        key={el.id}
+                        cx={el.x}
+                        cy={el.y}
+                        r={el.radius}
+                        fill={el.color}
+                        opacity={0.5}
+                      />
+                    );
+                  case 'text':
+                    return (
+                      <rect
+                        key={el.id}
+                        x={el.x}
+                        y={el.y - 12}
+                        width={60}
+                        height={20}
+                        fill={el.color}
+                        opacity={0.5}
+                      />
+                    );
+                  case 'spaceEmbed':
+                  case 'blockEmbed':
+                    return (
+                      <rect
+                        key={el.id}
+                        x={el.x}
+                        y={el.y}
+                        width={el.width}
+                        height={el.height}
+                        fill={el.color}
+                        opacity={0.5}
+                      />
+                    );
+                  case 'path':
+                    return (
+                      <path
+                        key={el.id}
+                        d={el.points}
+                        fill="none"
                         stroke={el.color}
                         strokeWidth={el.strokeWidth}
                         opacity={0.5}
                       />
                     );
-                  }
-                  return null;
-                default:
-                  return null;
-              }
-            })}
-            
-            <rect
-              x={viewBox.x}
-              y={viewBox.y}
-              width={viewBox.width}
-              height={viewBox.height}
-              fill="rgba(25, 118, 210, 0.1)"
-              stroke="var(--heroui-primary-500)"
-              strokeWidth={CANVAS_WIDTH / 150}
-              opacity={0.9}
-              style={{ cursor: 'move' }}
-              onMouseDown={handleMinimapMouseDown}
-            />
-          </svg>
-        </div>
+                  case 'line':
+                  case 'arrow':
+                    const points = el.points?.split(' ') || [];
+                    if (points.length >= 2) {
+                      const [x1, y1] = points[0].split(',').map(Number);
+                      const lastPoint = points[points.length - 1].split(',').map(Number);
+                      return (
+                        <line
+                          key={el.id}
+                          x1={x1}
+                          y1={y1}
+                          x2={lastPoint[0]}
+                          y2={lastPoint[1]}
+                          stroke={el.color}
+                          strokeWidth={el.strokeWidth}
+                          opacity={0.5}
+                        />
+                      );
+                    }
+                    return null;
+                  default:
+                    return null;
+                }
+              })}
+
+              <rect
+                x={viewBox.x}
+                y={viewBox.y}
+                width={viewBox.width}
+                height={viewBox.height}
+                fill="rgba(25, 118, 210, 0.1)"
+                stroke="var(--heroui-primary-500)"
+                strokeWidth={CANVAS_WIDTH / 150}
+                opacity={0.9}
+                style={{ cursor: 'move' }}
+                onMouseDown={handleMinimapMouseDown}
+              />
+            </svg>
+          </div>
         )}
       </div>
-      
+
       <div className="p-2 border-t border-divider text-xs text-default-400 bg-background">
         Tip: Hold Alt or middle-click to pan • Pinch to zoom • Two-finger scroll to pan
       </div>
 
       {/* Selection Toast Notification */}
       {selectionBox && (
-         <div className="absolute bottom-20 left-1/2 transform -translate-x-1/2 z-50 pointer-events-none">
-           <div className={`px-4 py-2 rounded-lg shadow-lg border backdrop-blur-sm transition-all animate-in fade-in slide-in-from-bottom-2 flex items-center gap-2 ${
-             isZKeyPressed 
-               ? "bg-yellow-50/90 text-yellow-700 border-yellow-200" 
-               : (isRightToLeftSelection 
-                   ? "bg-green-50/90 text-green-700 border-green-200" 
-                   : "bg-blue-50/90 text-blue-700 border-blue-200")
-           }`}>
-              {isZKeyPressed && <Maximize2 size={16} />}
-              <span className="font-medium text-sm">
-                {isZKeyPressed 
-                  ? "Selection Zoom" 
-                  : (isRightToLeftSelection 
-                      ? "Selezione a tocco (Tutto ciò che tocca)" 
-                      : "Selezione inclusiva (Solo ciò che è dentro)")}
-              </span>
-           </div>
-         </div>
+        <div className="absolute bottom-20 left-1/2 transform -translate-x-1/2 z-50 pointer-events-none">
+          <div className={`px-4 py-2 rounded-lg shadow-lg border backdrop-blur-sm transition-all animate-in fade-in slide-in-from-bottom-2 flex items-center gap-2 ${isZKeyPressed
+            ? "bg-yellow-50/90 text-yellow-700 border-yellow-200"
+            : (isRightToLeftSelection
+              ? "bg-green-50/90 text-green-700 border-green-200"
+              : "bg-blue-50/90 text-blue-700 border-blue-200")
+            }`}>
+            {isZKeyPressed && <Maximize2 size={16} />}
+            <span className="font-medium text-sm">
+              {isZKeyPressed
+                ? "Selection Zoom"
+                : (isRightToLeftSelection
+                  ? "Selezione a tocco (Tutto ciò che tocca)"
+                  : "Selezione inclusiva (Solo ciò che è dentro)")}
+            </span>
+          </div>
+        </div>
       )}
 
       {contextMenu && (
@@ -5250,16 +5259,16 @@ export function CanvasSpace({
         >
           {(() => {
             const selectedElements = elements.filter(e => contextMenu.elementIds.includes(e.id));
-            const hasStrokeElements = selectedElements.some(e => 
+            const hasStrokeElements = selectedElements.some(e =>
               e.type === 'arrow' || e.type === 'rectangle' || e.type === 'circle' || e.type === 'line' || e.type === 'path'
             );
-            
+
             if (!hasStrokeElements) return null;
-            
-            const firstStrokeElement = selectedElements.find(e => 
+
+            const firstStrokeElement = selectedElements.find(e =>
               e.type === 'arrow' || e.type === 'rectangle' || e.type === 'circle' || e.type === 'line' || e.type === 'path'
             );
-            
+
             return (
               <>
                 <div className="px-3 py-2">
@@ -5272,8 +5281,8 @@ export function CanvasSpace({
                     onChange={(e) => {
                       const newColor = e.target.value;
                       const newElements = elements.map(el => {
-                        if (contextMenu.elementIds.includes(el.id) && 
-                            (el.type === 'arrow' || el.type === 'rectangle' || el.type === 'circle' || el.type === 'line' || el.type === 'path' || el.type === 'text')) {
+                        if (contextMenu.elementIds.includes(el.id) &&
+                          (el.type === 'arrow' || el.type === 'rectangle' || el.type === 'circle' || el.type === 'line' || el.type === 'path' || el.type === 'text')) {
                           return { ...el, color: newColor };
                         }
                         return el;
@@ -5284,7 +5293,7 @@ export function CanvasSpace({
                     className="w-full h-10 rounded-lg cursor-pointer"
                   />
                 </div>
-                
+
                 <div className="px-3 py-2">
                   <p className="text-xs text-default-500 mb-1">
                     Spessore: {firstStrokeElement?.strokeWidth || 2}px
@@ -5298,8 +5307,8 @@ export function CanvasSpace({
                     onChange={(e) => {
                       const newStrokeWidth = parseInt(e.target.value);
                       const newElements = elements.map(el => {
-                        if (contextMenu.elementIds.includes(el.id) && 
-                            (el.type === 'arrow' || el.type === 'rectangle' || el.type === 'circle' || el.type === 'line' || el.type === 'path')) {
+                        if (contextMenu.elementIds.includes(el.id) &&
+                          (el.type === 'arrow' || el.type === 'rectangle' || el.type === 'circle' || el.type === 'line' || el.type === 'path')) {
                           return { ...el, strokeWidth: newStrokeWidth };
                         }
                         return el;
@@ -5310,7 +5319,7 @@ export function CanvasSpace({
                     className="w-full accent-blue-500"
                   />
                 </div>
-                
+
                 {/* Arrow type selector - solo se tutte le selezioni sono frecce */}
                 {(() => {
                   const selectedElements = elements.filter(el => contextMenu.elementIds.includes(el.id));
@@ -5324,9 +5333,8 @@ export function CanvasSpace({
                         </p>
                         <div className="flex flex-col gap-1">
                           <button
-                            className={`flex items-center gap-2 px-2 py-1.5 rounded-lg transition-colors text-left text-sm ${
-                              firstArrow.arrowType === 'curved' ? 'bg-blue-500/20' : 'hover:bg-default-100'
-                            }`}
+                            className={`flex items-center gap-2 px-2 py-1.5 rounded-lg transition-colors text-left text-sm ${firstArrow.arrowType === 'curved' ? 'bg-blue-500/20' : 'hover:bg-default-100'
+                              }`}
                             onClick={() => {
                               const newElements = elements.map(el => {
                                 if (contextMenu.elementIds.includes(el.id) && el.type === 'arrow') {
@@ -5344,9 +5352,8 @@ export function CanvasSpace({
                             <span>Curva</span>
                           </button>
                           <button
-                            className={`flex items-center gap-2 px-2 py-1.5 rounded-lg transition-colors text-left text-sm ${
-                              firstArrow.arrowType === 'electrical' ? 'bg-blue-500/20' : 'hover:bg-default-100'
-                            }`}
+                            className={`flex items-center gap-2 px-2 py-1.5 rounded-lg transition-colors text-left text-sm ${firstArrow.arrowType === 'electrical' ? 'bg-blue-500/20' : 'hover:bg-default-100'
+                              }`}
                             onClick={() => {
                               const newElements = elements.map(el => {
                                 if (contextMenu.elementIds.includes(el.id) && el.type === 'arrow') {
@@ -5363,9 +5370,9 @@ export function CanvasSpace({
                             </svg>
                             <span>Schematico</span>
                           </button>
-                          
+
                           <div className="border-t border-gray-100 my-1" />
-                          
+
                           <button
                             className="flex items-center gap-2 px-2 py-1.5 rounded-lg transition-colors text-left text-sm hover:bg-default-100"
                             onClick={() => {
@@ -5376,17 +5383,17 @@ export function CanvasSpace({
                                   const startY = el.y;
                                   const endX = el.x + (el.width || 0);
                                   const endY = el.y + (el.height || 0);
-                                  
+
                                   const newStartX = endX;
                                   const newStartY = endY;
                                   const newEndX = startX;
                                   const newEndY = startY;
-                                  
+
                                   const newX = newStartX;
                                   const newY = newStartY;
                                   const newWidth = newEndX - newStartX;
                                   const newHeight = newEndY - newStartY;
-                                  
+
                                   // Also invert anchors
                                   return {
                                     ...el,
@@ -5465,13 +5472,13 @@ export function CanvasSpace({
                   }
                   return null;
                 })()}
-                
+
                 <div className="border-t border-gray-200 my-1" />
               </>
             );
           })()}
-          
-          <div 
+
+          <div
             className="flex items-center gap-2 px-3 py-2 text-sm hover:bg-default-100 cursor-pointer"
             onClick={() => {
               deleteSelected();
@@ -5481,10 +5488,10 @@ export function CanvasSpace({
             <Trash2 size={16} />
             <span>Elimina</span>
           </div>
-          
+
           <div className="border-t border-gray-200 my-1" />
-          
-          <div 
+
+          <div
             className="flex items-center gap-2 px-3 py-2 text-sm hover:bg-default-100 cursor-pointer"
             onClick={() => {
               bringToFront();
@@ -5494,8 +5501,8 @@ export function CanvasSpace({
             <BringToFront size={16} />
             <span>Porta in primo piano</span>
           </div>
-          
-          <div 
+
+          <div
             className="flex items-center gap-2 px-3 py-2 text-sm hover:bg-default-100 cursor-pointer"
             onClick={() => {
               sendToBack();
@@ -5507,7 +5514,7 @@ export function CanvasSpace({
           </div>
 
           {elements.some(el => selectedIds.includes(el.id) && el.type === 'rectangle') && (
-            <div 
+            <div
               className="flex items-center gap-2 px-3 py-2 text-sm hover:bg-default-100 cursor-pointer"
               onClick={() => {
                 toggleRoundedCorners();
@@ -5524,27 +5531,27 @@ export function CanvasSpace({
               <div className="px-2 py-2">
                 <div className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider mb-2 px-1">Allineamento</div>
                 <div className="flex justify-between bg-gray-50/50 p-1 rounded-md border border-gray-100">
-                   <button onClick={() => alignElements('left')} className="p-1.5 hover:bg-white hover:shadow-sm hover:text-blue-600 rounded-md transition-all text-gray-600" title="Allinea a sinistra"><AlignLeft size={16}/></button>
-                   <button onClick={() => alignElements('center-h')} className="p-1.5 hover:bg-white hover:shadow-sm hover:text-blue-600 rounded-md transition-all text-gray-600" title="Allinea al centro orizzontale"><AlignCenter size={16}/></button>
-                   <button onClick={() => alignElements('right')} className="p-1.5 hover:bg-white hover:shadow-sm hover:text-blue-600 rounded-md transition-all text-gray-600" title="Allinea a destra"><AlignRight size={16}/></button>
-                   <div className="w-px bg-gray-200 mx-1 my-1"></div>
-                   <button onClick={() => alignElements('top')} className="p-1.5 hover:bg-white hover:shadow-sm hover:text-blue-600 rounded-md transition-all text-gray-600" title="Allinea in alto"><ArrowUpToLine size={16}/></button>
-                   <button onClick={() => alignElements('center-v')} className="p-1.5 hover:bg-white hover:shadow-sm hover:text-blue-600 rounded-md transition-all text-gray-600" title="Allinea al centro verticale"><AlignVerticalJustifyCenter size={16}/></button>
-                   <button onClick={() => alignElements('bottom')} className="p-1.5 hover:bg-white hover:shadow-sm hover:text-blue-600 rounded-md transition-all text-gray-600" title="Allinea in basso"><ArrowDownToLine size={16}/></button>
+                  <button onClick={() => alignElements('left')} className="p-1.5 hover:bg-white hover:shadow-sm hover:text-blue-600 rounded-md transition-all text-gray-600" title="Allinea a sinistra"><AlignLeft size={16} /></button>
+                  <button onClick={() => alignElements('center-h')} className="p-1.5 hover:bg-white hover:shadow-sm hover:text-blue-600 rounded-md transition-all text-gray-600" title="Allinea al centro orizzontale"><AlignCenter size={16} /></button>
+                  <button onClick={() => alignElements('right')} className="p-1.5 hover:bg-white hover:shadow-sm hover:text-blue-600 rounded-md transition-all text-gray-600" title="Allinea a destra"><AlignRight size={16} /></button>
+                  <div className="w-px bg-gray-200 mx-1 my-1"></div>
+                  <button onClick={() => alignElements('top')} className="p-1.5 hover:bg-white hover:shadow-sm hover:text-blue-600 rounded-md transition-all text-gray-600" title="Allinea in alto"><ArrowUpToLine size={16} /></button>
+                  <button onClick={() => alignElements('center-v')} className="p-1.5 hover:bg-white hover:shadow-sm hover:text-blue-600 rounded-md transition-all text-gray-600" title="Allinea al centro verticale"><AlignVerticalJustifyCenter size={16} /></button>
+                  <button onClick={() => alignElements('bottom')} className="p-1.5 hover:bg-white hover:shadow-sm hover:text-blue-600 rounded-md transition-all text-gray-600" title="Allinea in basso"><ArrowDownToLine size={16} /></button>
                 </div>
-                
+
                 {contextMenu.elementIds.length > 2 && (
-                    <>
+                  <>
                     <div className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider mb-2 mt-3 px-1">Distribuzione</div>
                     <div className="flex gap-2 bg-gray-50/50 p-1 rounded-md border border-gray-100">
-                       <button onClick={() => distributeElements('horizontal')} className="flex-1 p-1.5 hover:bg-white hover:shadow-sm hover:text-blue-600 rounded-md transition-all flex justify-center text-gray-600" title="Distribuisci orizzontalmente"><StretchHorizontal size={16}/></button>
-                       <button onClick={() => distributeElements('vertical')} className="flex-1 p-1.5 hover:bg-white hover:shadow-sm hover:text-blue-600 rounded-md transition-all flex justify-center text-gray-600" title="Distribuisci verticalmente"><StretchVertical size={16}/></button>
+                      <button onClick={() => distributeElements('horizontal')} className="flex-1 p-1.5 hover:bg-white hover:shadow-sm hover:text-blue-600 rounded-md transition-all flex justify-center text-gray-600" title="Distribuisci orizzontalmente"><StretchHorizontal size={16} /></button>
+                      <button onClick={() => distributeElements('vertical')} className="flex-1 p-1.5 hover:bg-white hover:shadow-sm hover:text-blue-600 rounded-md transition-all flex justify-center text-gray-600" title="Distribuisci verticalmente"><StretchVertical size={16} /></button>
                     </div>
-                    </>
+                  </>
                 )}
               </div>
               <div className="border-t border-gray-200 my-1" />
-              <div 
+              <div
                 className="flex items-center gap-2 px-3 py-2 text-sm hover:bg-default-100 cursor-pointer"
                 onClick={() => {
                   groupElements();
@@ -5563,7 +5570,7 @@ export function CanvasSpace({
             return hasGroup ? (
               <>
                 <div className="border-t border-gray-200 my-1" />
-                <div 
+                <div
                   className="flex items-center gap-2 px-3 py-2 text-sm hover:bg-default-100 cursor-pointer"
                   onClick={() => {
                     ungroupElements();

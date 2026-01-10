@@ -1,16 +1,16 @@
 import { useState, useMemo, useRef, useEffect, memo, useCallback } from 'react';
-import { 
-  format, 
-  addMonths, 
-  subMonths, 
-  startOfMonth, 
-  endOfMonth, 
-  startOfWeek, 
-  endOfWeek, 
-  eachDayOfInterval, 
-  isSameMonth, 
-  isSameDay, 
-  addDays, 
+import {
+  format,
+  addMonths,
+  subMonths,
+  startOfMonth,
+  endOfMonth,
+  startOfWeek,
+  endOfWeek,
+  eachDayOfInterval,
+  isSameMonth,
+  isSameDay,
+  addDays,
   subDays,
   startOfDay,
   setHours,
@@ -32,12 +32,12 @@ import {
 import { it } from 'date-fns/locale';
 import { useDisclosure, Button, Input, Modal, ModalContent, ModalHeader, ModalBody, ModalFooter, Select, SelectItem, Popover, PopoverTrigger, PopoverContent, Textarea } from '@heroui/react';
 import { motion, AnimatePresence } from 'motion/react';
-import { 
-  ChevronLeft, 
-  ChevronRight, 
-  Plus, 
-  Calendar as CalendarIcon, 
-  Clock, 
+import {
+  ChevronLeft,
+  ChevronRight,
+  Plus,
+  Calendar as CalendarIcon,
+  Clock,
   MoreVertical,
   Search,
   Settings,
@@ -47,6 +47,7 @@ import {
   GripVertical
 } from 'lucide-react';
 import { useDrag, useDrop } from 'react-dnd';
+import { getEmptyImage } from 'react-dnd-html5-backend';
 
 const daysOfWeek = ['Lun', 'Mar', 'Mer', 'Gio', 'Ven', 'Sab', 'Dom'];
 const daysOfWeekShort = ['L', 'M', 'M', 'G', 'V', 'S', 'D'];
@@ -75,25 +76,40 @@ interface DraggableMultiDayEventProps extends Omit<DraggableEventProps, 'onNavig
 }
 
 function DraggableCalendarEvent({ event, onUpdate, onNavigate }: DraggableEventProps) {
-  const [{ isDragging }, drag] = useDrag(() => ({
+  const [{ isDragging }, drag, preview] = useDrag(() => ({
     type: 'CALENDAR_EVENT',
-    item: { id: event.id, blockId: event.id, spaceId: event.sourceSpaceId },
+    item: {
+      id: event.id,
+      blockId: event.id,
+      spaceId: event.sourceSpaceId,
+      type: 'CALENDAR_EVENT',
+      title: event.metadata?.title || 'Senza titolo',
+      content: event.metadata?.notes,
+      start: event.start,
+      end: event.end,
+      sourceSpaceTitle: event.sourceSpaceTitle
+    },
     collect: (monitor) => ({
       isDragging: !!monitor.isDragging(),
     }),
   }), [event]);
 
+  // Suppress native preview
+  useEffect(() => {
+    preview(getEmptyImage(), { captureDraggingState: true });
+  }, [preview]);
+
   // Use a stable ref callback or direct assignment if possible. 
   // Since drag is a function from useDrag, we can pass it directly if we don't need to chain.
   // However, older react-dnd might need the function call. 
   // Standard React 19 / Modern Dnd: ref={drag} works.
-  
+
   const handleResize = (e: React.MouseEvent, days: number) => {
     e.stopPropagation();
     e.preventDefault();
     const currentEnd = event.end ? new Date(event.end) : addDays(new Date(event.start), 1);
     const newEnd = addDays(currentEnd, days);
-    
+
     // Ensure end date is not before start date
     if (newEnd > event.start) {
       onUpdate(event.id, { endDate: format(newEnd, "yyyy-MM-dd'T'HH:mm") });
@@ -105,7 +121,7 @@ function DraggableCalendarEvent({ event, onUpdate, onNavigate }: DraggableEventP
     e.preventDefault();
     const currentStart = new Date(event.start);
     const newStart = addDays(currentStart, days);
-    
+
     // Ensure start date is not after end date
     const currentEnd = event.end ? new Date(event.end) : addDays(new Date(event.start), 1);
     if (newStart < currentEnd) {
@@ -118,7 +134,7 @@ function DraggableCalendarEvent({ event, onUpdate, onNavigate }: DraggableEventP
   }, [drag]);
 
   return (
-    <div 
+    <div
       ref={setDragRef}
       className={`
         text-[10px] p-1.5 rounded bg-primary/10 text-primary-700 truncate border-l-2 border-primary 
@@ -132,7 +148,7 @@ function DraggableCalendarEvent({ event, onUpdate, onNavigate }: DraggableEventP
       }}
     >
       {/* Left Resizer */}
-      <div 
+      <div
         className="absolute left-0 top-0 bottom-0 w-2 cursor-ew-resize opacity-0 group-hover:opacity-100 bg-primary/30 flex items-center justify-center rounded-l z-20"
         onMouseDown={(e) => handleResizeLeft(e, -1)}
         title="Anticipa di 1 giorno"
@@ -142,9 +158,9 @@ function DraggableCalendarEvent({ event, onUpdate, onNavigate }: DraggableEventP
 
       <GripVertical size={10} className="opacity-0 group-hover:opacity-40 shrink-0 mx-1" />
       <span className="truncate flex-1">{event.metadata?.title || 'Senza titolo'}</span>
-      
+
       {/* Right Resizer */}
-      <div 
+      <div
         className="absolute right-0 top-0 bottom-0 w-2 cursor-ew-resize opacity-0 group-hover:opacity-100 bg-primary/30 flex items-center justify-center rounded-r z-20"
         onMouseDown={(e) => handleResize(e, 1)}
         title="Posticipa di 1 giorno"
@@ -171,13 +187,13 @@ interface DraggableMultiDayEventProps extends Omit<DraggableEventProps, 'onNavig
   topOffset?: number;
 }
 
-const DraggableMultiDayEvent = memo(({ 
-  event, 
-  startCol, 
-  colSpan, 
-  row, 
-  isStart, 
-  isEnd, 
+const DraggableMultiDayEvent = memo(({
+  event,
+  startCol,
+  colSpan,
+  row,
+  isStart,
+  isEnd,
   onUpdate,
   onHoverDateChange,
   isResizing,
@@ -189,14 +205,28 @@ const DraggableMultiDayEvent = memo(({
 }: DraggableMultiDayEventProps) => {
   const containerRef = useRef<HTMLDivElement>(null);
 
-  const [{ isDragging }, drag] = useDrag(() => ({
+  const [{ isDragging }, drag, preview] = useDrag(() => ({
     type: 'CALENDAR_EVENT',
-    item: { id: event.id, blockId: event.id, spaceId: event.sourceSpaceId },
+    item: {
+      id: event.id,
+      blockId: event.id,
+      spaceId: event.sourceSpaceId,
+      type: 'CALENDAR_EVENT',
+      title: event.metadata?.title || 'Senza titolo',
+      content: event.metadata?.notes,
+      start: event.start,
+      end: event.end,
+      sourceSpaceTitle: event.sourceSpaceTitle
+    },
     canDrag: !isResizing,
     collect: (monitor) => ({
       isDragging: !!monitor.isDragging(),
     }),
   }), [event, isResizing]);
+
+  useEffect(() => {
+    preview(getEmptyImage(), { captureDraggingState: true });
+  }, [preview]);
 
   const handleMouseDownResize = (e: React.MouseEvent, direction: 'left' | 'right') => {
     e.stopPropagation();
@@ -205,11 +235,11 @@ const DraggableMultiDayEvent = memo(({
 
     const parentGrid = containerRef.current?.closest('.calendar-grid-container') || document.querySelector('.calendar-grid-container');
     if (!parentGrid) return;
-    
+
     const gridRect = parentGrid.getBoundingClientRect();
     const initialDayWidth = gridRect.width / 7;
     const weekRows = Array.from(parentGrid.querySelectorAll('.calendar-week-row')) as HTMLElement[];
-    
+
     const getCellIndexFromCoords = (clientX: number, clientY: number) => {
       const relativeX = clientX - gridRect.left;
       const relativeY = clientY - gridRect.top + (parentGrid as HTMLElement).scrollTop;
@@ -245,7 +275,7 @@ const DraggableMultiDayEvent = memo(({
       let finalOffset = currentCellIndex - initialCellIndex;
       const initialStart = new Date(event.start);
       const initialEnd = event.end ? new Date(event.end) : addDays(initialStart, 1);
-      
+
       if (direction === 'left') {
         const potentialStart = addDays(initialStart, finalOffset);
         if (potentialStart > initialEnd) {
@@ -278,12 +308,12 @@ const DraggableMultiDayEvent = memo(({
   }, [drag]);
 
   const eventContent = (
-    <div 
+    <div
       ref={setRefs}
       style={{
         left: `calc(${(Math.max(0, startCol) / 7) * 100}% + 2px)`,
         width: `calc(${(colSpan / 7) * 100}% - 4px)`,
-        top: `${topOffset + row * eventHeight}px`, 
+        top: `${topOffset + row * eventHeight}px`,
         height: `${eventHeight}px`,
         position: 'absolute',
         zIndex: isResizing || isSelected ? 100 : 20,
@@ -311,7 +341,7 @@ const DraggableMultiDayEvent = memo(({
         </div>
       )}
       {isStart && eventHeight > 12 && (
-        <div 
+        <div
           className="absolute left-0 top-0 bottom-0 w-3 cursor-ew-resize opacity-0 group-hover:opacity-100 bg-primary/40 flex items-center justify-center rounded-l z-30 transition-opacity"
           onMouseDown={(e) => handleMouseDownResize(e, 'left')}
         >
@@ -321,7 +351,7 @@ const DraggableMultiDayEvent = memo(({
       {isStart && eventHeight > 16 && <GripVertical size={10} className="opacity-0 group-hover:opacity-40 shrink-0" />}
       {eventHeight > 10 && <span className="truncate flex-1 font-medium">{event.metadata?.title || 'Senza titolo'}</span>}
       {isEnd && eventHeight > 12 && (
-        <div 
+        <div
           className="absolute right-0 top-0 bottom-0 w-3 cursor-ew-resize opacity-0 group-hover:opacity-100 bg-primary/40 flex items-center justify-center rounded-r z-30 transition-opacity"
           onMouseDown={(e) => handleMouseDownResize(e, 'right')}
         >
@@ -331,44 +361,7 @@ const DraggableMultiDayEvent = memo(({
     </div>
   );
 
-  return (
-    <Popover placement="top" showArrow={true}>
-      <PopoverTrigger>
-        {eventContent}
-      </PopoverTrigger>
-      <PopoverContent className="p-0 border-none shadow-xl">
-        <div className="p-3 bg-white rounded-lg shadow-2xl border border-divider min-w-[220px]">
-          <div className="flex items-center gap-2 mb-2">
-            <div className="w-3 h-3 rounded-full bg-primary" />
-            <h4 className="font-bold text-sm text-foreground">
-              {event.metadata?.title || 'Senza titolo'}
-            </h4>
-          </div>
-          <div className="space-y-2 text-xs text-default-500">
-            <div className="flex items-center gap-2">
-              <Clock size={12} className="text-primary" />
-              <span>{format(event.start, 'HH:mm')} - {event.end ? format(event.end, 'HH:mm') : '...'}</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <CalendarIcon size={12} className="text-primary" />
-              <span>{format(event.start, 'EEEE d MMMM yyyy', { locale: it })}</span>
-            </div>
-            {event.sourceSpaceTitle && (
-              <div className="flex items-center gap-2 opacity-70">
-                <div className="w-3 h-3 flex items-center justify-center"><Search size={10} /></div>
-                <span>In: {event.sourceSpaceTitle}</span>
-              </div>
-            )}
-            {event.metadata?.notes && (
-              <div className="mt-2 pt-2 border-t border-divider text-default-600 italic">
-                {event.metadata.notes}
-              </div>
-            )}
-          </div>
-        </div>
-      </PopoverContent>
-    </Popover>
-  );
+  return eventContent;
 });
 
 interface CalendarDayCellProps {
@@ -383,30 +376,33 @@ interface CalendarDayCellProps {
   onNavigate: (sid: string, title: string) => void;
   allEvents: any[];
   renderEvents?: boolean;
+  onDragEnter?: (date: Date, item: any) => void;
+  onDragLeave?: () => void;
 }
 
-const CalendarDayCell = memo(({ 
-  day, 
-  isToday, 
-  isCurrentMonth, 
-  isSelected, 
-  dayEvents, 
-  onStartSelection, 
-  onUpdateSelection, 
-  onUpdateEvent, 
+const CalendarDayCell = memo(({
+  day,
+  isToday,
+  isCurrentMonth,
+  isSelected,
+  dayEvents,
+  onStartSelection,
+  onUpdateSelection,
+  onUpdateEvent,
   onNavigate,
   allEvents,
   renderEvents = true
 }: CalendarDayCellProps) => {
-  const [{ isOver }, drop] = useDrop(() => ({
+  const [{ isOver, draggedItem }, drop] = useDrop(() => ({
     accept: 'CALENDAR_EVENT',
     drop: (item: any) => {
+      onDragLeave?.(); // Clear ghost on drop
       const event = allEvents.find(e => e.id === item.id);
       if (!event) return;
-      
-      const durationMs = (event.end ? event.end.getTime() : event.start.getTime() + 3600000) - event.start.getTime();
+
+      const durationMs = (event.end ? new Date(event.end).getTime() : new Date(event.start).getTime() + 3600000) - new Date(event.start).getTime();
       const newStart = new Date(day);
-      newStart.setHours(event.start.getHours(), event.start.getMinutes());
+      newStart.setHours(new Date(event.start).getHours(), new Date(event.start).getMinutes());
       const newEnd = new Date(newStart.getTime() + durationMs);
 
       onUpdateEvent(item.id, item.id, item.spaceId, {
@@ -414,10 +410,14 @@ const CalendarDayCell = memo(({
         endDate: format(newEnd, "yyyy-MM-dd'T'HH:mm")
       });
     },
+    hover: (item: any) => {
+      onDragEnter?.(day, item);
+    },
     collect: (monitor) => ({
       isOver: !!monitor.isOver(),
+      draggedItem: monitor.getItem(),
     }),
-  }), [day, allEvents, onUpdateEvent]);
+  }), [day, allEvents, onUpdateEvent, onDragEnter, onDragLeave]);
 
   const setDropRef = useCallback((node: HTMLDivElement | null) => {
     drop(node);
@@ -431,14 +431,15 @@ const CalendarDayCell = memo(({
         ${isCurrentMonth ? 'bg-white' : 'bg-default-50/50 text-default-400'}
         ${isToday ? 'bg-primary/5' : ''}
         ${isSelected ? 'bg-primary/10 ring-2 ring-primary/30 z-10' : ''}
+        ${isOver ? 'bg-primary/20 ring-2 ring-primary/50 ring-inset shadow-lg' : ''}
       `}
       onMouseDown={(e) => {
         if (e.button !== 0) return;
         // Don't start cell selection if we're clicking an event or resizing
         if ((e.target as HTMLElement).closest('.calendar-event-item')) return;
-        
+
         const dragDate = new Date(day);
-        dragDate.setHours(9, 0, 0, 0); 
+        dragDate.setHours(9, 0, 0, 0);
         onStartSelection(dragDate);
       }}
       onMouseEnter={() => {
@@ -462,7 +463,7 @@ const CalendarDayCell = memo(({
       </div>
       <div className="flex flex-col gap-1 mt-1">
         {renderEvents && dayEvents.map((event, idx) => (
-          <DraggableCalendarEvent 
+          <DraggableCalendarEvent
             key={event.id || idx}
             event={event}
             onUpdate={(id, updates) => onUpdateEvent(id, event.id, event.sourceSpaceId, updates)}
@@ -470,6 +471,13 @@ const CalendarDayCell = memo(({
           />
         ))}
       </div>
+      {/* Ghost preview when dragging over - always show regardless of renderEvents */}
+      {isOver && draggedItem && (
+        <div className="absolute bottom-2 left-2 right-2 text-[10px] p-1.5 rounded bg-primary/30 text-primary-900 truncate border-l-2 border-primary border-dashed flex items-center gap-1 h-7 select-none animate-pulse z-50">
+          <GripVertical size={10} className="opacity-40 shrink-0 mx-1" />
+          <span className="truncate flex-1">{draggedItem.title || 'Event'}</span>
+        </div>
+      )}
     </div>
   );
 });
@@ -480,7 +488,7 @@ interface MonthWeekRowProps {
   allEvents: any[]; // Used for drop logic in CalendarDayCell
   // We need the full list or the specific event for the ghost, because the ghost might be in a week where the event isn't originally.
   // To avoid breaking memoization with 'allEvents', we can pass just the resizing event if it exists.
-  resizingEvent?: any; 
+  resizingEvent?: any;
   currentMonth: Date;
   selectionRange: { start: Date; end: Date } | null;
   selectedEventId: string | null;
@@ -493,72 +501,51 @@ interface MonthWeekRowProps {
   onHoverDateChange: (date: Date | null) => void;
   activeResize: { id: string, direction: 'left' | 'right', offset: number } | null;
   onActiveResizeChange: (resize: { id: string, direction: 'left' | 'right', offset: number } | null) => void;
+  dragGhostDate: Date | null;
+  dragGhostItem: any | null;
+  onDragEnter: (date: Date, item: any) => void;
+  onDragLeave: () => void;
 }
 
-function ResizeGhost({ weekStart, weekEnd, activeResize, resizingEvent, originalRow, eventHeight = 24, topOffset = 26 }: any) {
-  const event = resizingEvent;
-  
-  if (!event || event.id !== activeResize.id) return null;
 
-  // Calculate inclusive start and end days
-  const currentStartDay = startOfDay(event.start);
-  const currentEndDay = event.end ? (
-    // If it ends exactly at midnight, the previous day was the last full day
-    (event.end.getHours() === 0 && event.end.getMinutes() === 0) 
-      ? subDays(startOfDay(event.end), 1) 
-      : startOfDay(event.end)
-  ) : currentStartDay;
+interface DragGhostProps {
+  date: Date;
+  event: any;
+  weekStart: Date;
+  weekEnd: Date;
+  rowHeight?: number;
+  topOffset?: number;
+}
 
-  let ghostStartDay = currentStartDay;
-  let ghostEndDay = currentEndDay;
+function DragGhost({ date, event, weekStart, weekEnd, rowHeight = 24, topOffset = 26 }: DragGhostProps) {
+  if (!event || !date) return null;
 
-  if (activeResize.direction === 'left') {
-    ghostStartDay = addDays(currentStartDay, activeResize.offset);
-    // Handle "flip" logic: if start goes past end, they swap
-    if (isAfter(ghostStartDay, ghostEndDay)) {
-      const temp = ghostStartDay;
-      ghostStartDay = ghostEndDay;
-      ghostEndDay = temp;
-    }
-  } else {
-    ghostEndDay = addDays(currentEndDay, activeResize.offset);
-    // Handle "flip" logic: if end goes before start, they swap
-    if (isBefore(ghostEndDay, ghostStartDay)) {
-      const temp = ghostEndDay;
-      ghostEndDay = ghostStartDay;
-      ghostStartDay = temp;
-    }
-  }
+  // Calculate duration to show correct span
+  const durationMs = (event.end ? new Date(event.end).getTime() : new Date(event.start).getTime() + 3600000) - new Date(event.start).getTime();
+  const ghostEnd = new Date(date.getTime() + durationMs);
 
-  // Constrain to current week for rendering
-  const displayStart = Math.max(ghostStartDay.getTime(), weekStart.getTime());
-  const displayEnd = Math.min(ghostEndDay.getTime(), weekEnd.getTime());
+  const startCol = differenceInCalendarDays(date, weekStart);
+  let span = differenceInCalendarDays(ghostEnd, date);
 
-  if (displayStart <= displayEnd) {
-    const startCol = differenceInCalendarDays(new Date(displayStart), weekStart);
-    const endCol = differenceInCalendarDays(new Date(displayEnd), weekStart);
-    const span = endCol - startCol + 1;
+  // Basic constraints for the current week view
+  if (startCol < 0 || startCol > 6) return null; // Simplified for now, complex multi-week ghosts might need more logic
+  span = Math.max(1, span); // Ensure at least 1 day
 
-    return (
-      <div 
-        className="absolute bg-primary/20 border-2 border-primary rounded-sm pointer-events-none z-[200] flex items-center px-2 overflow-hidden"
-        style={{
-          top: `${topOffset + originalRow * eventHeight}px`,
-          left: `calc(${(startCol / 7) * 100}% + 2px)`,
-          width: `calc(${(span / 7) * 100}% - 4px)`,
-          height: `${eventHeight}px`
-        }}
-      >
-        <div className="flex items-center gap-1.5 w-full">
-          <div className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse" />
-          <span className="text-[9px] font-bold text-primary truncate">
-            {event.metadata?.title || 'Ridimensionando...'}
-          </span>
-        </div>
-      </div>
-    );
-  }
-  return null;
+  return (
+    <div
+      className="absolute bg-primary/20 border-2 border-primary/50 border-dashed rounded-sm pointer-events-none z-[150] flex items-center px-2 overflow-hidden"
+      style={{
+        top: `${topOffset}px`, // Always render at top of cell for now or calculate free slot
+        left: `calc(${(startCol / 7) * 100}% + 2px)`,
+        width: `calc(${(span / 7) * 100}% - 4px)`,
+        height: `${rowHeight}px`
+      }}
+    >
+      <span className="text-[9px] font-bold text-primary truncate opacity-70">
+        {event.metadata?.title || 'Spostamento...'}
+      </span>
+    </div>
+  );
 }
 
 // Ensure ResizeGhost can find the event even if we only pass 'events' (which are local to week)
@@ -586,9 +573,9 @@ function ResizeGhost({ weekStart, weekEnd, activeResize, resizingEvent, original
 // Better: Pass `resizingEvent` to `MonthWeekRow`.
 
 
-const MonthWeekRow = memo(({ 
-  weekStart, 
-  events, 
+const MonthWeekRow = memo(({
+  weekStart,
+  events,
   allEvents,
   resizingEvent,
   currentMonth,
@@ -602,11 +589,15 @@ const MonthWeekRow = memo(({
   hoveredResizeDate,
   onHoverDateChange,
   activeResize,
-  onActiveResizeChange
+  onActiveResizeChange,
+  dragGhostDate,
+  dragGhostItem,
+  onDragEnter,
+  onDragLeave
 }: MonthWeekRowProps) => {
   const weekEnd = endOfWeek(weekStart, { weekStartsOn: 1 });
   const days = useMemo(() => eachDayOfInterval({ start: weekStart, end: weekEnd }), [weekStart, weekEnd]);
-  
+
   // Layout calculation
   const layout = useMemo(() => {
     // Events are already filtered for this week by parent optimization
@@ -617,11 +608,11 @@ const MonthWeekRow = memo(({
       if (a.start.getTime() !== b.start.getTime()) return a.start.getTime() - b.start.getTime();
       const durA = (a.end || a.start).getTime() - a.start.getTime();
       const durB = (b.end || b.start).getTime() - b.start.getTime();
-      return durB - durA; 
+      return durB - durA;
     });
 
-    const slots: string[][] = Array(7).fill(null).map(() => []); 
-    
+    const slots: string[][] = Array(7).fill(null).map(() => []);
+
     return eventsInWeek.map(event => {
       const eventStart = startOfDay(event.start);
       const eventEnd = event.end ? startOfDay(event.end) : eventStart;
@@ -634,7 +625,7 @@ const MonthWeekRow = memo(({
 
       startIndex = Math.max(0, startIndex);
       endIndex = Math.min(6, endIndex);
-      
+
       const span = endIndex - startIndex + 1;
 
       // Find first available row
@@ -679,47 +670,49 @@ const MonthWeekRow = memo(({
   // For now, let's assume we can find the row if the event intersects this week.
 
   const maxRow = layout.length > 0 ? Math.max(...layout.map(l => l.row)) : -1;
-  const rowHeight = 160; 
+  const rowHeight = 160;
   const topOffset = 26; // Spazio ridotto per il numero del giorno
   const availableHeight = rowHeight - topOffset - 4; // Padding inferiore
   const eventHeight = (maxRow + 1) * 24 > availableHeight ? Math.max(4, Math.floor(availableHeight / (maxRow + 1))) : 24;
 
   return (
-    <div 
+    <div
       className="relative flex-none calendar-week-row h-[160px] border-b border-divider"
     >
       {/* Background Grid */}
       <div className="absolute inset-0 grid grid-cols-7 z-0">
         {days.map((day, i) => {
-           const isToday = isSameDay(day, new Date());
-           const isCurrentMonth = isSameMonth(day, currentMonth);
-           const isSelected = selectionRange && (
-             (day >= selectionRange.start && day <= selectionRange.end) ||
-             (day <= selectionRange.start && day >= selectionRange.end)
-           );
-           
-           const isHoveredTarget = hoveredResizeDate && isSameDay(day, hoveredResizeDate);
+          const isToday = isSameDay(day, new Date());
+          const isCurrentMonth = isSameMonth(day, currentMonth);
+          const isSelected = selectionRange && (
+            (day >= selectionRange.start && day <= selectionRange.end) ||
+            (day <= selectionRange.start && day >= selectionRange.end)
+          );
 
-           return (
-             <div 
-               key={day.getTime()} 
-               className={`relative border-r border-divider h-full transition-colors ${isHoveredTarget ? 'bg-primary/5 ring-1 ring-inset ring-primary/20' : ''}`}
-             >
-               <CalendarDayCell 
-                 day={day}
-                 isToday={isToday}
-                 isCurrentMonth={isCurrentMonth}
-                 isSelected={isSelected}
-                 dayEvents={[]} // Pass empty events as we render them in overlay
-                 renderEvents={false}
-                 onStartSelection={onStartSelection}
-                 onUpdateSelection={onUpdateSelection}
-                 onUpdateEvent={onUpdateEvent}
-                 onNavigate={onNavigate}
-                 allEvents={allEvents}
-               />
-             </div>
-           );
+          const isHoveredTarget = hoveredResizeDate && isSameDay(day, hoveredResizeDate);
+
+          return (
+            <div
+              key={day.getTime()}
+              className={`relative border-r border-divider h-full transition-colors ${isHoveredTarget ? 'bg-primary/5 ring-1 ring-inset ring-primary/20' : ''}`}
+            >
+              <CalendarDayCell
+                day={day}
+                isToday={isToday}
+                isCurrentMonth={isCurrentMonth}
+                isSelected={isSelected}
+                dayEvents={[]} // Pass empty events as we render them in overlay
+                renderEvents={false}
+                onStartSelection={onStartSelection}
+                onUpdateSelection={onUpdateSelection}
+                onUpdateEvent={onUpdateEvent}
+                onNavigate={onNavigate}
+                allEvents={allEvents}
+                onDragEnter={onDragEnter}
+                onDragLeave={onDragLeave}
+              />
+            </div>
+          );
         })}
       </div>
 
@@ -727,7 +720,7 @@ const MonthWeekRow = memo(({
       <div className="absolute inset-0 z-10 pointer-events-none">
         {layout.map((item) => (
           <div key={`${item.event.id}-${weekStart.getTime()}`} className="pointer-events-auto">
-            <DraggableMultiDayEvent 
+            <DraggableMultiDayEvent
               {...item}
               onUpdate={(id, updates) => onUpdateEvent(id, item.event.id, item.event.sourceSpaceId, updates)}
               onHoverDateChange={onHoverDateChange}
@@ -740,17 +733,17 @@ const MonthWeekRow = memo(({
             />
           </div>
         ))}
-        
+
         {/* Resize Ghost Overlay - Now handles any week intersection */}
-        {activeResize && (
-          <ResizeGhost 
+
+        {/* Drag Ghost Overlay */}
+        {dragGhostDate && dragGhostItem && (
+          <DragGhost
+            date={dragGhostDate}
+            event={dragGhostItem}
             weekStart={weekStart}
             weekEnd={weekEnd}
-            activeResize={activeResize}
-            allEvents={allEvents}
-            // Fallback row if not in this week yet
-            originalRow={resizingEventItem?.row ?? 0} 
-            eventHeight={eventHeight}
+            rowHeight={eventHeight}
             topOffset={topOffset}
           />
         )}
@@ -772,7 +765,9 @@ export function CalendarApp({ spacesState, viewportsState }: CalendarAppProps) {
   const [popoverAnchor, setPopoverAnchor] = useState<{ x: number; y: number } | null>(null);
   const [hoveredResizeDate, setHoveredResizeDate] = useState<Date | null>(null);
   const [activeResize, setActiveResize] = useState<{ id: string, direction: 'left' | 'right', offset: number } | null>(null);
-  
+  const [dragGhostDate, setDragGhostDate] = useState<Date | null>(null);
+  const [dragGhostItem, setDragGhostItem] = useState<any | null>(null);
+
   // New event state
   const [newEvent, setNewEvent] = useState({
     title: '',
@@ -799,7 +794,7 @@ export function CalendarApp({ spacesState, viewportsState }: CalendarAppProps) {
           if (block.type === 'calendar') {
             const start = new Date(block.metadata?.startDate || Date.now());
             const end = block.metadata?.endDate ? new Date(block.metadata.endDate) : null;
-            
+
             if (isValid(start)) {
               events.push({
                 ...block,
@@ -840,15 +835,15 @@ export function CalendarApp({ spacesState, viewportsState }: CalendarAppProps) {
       else if (view === 'day') nextDate = subDays(prev, 1);
       else if (view === 'year') nextDate = new Date(prev.getFullYear() - 1, prev.getMonth(), 1);
       else if (view === 'timeline') nextDate = subDays(prev, 14);
-      
+
       if (view === 'month' && containerRef) {
-          // We can't easily scroll inside set state, but we can trigger effect or use ref
-          setTimeout(() => {
-             const targetMonth = startOfMonth(nextDate);
-             const targetWeek = startOfWeek(targetMonth, { weekStartsOn: 1 });
-             const weekElement = containerRef.querySelector(`[data-week="${targetWeek.getTime()}"]`);
-             if (weekElement) weekElement.scrollIntoView({ block: 'start', behavior: 'smooth' });
-          }, 10);
+        // We can't easily scroll inside set state, but we can trigger effect or use ref
+        setTimeout(() => {
+          const targetMonth = startOfMonth(nextDate);
+          const targetWeek = startOfWeek(targetMonth, { weekStartsOn: 1 });
+          const weekElement = containerRef.querySelector(`[data-week="${targetWeek.getTime()}"]`);
+          if (weekElement) weekElement.scrollIntoView({ block: 'start', behavior: 'smooth' });
+        }, 10);
       }
       return nextDate;
     });
@@ -863,13 +858,13 @@ export function CalendarApp({ spacesState, viewportsState }: CalendarAppProps) {
       else if (view === 'year') nextDate = new Date(prev.getFullYear() + 1, prev.getMonth(), 1);
       else if (view === 'timeline') nextDate = addDays(prev, 14);
 
-       if (view === 'month' && containerRef) {
-          setTimeout(() => {
-             const targetMonth = startOfMonth(nextDate);
-             const targetWeek = startOfWeek(targetMonth, { weekStartsOn: 1 });
-             const weekElement = containerRef.querySelector(`[data-week="${targetWeek.getTime()}"]`);
-             if (weekElement) weekElement.scrollIntoView({ block: 'start', behavior: 'smooth' });
-          }, 10);
+      if (view === 'month' && containerRef) {
+        setTimeout(() => {
+          const targetMonth = startOfMonth(nextDate);
+          const targetWeek = startOfWeek(targetMonth, { weekStartsOn: 1 });
+          const weekElement = containerRef.querySelector(`[data-week="${targetWeek.getTime()}"]`);
+          if (weekElement) weekElement.scrollIntoView({ block: 'start', behavior: 'smooth' });
+        }, 10);
       }
       return nextDate;
     });
@@ -898,7 +893,7 @@ export function CalendarApp({ spacesState, viewportsState }: CalendarAppProps) {
     // 6 months before and 6 months after current "center" date
     const startRange = startOfWeek(startOfMonth(subMonths(new Date(), 6)), { weekStartsOn: 1 });
     const endRange = endOfWeek(endOfMonth(addMonths(new Date(), 6)), { weekStartsOn: 1 });
-    
+
     const weeks: Date[] = [];
     let curr = startRange;
     while (curr <= endRange) {
@@ -942,7 +937,7 @@ export function CalendarApp({ spacesState, viewportsState }: CalendarAppProps) {
 
     let targetSpaceId = newEvent.spaceId;
     const spaces = spacesStateRef.current.spaces;
-    
+
     // If no space selected, find or create a default "Calendario" space
     if (!targetSpaceId) {
       const existingCalendarSpace = spaces.find((s: any) => s.title === 'Calendario' && s.metadata?.isHidden);
@@ -950,7 +945,7 @@ export function CalendarApp({ spacesState, viewportsState }: CalendarAppProps) {
         targetSpaceId = existingCalendarSpace.id;
       } else {
         const newSpace = spacesStateRef.current.createSpace('page');
-        spacesStateRef.current.updateSpace(newSpace.id, { 
+        spacesStateRef.current.updateSpace(newSpace.id, {
           title: 'Calendario',
           metadata: { isHidden: true } // Hide from sidebar
         });
@@ -1008,11 +1003,11 @@ export function CalendarApp({ spacesState, viewportsState }: CalendarAppProps) {
 
   const handleEndSelection = useCallback((e?: React.MouseEvent | MouseEvent) => {
     if (!isSelecting) {
-        // Just explicit false set
-        setIsSelecting(false);
-        return;
+      // Just explicit false set
+      setIsSelecting(false);
+      return;
     }
-    
+
     // We need to access selectionRange state. 
     // Since we can't get it from 'prev', we need it in deps, but then this changes.
     // So we can use a ref or just accept selectionRange dependency (it changes on drag, which is frequent).
@@ -1041,20 +1036,20 @@ export function CalendarApp({ spacesState, viewportsState }: CalendarAppProps) {
 
   const handleEndSelectionStable = useCallback((e?: React.MouseEvent | MouseEvent) => {
     if (!isSelecting) {
-        setIsSelecting(false);
-        return;
+      setIsSelecting(false);
+      return;
     }
 
     const range = selectionRangeRef.current;
     if (!range) {
-        setIsSelecting(false);
-        return;
+      setIsSelecting(false);
+      return;
     }
-    
+
     // Normalize range (start should be before end)
     const start = range.start < range.end ? range.start : range.end;
     const end = range.start < range.end ? range.end : range.start;
-    
+
     // For week/day view, ensure at least 30min duration if it's the same time
     let finalEnd = end;
     if ((view === 'week' || view === 'day') && start.getTime() === end.getTime()) {
@@ -1070,14 +1065,14 @@ export function CalendarApp({ spacesState, viewportsState }: CalendarAppProps) {
       startDate: format(start, "yyyy-MM-dd'T'HH:mm"),
       endDate: format(finalEnd, "yyyy-MM-dd'T'HH:mm")
     }));
-    
+
     if (e && 'clientX' in e) {
       setPopoverAnchor({ x: e.clientX, y: e.clientY });
     } else {
       // Fallback anchor
       setPopoverAnchor({ x: window.innerWidth / 2, y: window.innerHeight / 2 });
     }
-    
+
     setIsSelecting(false);
   }, [isSelecting, view]); // Removed selectionRange from deps
 
@@ -1126,7 +1121,7 @@ export function CalendarApp({ spacesState, viewportsState }: CalendarAppProps) {
 
   const renderMonthView = () => {
     return (
-      <div 
+      <div
         ref={setContainerRef}
         className="h-full overflow-y-auto relative bg-white scroll-smooth no-scrollbar select-none calendar-grid-container"
         onMouseUp={(e) => isSelecting && handleEndSelectionStable(e)}
@@ -1152,7 +1147,7 @@ export function CalendarApp({ spacesState, viewportsState }: CalendarAppProps) {
             ))}
           </div>
         </div>
-        
+
         <div className="flex flex-col border-l border-divider">
           {weeksInRange.map((weekStart, idx) => {
             const weekDays = Array.from({ length: 7 }, (_, i) => addDays(weekStart, i));
@@ -1160,29 +1155,29 @@ export function CalendarApp({ spacesState, viewportsState }: CalendarAppProps) {
             const showMonthBar = firstDayInWeek || idx === 0;
             const monthOfThisWeek = startOfMonth(firstDayInWeek || weekStart);
             const weekEnd = endOfWeek(weekStart, { weekStartsOn: 1 });
-            
+
             // Calculate selection preview for this week
             const selectionInWeek = selectionRange ? (() => {
-                const s = selectionRange.start < selectionRange.end ? selectionRange.start : selectionRange.end;
-                const e = selectionRange.start < selectionRange.end ? selectionRange.end : selectionRange.start;
-                
-                const eventStart = startOfDay(s);
-                const eventEnd = startOfDay(e);
-                
-                if (eventStart <= weekEnd && eventEnd >= weekStart) {
-                    let startIndex = differenceInCalendarDays(eventStart, weekStart);
-                    let endIndex = differenceInCalendarDays(eventEnd, weekStart);
-                    
-                    const isStart = startIndex >= 0;
-                    const isEnd = endIndex <= 6;
-                    
-                    startIndex = Math.max(0, startIndex);
-                    endIndex = Math.min(6, endIndex);
-                    const span = endIndex - startIndex + 1;
-                    
-                    return { startCol: startIndex, colSpan: span, isStart, isEnd };
-                }
-                return null;
+              const s = selectionRange.start < selectionRange.end ? selectionRange.start : selectionRange.end;
+              const e = selectionRange.start < selectionRange.end ? selectionRange.end : selectionRange.start;
+
+              const eventStart = startOfDay(s);
+              const eventEnd = startOfDay(e);
+
+              if (eventStart <= weekEnd && eventEnd >= weekStart) {
+                let startIndex = differenceInCalendarDays(eventStart, weekStart);
+                let endIndex = differenceInCalendarDays(eventEnd, weekStart);
+
+                const isStart = startIndex >= 0;
+                const isEnd = endIndex <= 6;
+
+                startIndex = Math.max(0, startIndex);
+                endIndex = Math.min(6, endIndex);
+                const span = endIndex - startIndex + 1;
+
+                return { startCol: startIndex, colSpan: span, isStart, isEnd };
+              }
+              return null;
             })() : null;
 
             return (
@@ -1193,7 +1188,7 @@ export function CalendarApp({ spacesState, viewportsState }: CalendarAppProps) {
                       {weekDays.map((day, i) => {
                         const isFirstDay = day.getDate() === 1;
                         const isFirstWeekFirstDay = idx === 0 && i === 0;
-                        
+
                         if (isFirstDay || isFirstWeekFirstDay) {
                           return (
                             <span key={i} className="text-[10px] font-black uppercase tracking-widest text-primary-600 whitespace-nowrap">
@@ -1209,7 +1204,7 @@ export function CalendarApp({ spacesState, viewportsState }: CalendarAppProps) {
 
                 {/* Selection Preview Overlay */}
                 {selectionInWeek && !activeResize && (
-                  <div 
+                  <div
                     className="absolute z-30 pointer-events-none bg-primary/20 border-y-2 border-primary/40 flex items-center px-2 text-[10px] font-bold text-primary-700 overflow-hidden"
                     style={{
                       left: `calc(${(selectionInWeek.startCol / 7) * 100}% + 2px)`,
@@ -1237,7 +1232,7 @@ export function CalendarApp({ spacesState, viewportsState }: CalendarAppProps) {
                   onStartSelection={handleStartSelection}
                   onUpdateSelection={handleUpdateSelection}
                   onUpdateEvent={handleUpdateEvent}
-                  onNavigate={() => {}} // Disabled navigation
+                  onNavigate={() => { }} // Disabled navigation
                   hoveredResizeDate={hoveredResizeDate}
                   onHoverDateChange={setHoveredResizeDate}
                   activeResize={activeResize}
@@ -1258,10 +1253,10 @@ export function CalendarApp({ spacesState, viewportsState }: CalendarAppProps) {
   const renderDayView = () => {
     const hours = Array.from({ length: 24 }, (_, i) => i);
     const dayEvents = allEvents.filter(event => isSameDay(event.start, currentDate));
-    
+
     return (
-      <div 
-        className="flex h-full overflow-auto select-none" 
+      <div
+        className="flex h-full overflow-auto select-none"
         onMouseUp={(e) => isSelecting && handleEndSelection(e)}
         onMouseLeave={() => isSelecting && handleEndSelection()}
       >
@@ -1273,14 +1268,14 @@ export function CalendarApp({ spacesState, viewportsState }: CalendarAppProps) {
             </div>
           ))}
         </div>
-        
+
         <div className="flex-1 relative">
           <div className="h-[40px] flex items-center justify-center border-b border-divider sticky top-0 bg-white z-10 font-bold">
             {format(currentDate, 'EEEE d MMMM', { locale: it })}
           </div>
           <div className="relative h-[1440px]">
             {hours.map(hour => (
-              <CalendarDaySlot 
+              <CalendarDaySlot
                 key={hour}
                 hour={hour}
                 day={currentDate}
@@ -1290,9 +1285,9 @@ export function CalendarApp({ spacesState, viewportsState }: CalendarAppProps) {
                 allEvents={allEvents}
               />
             ))}
-            
+
             {selectionRange && isSameDay(selectionRange.start, currentDate) && (
-              <div 
+              <div
                 className="absolute left-1 right-1 bg-primary/30 border-2 border-primary rounded-md z-30 pointer-events-none"
                 style={{
                   top: `${Math.min(selectionRange.start.getHours(), selectionRange.end.getHours()) * 60}px`,
@@ -1306,9 +1301,9 @@ export function CalendarApp({ spacesState, viewportsState }: CalendarAppProps) {
               const startMin = event.start.getMinutes();
               const top = (startHour * 60 + startMin);
               const duration = event.end ? (event.end.getTime() - event.start.getTime()) / (1000 * 60) : 60;
-              
+
               return (
-                <DraggableTimelineEvent 
+                <DraggableTimelineEvent
                   key={event.id || idx}
                   event={event}
                   top={top}
@@ -1326,19 +1321,19 @@ export function CalendarApp({ spacesState, viewportsState }: CalendarAppProps) {
   const renderYearView = () => {
     const yearStart = startOfYear(currentDate);
     const monthsInYear = eachMonthOfInterval({ start: yearStart, end: endOfYear(yearStart) });
-    
+
     return (
       <div className="h-full overflow-auto p-6 bg-default-50/20" onMouseUp={(e) => isSelecting && handleEndSelectionStable(e)}>
         <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-8">
           {monthsInYear.map((month, mIdx) => {
             const monthDays = eachDayOfInterval({ start: startOfMonth(month), end: endOfMonth(month) });
             const monthStartDay = (startOfWeek(startOfMonth(month), { weekStartsOn: 1 }).getDay() + 6) % 7;
-            
+
             return (
               <div key={mIdx} className="flex flex-col gap-2">
                 <h3 className="font-bold text-sm capitalize">{format(month, 'MMMM', { locale: it })}</h3>
                 <div className="grid grid-cols-7 gap-1">
-                  {['L','M','M','G','V','S','D'].map((d, i) => (
+                  {['L', 'M', 'M', 'G', 'V', 'S', 'D'].map((d, i) => (
                     <div key={`${mIdx}-${d}-${i}`} className="text-[9px] text-default-400 text-center font-bold">
                       {d}
                     </div>
@@ -1353,8 +1348,8 @@ export function CalendarApp({ spacesState, viewportsState }: CalendarAppProps) {
                     );
 
                     return (
-                      <div 
-                        key={dIdx} 
+                      <div
+                        key={dIdx}
                         className={`
                           aspect-square flex items-center justify-center text-[10px] rounded-full cursor-pointer transition-colors
                           ${isToday ? 'bg-primary text-white font-bold' : 'hover:bg-default-200'}
@@ -1364,13 +1359,13 @@ export function CalendarApp({ spacesState, viewportsState }: CalendarAppProps) {
                         onMouseDown={(e) => {
                           if (e.button !== 0) return;
                           const d = new Date(day);
-                          d.setHours(9,0,0,0);
+                          d.setHours(9, 0, 0, 0);
                           handleStartSelection(d);
                         }}
                         onMouseEnter={() => {
                           if (!isSelecting) return;
                           const d = new Date(day);
-                          d.setHours(10,0,0,0);
+                          d.setHours(10, 0, 0, 0);
                           handleUpdateSelection(d);
                         }}
                         onClick={(e) => {
@@ -1396,9 +1391,9 @@ export function CalendarApp({ spacesState, viewportsState }: CalendarAppProps) {
   const renderTimelineView = () => {
     const startDate = subDays(currentDate, 7);
     const timelineDays = Array.from({ length: 30 }, (_, i) => addDays(startDate, i));
-    
+
     return (
-      <div 
+      <div
         className="h-full overflow-x-auto overflow-y-hidden select-none whitespace-nowrap p-4 flex gap-1"
         onMouseUp={(e) => isSelecting && handleEndSelectionStable(e)}
         onMouseLeave={() => isSelecting && handleEndSelectionStable()}
@@ -1410,10 +1405,10 @@ export function CalendarApp({ spacesState, viewportsState }: CalendarAppProps) {
             (day >= selectionRange.start && day <= selectionRange.end) ||
             (day <= selectionRange.start && day >= selectionRange.end)
           );
-          
+
           return (
-            <div 
-              key={i} 
+            <div
+              key={i}
               className={`
                 min-w-[140px] h-full border border-divider rounded-xl flex flex-col transition-colors cursor-pointer
                 ${isToday ? 'bg-primary/5 ring-1 ring-primary/20' : 'bg-white'}
@@ -1422,13 +1417,13 @@ export function CalendarApp({ spacesState, viewportsState }: CalendarAppProps) {
               onMouseDown={(e) => {
                 if (e.button !== 0) return;
                 const d = new Date(day);
-                d.setHours(9,0,0,0);
+                d.setHours(9, 0, 0, 0);
                 handleStartSelection(d);
               }}
               onMouseEnter={() => {
                 if (!isSelecting) return;
                 const d = new Date(day);
-                d.setHours(10,0,0,0);
+                d.setHours(10, 0, 0, 0);
                 handleUpdateSelection(d);
               }}
             >
@@ -1456,10 +1451,10 @@ export function CalendarApp({ spacesState, viewportsState }: CalendarAppProps) {
     const weekStart = startOfWeek(currentDate, { weekStartsOn: 1 });
     const weekDays = Array.from({ length: 7 }, (_, i) => addDays(weekStart, i));
     const hours = Array.from({ length: 24 }, (_, i) => i);
-    
+
     return (
-      <div 
-        className="flex h-full overflow-auto select-none" 
+      <div
+        className="flex h-full overflow-auto select-none"
         onMouseUp={(e) => isSelecting && handleEndSelectionStable(e)}
         onMouseLeave={() => isSelecting && handleEndSelectionStable()}
       >
@@ -1471,11 +1466,11 @@ export function CalendarApp({ spacesState, viewportsState }: CalendarAppProps) {
             </div>
           ))}
         </div>
-        
+
         {weekDays.map((day, i) => {
           const isToday = isSameDay(day, new Date());
           const dayEvents = allEvents.filter(event => isSameDay(event.start, day));
-          
+
           return (
             <div key={i} className="flex-1 border-r border-divider min-w-[120px] relative">
               <div className={`
@@ -1487,7 +1482,7 @@ export function CalendarApp({ spacesState, viewportsState }: CalendarAppProps) {
               </div>
               <div className="relative h-[1440px]">
                 {hours.map(hour => (
-                  <CalendarDaySlot 
+                  <CalendarDaySlot
                     key={hour}
                     hour={hour}
                     day={day}
@@ -1497,9 +1492,9 @@ export function CalendarApp({ spacesState, viewportsState }: CalendarAppProps) {
                     allEvents={allEvents}
                   />
                 ))}
-                
+
                 {selectionRange && isSameDay(selectionRange.start, day) && (
-                  <div 
+                  <div
                     className="absolute left-1 right-1 bg-primary/30 border-2 border-primary rounded-md z-30 pointer-events-none"
                     style={{
                       top: `${Math.min(selectionRange.start.getHours(), selectionRange.end.getHours()) * 60}px`,
@@ -1513,9 +1508,9 @@ export function CalendarApp({ spacesState, viewportsState }: CalendarAppProps) {
                   const startMin = event.start.getMinutes();
                   const top = (startHour * 60 + startMin);
                   const duration = event.end ? (event.end.getTime() - event.start.getTime()) / (1000 * 60) : 60;
-                  
+
                   return (
-                    <DraggableTimelineEvent 
+                    <DraggableTimelineEvent
                       key={event.id}
                       event={event}
                       top={top}
@@ -1555,13 +1550,13 @@ export function CalendarApp({ spacesState, viewportsState }: CalendarAppProps) {
           </div>
           <Button size="sm" variant="flat" onPress={goToToday}>Oggi</Button>
         </div>
-        
+
         <div className="flex gap-3 items-center">
           <div className="flex gap-1 bg-default-100 p-1 rounded-xl">
             {(['month', 'week', 'day', 'year', 'timeline'] as const).map((v) => (
-              <Button 
+              <Button
                 key={v}
-                size="sm" 
+                size="sm"
                 variant={view === v ? 'solid' : 'light'}
                 color={view === v ? 'primary' : 'default'}
                 onPress={() => setView(v)}
@@ -1589,13 +1584,13 @@ export function CalendarApp({ spacesState, viewportsState }: CalendarAppProps) {
       {/* Quick Create UI */}
       <AnimatePresence>
         {popoverAnchor && (
-          <motion.div 
+          <motion.div
             initial={{ opacity: 0, scale: 0.95, y: 10 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.95, y: 10 }}
             className="fixed z-[9999] pointer-events-none"
-            style={{ 
-              left: popoverAnchor.x, 
+            style={{
+              left: popoverAnchor.x,
               top: popoverAnchor.y,
               transform: 'translateX(-50%)'
             }}
@@ -1607,7 +1602,7 @@ export function CalendarApp({ spacesState, viewportsState }: CalendarAppProps) {
                   <Plus size={14} className="rotate-45" />
                 </Button>
               </div>
-              <Input 
+              <Input
                 autoFocus
                 placeholder="Nuovo Evento"
                 variant="bordered"
@@ -1648,32 +1643,32 @@ export function CalendarApp({ spacesState, viewportsState }: CalendarAppProps) {
               <ModalHeader className="flex flex-col gap-1">Crea Nuovo Evento</ModalHeader>
               <ModalBody>
                 <div className="flex flex-col gap-4">
-                  <Input 
-                    label="Titolo" 
-                    placeholder="Nome dell'evento" 
+                  <Input
+                    label="Titolo"
+                    placeholder="Nome dell'evento"
                     variant="bordered"
                     value={newEvent.title}
                     onValueChange={(v) => setNewEvent(prev => ({ ...prev, title: v }))}
                   />
                   <div className="flex gap-2">
-                    <Input 
-                      type="datetime-local" 
-                      label="Inizio" 
+                    <Input
+                      type="datetime-local"
+                      label="Inizio"
                       variant="bordered"
                       value={newEvent.startDate}
                       onValueChange={(v) => setNewEvent(prev => ({ ...prev, startDate: v }))}
                     />
-                    <Input 
-                      type="datetime-local" 
-                      label="Fine" 
+                    <Input
+                      type="datetime-local"
+                      label="Fine"
                       variant="bordered"
                       value={newEvent.endDate}
                       onValueChange={(v) => setNewEvent(prev => ({ ...prev, endDate: v }))}
                     />
                   </div>
-                  <Select 
-                    label="Destinazione" 
-                    placeholder="Scegli uno spazio" 
+                  <Select
+                    label="Destinazione"
+                    placeholder="Scegli uno spazio"
                     variant="bordered"
                     selectedKeys={newEvent.spaceId ? [newEvent.spaceId] : []}
                     onSelectionChange={(keys: any) => setNewEvent(prev => ({ ...prev, spaceId: Array.from(keys)[0] as string }))}
@@ -1684,9 +1679,9 @@ export function CalendarApp({ spacesState, viewportsState }: CalendarAppProps) {
                       </SelectItem>
                     ))}
                   </Select>
-                  <Textarea 
-                    label="Note" 
-                    placeholder="Dettagli aggiuntivi..." 
+                  <Textarea
+                    label="Note"
+                    placeholder="Dettagli aggiuntivi..."
                     variant="bordered"
                     value={newEvent.notes}
                     onValueChange={(v) => setNewEvent(prev => ({ ...prev, notes: v }))}
@@ -1711,7 +1706,7 @@ function CalendarDaySlot({ hour, day, onStartSelection, onUpdateSelection, onUpd
     drop: (item: any) => {
       const event = allEvents.find((e: any) => e.id === item.id);
       if (!event) return;
-      
+
       const durationMs = (event.end ? event.end.getTime() : event.start.getTime() + 3600000) - event.start.getTime();
       const newStart = new Date(day);
       newStart.setHours(hour, 0, 0, 0);
@@ -1730,7 +1725,7 @@ function CalendarDaySlot({ hour, day, onStartSelection, onUpdateSelection, onUpd
   }, [drop]);
 
   return (
-    <div 
+    <div
       ref={setDropRef}
       className={`h-[60px] border-t border-divider hover:bg-default-50/50 cursor-crosshair`}
       onMouseDown={() => {
@@ -1776,7 +1771,7 @@ function DraggableTimelineEvent({ event, top, height, onUpdate, onNavigate }: an
   }, [drag]);
 
   return (
-    <div 
+    <div
       ref={setDragRef}
       className={`absolute left-1 right-1 rounded bg-primary text-white p-2 text-xs shadow-md z-20 overflow-hidden cursor-grab active:cursor-grabbing group ${isDragging ? 'opacity-50' : ''}`}
       style={{ top: `${top}px`, height: `${height}px` }}
@@ -1786,7 +1781,7 @@ function DraggableTimelineEvent({ event, top, height, onUpdate, onNavigate }: an
       }}
     >
       {/* Top Resizer Handle */}
-      <div 
+      <div
         className="absolute top-0 left-0 right-0 h-2 cursor-ns-resize opacity-0 group-hover:opacity-100 bg-white/20 flex items-center justify-center transition-all z-30"
         onMouseDown={(e) => handleResizeTop(e, -30)}
         title="Trascina o clicca per anticipare di 30 min"
@@ -1799,9 +1794,9 @@ function DraggableTimelineEvent({ event, top, height, onUpdate, onNavigate }: an
         <GripVertical size={12} className="opacity-40 shrink-0" />
       </div>
       <div className="opacity-80 text-[10px]">{format(event.start, 'HH:mm')} - {event.end ? format(event.end, 'HH:mm') : ''}</div>
-      
+
       {/* Vertical Resizer Handle (Bottom) */}
-      <div 
+      <div
         className="absolute bottom-0 left-0 right-0 h-2 cursor-ns-resize opacity-0 group-hover:opacity-100 bg-white/20 flex items-center justify-center transition-all z-30"
         onMouseDown={(e) => handleResizeBottom(e, 30)}
         title="Trascina o clicca per posticipare di 30 min"

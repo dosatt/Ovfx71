@@ -40,14 +40,14 @@ interface PageEditorProps {
   onUpdateSettings?: (updates: Partial<Settings>) => void;
 }
 
-export function PageEditor({ 
-  space, 
-  spacesState, 
-  viewportsState, 
-  viewportId, 
-  tabId, 
-  brokenLinks, 
-  brokenLinksVersion, 
+export function PageEditor({
+  space,
+  spacesState,
+  viewportsState,
+  viewportId,
+  tabId,
+  brokenLinks,
+  brokenLinksVersion,
   settings,
   onUpdateSettings
 }: PageEditorProps) {
@@ -83,7 +83,7 @@ export function PageEditor({
   const handleTitleChange = (newTitle: string) => {
     // Update space title
     spacesState.updateSpace(space.id, { title: newTitle });
-    
+
     // Update tab title if viewportsState is available
     if (viewportsState && viewportId && tabId) {
       viewportsState.updateTab(viewportId, tabId, { title: newTitle });
@@ -98,7 +98,7 @@ export function PageEditor({
     // Check if the title needs to be synced with a new "first header"
     const isTitleSynced = space.metadata?.syncTitleWithH1 !== false;
     if (isTitleSynced) {
-      const firstHeader = newBlocks.find((b: any) => 
+      const firstHeader = newBlocks.find((b: any) =>
         b && ['heading1', 'heading2', 'heading3', 'heading4'].includes(b.type)
       );
       if (firstHeader && firstHeader.content !== space.title) {
@@ -138,13 +138,13 @@ export function PageEditor({
       type: 'text',
       content: '',
     };
-    
+
     const index = blocks.findIndex(b => b && b.id === blockId);
     if (index === -1) return;
     const newBlocks = [...blocks];
     newBlocks.splice(index, 0, newBlock);
     updateContent(newBlocks);
-    
+
     // Focus sul nuovo blocco dopo un breve delay
     setTimeout(() => {
       const newBlockElement = document.querySelector(`[data-block-id="${newBlock.id}"]`);
@@ -166,16 +166,16 @@ export function PageEditor({
   const createNextBlock = (blockId: string, blockType: BlockType, newBlockUpdates?: Partial<Block>, currentBlockUpdates?: Partial<Block>) => {
     const index = blocks.findIndex(b => b && b.id === blockId);
     if (index === -1) return;
-    
+
     // Logic to inherit indent
     let indent = 0;
     const allowedIndentTypes = ['bulletList', 'numberedList', 'checkbox', 'checkboxNumberedList'];
-    
+
     if (index !== -1 && allowedIndentTypes.includes(blockType)) {
-        const currentBlock = blocks[index];
-        if (currentBlock.indent) {
-             indent = currentBlock.indent;
-        }
+      const currentBlock = blocks[index];
+      if (currentBlock.indent) {
+        indent = currentBlock.indent;
+      }
     }
 
     const newBlock: Block = {
@@ -186,17 +186,17 @@ export function PageEditor({
       indent: indent > 0 ? indent : undefined,
       ...newBlockUpdates
     };
-    
+
     let newBlocks = [...blocks];
-    
+
     // Apply updates to current block if provided
     if (currentBlockUpdates && index !== -1) {
-       newBlocks[index] = { ...newBlocks[index], ...currentBlockUpdates };
+      newBlocks[index] = { ...newBlocks[index], ...currentBlockUpdates };
     }
-    
+
     newBlocks.splice(index + 1, 0, newBlock);
     updateContent(newBlocks);
-    
+
     // Focus sul nuovo blocco dopo un breve delay
     setTimeout(() => {
       const newBlockElement = document.querySelector(`[data-block-id="${newBlock.id}"]`);
@@ -243,7 +243,7 @@ export function PageEditor({
           content: '',
         };
         updateContent([newBlock]);
-        
+
         // Focus sul nuovo blocco dopo un breve delay
         setTimeout(() => {
           const newBlockElement = document.querySelector(`[data-block-id="${newBlock.id}"]`);
@@ -291,16 +291,16 @@ export function PageEditor({
       // Use a more specific selector to avoid picking up sidebar items or other viewports
       const editorElement = document.querySelector(`[data-viewport-id="${viewportId}"]`) || document;
       const editableElements = editorElement.querySelectorAll('[contenteditable="true"]');
-      
+
       const target = editableElements[index] as HTMLElement;
       if (target) {
         target.focus();
-        
+
         // Move cursor to end
         try {
           const selection = window.getSelection();
           const range = document.createRange();
-          
+
           if (target.childNodes.length > 0) {
             range.selectNodeContents(target);
             range.collapse(false); // end
@@ -308,7 +308,7 @@ export function PageEditor({
             range.setStart(target, 0);
             range.setEnd(target, 0);
           }
-          
+
           if (selection) {
             selection.removeAllRanges();
             selection.addRange(range);
@@ -316,7 +316,7 @@ export function PageEditor({
         } catch (e) {
           console.warn("Could not move cursor:", e);
         }
-        
+
         // Ensure the block is marked as focused in our state if necessary
         // (TextElement manages its own focus state via onFocus/onBlur)
       }
@@ -334,7 +334,7 @@ export function PageEditor({
     const newBlock = { ...oldBlock, ...updates };
     const newBlocks = blocks.map(b => b && b.id === id ? newBlock : b);
     updateContent(newBlocks);
-    
+
     // Track history for content or type changes
     // We ignore internal state changes like checked unless explicitly needed, 
     // but type change is significant.
@@ -371,7 +371,7 @@ export function PageEditor({
     if (deletedIndex === -1) return;
     const newBlocks = blocks.filter(b => b && b.id !== id);
     updateContent(newBlocks);
-    
+
     if (deletedBlock) {
       pushAction({
         type: 'deleteBlock',
@@ -403,9 +403,9 @@ export function PageEditor({
     // Filter out blocks that don't need conversion
     const targetIds = new Set(ids);
     const blocksToConvert = blocks.filter(b => b && targetIds.has(b.id) && b.type !== newType);
-    
+
     if (blocksToConvert.length === 0) return;
-    
+
     // Store old types for undo
     const oldTypes = new Map<string, BlockType>();
     blocksToConvert.forEach(b => oldTypes.set(b.id, b.type));
@@ -420,9 +420,9 @@ export function PageEditor({
       }
       return b;
     });
-    
+
     updateContent(newBlocks);
-    
+
     pushAction({
       type: 'convertBlock', // reusing type for simplicity, or could add 'convertBlocks'
       description: `Converti ${ids.length} elementi in ${blockTypeConfig[newType].label}`,
@@ -464,28 +464,28 @@ export function PageEditor({
 
   const moveBlocks = useCallback((blockIds: string[], hoverIndex: number) => {
     const newBlocks = [...blocks];
-    
+
     // Filtra gli ID validi presenti in questo space
     const validIds = blockIds.filter(id => blocks.some(b => b && b.id === id));
     if (validIds.length === 0) return;
 
     // Salva i blocchi da spostare nell'ordine di selezione (pickup order)
     const blocksToMove = validIds.map(id => blocks.find(b => b && b.id === id)!).filter(Boolean);
-    
+
     // Trova l'indice del blocco target prima della rimozione
     const targetBlock = blocks[hoverIndex];
-    
+
     // Rimuovi i blocchi dalle posizioni originali
     const remainingBlocks = newBlocks.filter(b => !validIds.includes(b.id));
-    
+
     // Trova il nuovo indice di inserimento
     let insertIndex = hoverIndex;
     if (targetBlock) {
-        insertIndex = remainingBlocks.findIndex(b => b.id === targetBlock.id);
-        // Se non lo trova (perché era uno di quelli rimossi), usa hoverIndex limitato
-        if (insertIndex === -1) insertIndex = Math.min(hoverIndex, remainingBlocks.length);
+      insertIndex = remainingBlocks.findIndex(b => b.id === targetBlock.id);
+      // Se non lo trova (perché era uno di quelli rimossi), usa hoverIndex limitato
+      if (insertIndex === -1) insertIndex = Math.min(hoverIndex, remainingBlocks.length);
     } else {
-        insertIndex = remainingBlocks.length;
+      insertIndex = remainingBlocks.length;
     }
 
     // Pulisci i numeri di lista se necessario
@@ -505,12 +505,12 @@ export function PageEditor({
     // Se c'è una selezione multipla e il blocco trascinato ne fa parte, usa moveBlocks
     const draggedBlock = blocks[dragIndex];
     if (draggedBlock && selectedBlockIds.includes(draggedBlock.id)) {
-        moveBlocks(selectedBlockIds, hoverIndex);
-        return;
+      moveBlocks(selectedBlockIds, hoverIndex);
+      return;
     }
 
     const newBlocks = [...blocks];
-    
+
     // Ensure indices are valid
     if (dragIndex < 0 || dragIndex >= newBlocks.length || hoverIndex < 0 || hoverIndex > newBlocks.length) {
       return;
@@ -526,7 +526,7 @@ export function PageEditor({
       }
       return block;
     });
-    
+
     // Calculate insertion index
     // When moving down (dragIndex < hoverIndex), the removal shifts subsequent items by 'count'.
     // If count > 1, using hoverIndex directly would skip (count-1) items.
@@ -534,7 +534,7 @@ export function PageEditor({
     if (dragIndex < hoverIndex) {
       insertIndex = hoverIndex - (count - 1);
     }
-    
+
     newBlocks.splice(insertIndex, 0, ...cleanedRemoved);
     updateContent(newBlocks);
   }, [blocks, content, space.id, spacesState]);
@@ -553,15 +553,15 @@ export function PageEditor({
 
   const isBlockCollapsed = (blockIndex: number): boolean => {
     const currentBlock = blocks[blockIndex];
-    
+
     // 1. Stop Dividers exception: if we are a stop divider, we are never hidden by a parent collapse
     // because we are the boundary. Regular dividers remain collapsible.
     if (currentBlock.type === 'divider' && currentBlock.metadata?.dividerVariant === 'stop') {
       return false;
     }
-    
+
     const currentIsHeader = currentBlock.type === 'heading1' || currentBlock.type === 'heading2' || currentBlock.type === 'heading3' || currentBlock.type === 'heading4';
-    
+
     let currentLevel = 99; // Text/other default
     if (currentIsHeader) {
       currentLevel = parseInt(currentBlock.type.replace('heading', ''));
@@ -578,19 +578,19 @@ export function PageEditor({
       }
 
       const isHeader = block.type === 'heading1' || block.type === 'heading2' || block.type === 'heading3' || block.type === 'heading4';
-      
+
       if (isHeader) {
         const headerLevel = parseInt(block.type.replace('heading', ''));
-        
+
         if (headerLevel < minLevelSeen) {
-           if (collapsedHeaders.has(block.id)) {
-             return true; 
-           }
-           minLevelSeen = headerLevel;
+          if (collapsedHeaders.has(block.id)) {
+            return true;
+          }
+          minLevelSeen = headerLevel;
         }
       }
     }
-    
+
     return false;
   };
 
@@ -600,10 +600,10 @@ export function PageEditor({
     if (!isHeader || !collapsedHeaders.has(headerBlock.id)) {
       return 1;
     }
-    
+
     const headerLevel = headerBlock.type === 'text' ? 99 : parseInt(headerBlock.type.replace('heading', ''));
     let count = 1;
-    
+
     for (let i = startIndex + 1; i < blocks.length; i++) {
       const current = blocks[i];
 
@@ -628,25 +628,25 @@ export function PageEditor({
     // Questa funzione applica lo stile markdown al testo selezionato
     const sel = window.getSelection();
     if (!sel || sel.rangeCount === 0) return;
-    
+
     const range = sel.getRangeAt(0);
     const selectedText = range.toString();
-    
+
     // Trova il blocco contenente la selezione
     let container = range.commonAncestorContainer;
     if (container.nodeType === Node.TEXT_NODE) {
       container = container.parentNode!;
     }
-    
+
     const blockElement = (container as HTMLElement).closest('[data-block-id]');
     if (!blockElement) return;
-    
+
     const blockId = blockElement.getAttribute('data-block-id');
     if (!blockId) return;
-    
+
     const block = blocks.find(b => b && b.id === blockId);
     if (!block) return;
-    
+
     // Applica lo stile markdown
     let styledText = selectedText;
     switch (style) {
@@ -663,7 +663,7 @@ export function PageEditor({
         styledText = `~~${selectedText}~~`;
         break;
     }
-    
+
     // Sostituisci il testo selezionato con il testo stilizzato nel content del blocco
     const textarea = blockElement.querySelector('textarea, input');
     if (textarea instanceof HTMLTextAreaElement || textarea instanceof HTMLInputElement) {
@@ -677,7 +677,7 @@ export function PageEditor({
 
   const handleFileDrop = async (files: any[]) => {
     const newBlocks: Block[] = [];
-    
+
     for (const file of files) {
       if (file.type && file.type.startsWith('image/')) {
         try {
@@ -687,7 +687,7 @@ export function PageEditor({
             reader.onerror = reject;
             reader.readAsDataURL(file);
           });
-          
+
           newBlocks.push({
             id: `block_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
             type: 'image',
@@ -710,14 +710,14 @@ export function PageEditor({
         });
       }
     }
-    
+
     if (newBlocks.length > 0) {
       updateContent([...blocks, ...newBlocks]);
     }
   };
 
   const [{ isOver }, dropRef] = useDrop({
-    accept: [ITEM_TYPE_TO_WORKSPACE, ITEM_TYPE_TEXT_ELEMENT, NativeTypes.FILE],
+    accept: [ITEM_TYPE_TO_WORKSPACE, ITEM_TYPE_TEXT_ELEMENT, 'CALENDAR_EVENT', NativeTypes.FILE],
     drop: (item: any, monitor) => {
       // Handle File Drop
       if (monitor.getItemType() === NativeTypes.FILE) {
@@ -733,14 +733,33 @@ export function PageEditor({
         const dragMode = getDragMode(); // Ottieni il drag mode corrente
         const sourceSpaceId = item.sourceSpaceId;
         const targetSpaceId = space.id;
-        
+
         // Se è lo stesso space, non fare nulla (già gestito dal drag interno)
         if (sourceSpaceId === targetSpaceId && dragMode !== 'duplicate') {
           return;
         }
-        
+
         // Crea il nuovo blocco basato sulla modalità
         handleTextElementDrop(item, dragMode, sourceSpaceId);
+      }
+      // Gestione drop calendar event (da CalendarApp)
+      else if (item.type === 'CALENDAR_EVENT' || item.itemType === 'CALENDAR_EVENT') {
+        const dragMode = getDragMode();
+        handleTextElementDrop({
+          ...item,
+          itemType: ITEM_TYPE_TEXT_ELEMENT,
+          blockType: 'calendar',
+          fullBlock: {
+            id: item.id,
+            type: 'calendar',
+            content: item.title || '',
+            metadata: {
+              startDate: item.start,
+              endDate: item.end,
+              notes: item.content
+            }
+          }
+        }, dragMode, item.spaceId);
       }
       // Gestione drop space (da Sidebar)
       else if (item.isSpaceDrag && item.spaceData) {
@@ -771,14 +790,14 @@ export function PageEditor({
   // Handler per il drop di textElement
   const handleTextElementDrop = (item: any, dragMode: 'link' | 'duplicate' | 'move', sourceSpaceId: string) => {
     const fullBlock = item.fullBlock;
-    
+
     // Determina il tipo di blocco risultante
     let resultBlockType = fullBlock.type;
     let resultBlock: Block;
 
     // Tipi che restano sempre come embed quando linkati
     const alwaysEmbedTypes = ['embed', 'pageLink', 'image', 'file', 'code', 'divider'];
-    
+
     switch (dragMode) {
       case 'link':
         // Se è uno dei tipi speciali, crea blockEmbed
@@ -801,7 +820,7 @@ export function PageEditor({
           };
         }
         break;
-        
+
       case 'duplicate':
         // Crea una copia completa del blocco
         resultBlock = {
@@ -809,7 +828,7 @@ export function PageEditor({
           id: `block_${Date.now()}_${Math.random()}`,
         };
         break;
-        
+
       case 'move':
         // Per 'move': se sono nello stesso space, non fare nulla (gestito da drag interno)
         // Se sono in space diversi:
@@ -829,7 +848,7 @@ export function PageEditor({
               ...fullBlock,
               id: `block_${Date.now()}_${Math.random()}`,
             };
-            
+
             // Rimuovi dall'originale
             const sourceSpace = spacesState.getSpace(sourceSpaceId);
             if (sourceSpace && sourceSpace.content?.blocks) {
@@ -849,7 +868,7 @@ export function PageEditor({
           };
         }
         break;
-        
+
       default:
         resultBlock = {
           ...fullBlock,
@@ -860,7 +879,7 @@ export function PageEditor({
     // Aggiungi il blocco alla fine
     const newBlocks = [...blocks, resultBlock];
     updateContent(newBlocks);
-    
+
     // Animazione: scroll al blocco appena aggiunto
     setTimeout(() => {
       const blockElement = document.querySelector(`[data-block-id="${resultBlock.id}"]`);
@@ -891,47 +910,47 @@ export function PageEditor({
       // Single pass backwards
       for (let k = currentIndex - 1; k >= 0; k--) {
         const prevBlock = blocks[k];
-        
+
         if (!isList(prevBlock.type)) break;
-        
+
         const prevIndent = prevBlock.indent || 0;
-        
+
         if (prevIndent === currentIndent) {
-           if (isNumbered(prevBlock.type)) {
-               // Only count siblings if we haven't found a base yet
-               if (!foundLocalBase) {
-                   siblingCount++;
-                   if (prevBlock.listNumber !== undefined) {
-                       localBase = prevBlock.listNumber;
-                       foundLocalBase = true;
-                   }
-               }
-           } else {
-               // Sibling breaks sequence (e.g. bullet list in between numbered lists)
-               // If we hit a break, it means the current sequence started AFTER this block.
-               // So we stop counting siblings and use default base 1.
-               break;
-           }
-        } else if (prevIndent < currentIndent) {
-            parentIndex = k;
+          if (isNumbered(prevBlock.type)) {
+            // Only count siblings if we haven't found a base yet
+            if (!foundLocalBase) {
+              siblingCount++;
+              if (prevBlock.listNumber !== undefined) {
+                localBase = prevBlock.listNumber;
+                foundLocalBase = true;
+              }
+            }
+          } else {
+            // Sibling breaks sequence (e.g. bullet list in between numbered lists)
+            // If we hit a break, it means the current sequence started AFTER this block.
+            // So we stop counting siblings and use default base 1.
             break;
+          }
+        } else if (prevIndent < currentIndent) {
+          parentIndex = k;
+          break;
         }
       }
 
       let localValue = localBase;
       if (currentBlock.listNumber !== undefined) {
-          localValue = currentBlock.listNumber;
+        localValue = currentBlock.listNumber;
       } else {
-          localValue = localBase + siblingCount;
+        localValue = localBase + siblingCount;
       }
 
       if (parentIndex !== -1) {
-          const parentString = calculateListNumber(parentIndex);
-          if (parentString !== undefined) {
-             return `${parentString}.${localValue}`;
-          }
+        const parentString = calculateListNumber(parentIndex);
+        if (parentString !== undefined) {
+          return `${parentString}.${localValue}`;
+        }
       }
-      
+
       return localValue;
     };
 
@@ -952,54 +971,54 @@ export function PageEditor({
           if (currentIsNumbered) {
             if (!isNumbered(nextType)) break;
           } else {
-             if (nextType !== block.type) break;
+            if (nextType !== block.type) break;
           }
           j++;
         }
 
         const groupSize = j - i;
-        
-        if (groupSize >= 2) {
-           const groupBlocks = blocks.slice(i, j);
-           
-           const groupListNumbers = groupBlocks.map((b, relativeIndex) => {
-              return calculateListNumber(i + relativeIndex);
-           });
 
-           renderedElements.push(
-             <ListGroup 
-               key={`group-${block.id}`}
-               blocks={groupBlocks}
-               startIndex={i}
-               onUpdate={updateBlock}
-               onDelete={deleteBlock}
-               onAddAfter={(blockId, anchor) => setMenuAnchor({ anchor, afterBlockId: blockId })}
-               onAddBefore={addBlockBefore}
-               onMove={moveBlock}
-               onConvertBlock={convertBlock}
-               onConvertBlocks={convertBlocks}
-               createNextBlock={createNextBlock}
-               toggleHeaderCollapse={toggleHeaderCollapse}
-               isBlockCollapsed={isBlockCollapsed}
-               collapsedHeaders={collapsedHeaders}
-               focusBlockByIndex={focusBlockByIndex}
-               totalBlocks={blocks.length}
-               config={{}} 
-               currentSpaceId={space.id}
-               currentSpaceName={space.title}
-               spacesState={spacesState}
-               viewportsState={viewportsState}
-               brokenLinks={brokenLinks}
-               brokenLinksVersion={brokenLinksVersion}
-               listNumbers={groupListNumbers}
-               settings={settings}
-               onUpdateSettings={onUpdateSettings}
-               selectedBlockIds={selectedBlockIds}
-               onToggleSelection={onToggleSelection}
-             />
-           );
-           i = j;
-           continue;
+        if (groupSize >= 2) {
+          const groupBlocks = blocks.slice(i, j);
+
+          const groupListNumbers = groupBlocks.map((b, relativeIndex) => {
+            return calculateListNumber(i + relativeIndex);
+          });
+
+          renderedElements.push(
+            <ListGroup
+              key={`group-${block.id}`}
+              blocks={groupBlocks}
+              startIndex={i}
+              onUpdate={updateBlock}
+              onDelete={deleteBlock}
+              onAddAfter={(blockId, anchor) => setMenuAnchor({ anchor, afterBlockId: blockId })}
+              onAddBefore={addBlockBefore}
+              onMove={moveBlock}
+              onConvertBlock={convertBlock}
+              onConvertBlocks={convertBlocks}
+              createNextBlock={createNextBlock}
+              toggleHeaderCollapse={toggleHeaderCollapse}
+              isBlockCollapsed={isBlockCollapsed}
+              collapsedHeaders={collapsedHeaders}
+              focusBlockByIndex={focusBlockByIndex}
+              totalBlocks={blocks.length}
+              config={{}}
+              currentSpaceId={space.id}
+              currentSpaceName={space.title}
+              spacesState={spacesState}
+              viewportsState={viewportsState}
+              brokenLinks={brokenLinks}
+              brokenLinksVersion={brokenLinksVersion}
+              listNumbers={groupListNumbers}
+              settings={settings}
+              onUpdateSettings={onUpdateSettings}
+              selectedBlockIds={selectedBlockIds}
+              onToggleSelection={onToggleSelection}
+            />
+          );
+          i = j;
+          continue;
         }
       }
 
@@ -1008,13 +1027,13 @@ export function PageEditor({
       const isCollapsed = isHeader ? collapsedHeaders.has(block.id) : false;
       const prevBlock = i > 0 ? blocks[i - 1] : undefined;
       const nextBlock = i < blocks.length - 1 ? blocks[i + 1] : undefined;
-      
+
       const dragCount = isCollapsed ? getCollapsedGroupSize(i) : 1;
-      
+
       let listNumber: number | string | undefined;
-      
+
       if (isNumbered(block.type)) {
-          listNumber = calculateListNumber(i);
+        listNumber = calculateListNumber(i);
       }
 
       renderedElements.push(
@@ -1066,7 +1085,7 @@ export function PageEditor({
 
   const onToggleSelection = (blockId: string, isShift: boolean) => {
     if (isShift) {
-      setSelectedBlockIds(prev => 
+      setSelectedBlockIds(prev =>
         prev.includes(blockId) ? prev.filter(id => id !== blockId) : [...prev, blockId]
       );
     } else {
@@ -1075,20 +1094,19 @@ export function PageEditor({
   };
 
   return (
-    <div 
+    <div
       ref={dropRef}
       className={`flex-1 h-full min-h-[500px] overflow-y-auto no-scrollbar pb-32 transition-colors duration-200 ${isOver ? 'bg-primary/5' : ''}`}
     >
-      <div 
-        className={`max-w-4xl mx-auto pb-8 px-8 flex flex-col transition-all duration-300 ${
-          showProperties ? 'pt-6' : 'pt-[15vh]'
-        }`}
+      <div
+        className={`max-w-4xl mx-auto pb-8 px-8 flex flex-col transition-all duration-300 ${showProperties ? 'pt-6' : 'pt-[15vh]'
+          }`}
       >
         {/* Properties Section */}
         {showProperties && (
           <div className="mb-6 -mx-3 border border-divider rounded-lg bg-white/15 dark:bg-default-50/30">
-            <PropertiesView 
-              space={space} 
+            <PropertiesView
+              space={space}
               spacesState={spacesState}
             />
           </div>
@@ -1106,11 +1124,11 @@ export function PageEditor({
           >
             <Upload size={18} />
           </Button>
-          <input 
-            type="file" 
-            ref={fileInputRef} 
-            className="hidden" 
-            multiple 
+          <input
+            type="file"
+            ref={fileInputRef}
+            className="hidden"
+            multiple
             onChange={(e) => {
               if (e.target.files && e.target.files.length > 0) {
                 handleFileDrop(Array.from(e.target.files));

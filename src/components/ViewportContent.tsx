@@ -27,16 +27,16 @@ interface ViewportContentProps {
   brokenLinksVersion?: number;
 }
 
-export function ViewportContent({ 
-  viewport, 
-  spacesState, 
-  viewportsState, 
-  settings, 
+export function ViewportContent({
+  viewport,
+  spacesState,
+  viewportsState,
+  settings,
   onUpdateSettings,
   onResetSettings,
-  getBackgroundStyle, 
-  brokenLinks, 
-  brokenLinksVersion 
+  getBackgroundStyle,
+  brokenLinks,
+  brokenLinksVersion
 }: ViewportContentProps) {
   const [showMarkdown, setShowMarkdown] = useState(false);
   const activeTab = viewport.tabs.find(t => t.id === viewport.activeTabId);
@@ -50,10 +50,10 @@ export function ViewportContent({
   };
 
   const handleOpenApp = (appType: 'browser' | 'mail' | 'chat' | 'calendar' | 'draw' | 'settings') => {
-    const title = appType === 'settings' 
-      ? 'Impostazioni' 
+    const title = appType === 'settings'
+      ? 'Impostazioni'
       : appType.charAt(0).toUpperCase() + appType.slice(1);
-      
+
     viewportsState.replaceCurrentTab(viewport.id, undefined, appType, title);
     viewportsState.setFocusedViewportId(viewport.id);
   };
@@ -103,16 +103,16 @@ export function ViewportContent({
           <>
             {activeTab.appType === 'browser' && <BrowserApp />}
             {activeTab.appType === 'calendar' && (
-              <CalendarApp 
-                spacesState={spacesState} 
-                viewportsState={viewportsState} 
+              <CalendarApp
+                spacesState={spacesState}
+                viewportsState={viewportsState}
               />
             )}
             {activeTab.appType === 'mail' && <MailApp />}
             {activeTab.appType === 'chat' && <ChatApp />}
             {activeTab.appType === 'draw' && <DrawApp />}
             {activeTab.appType === 'settings' && (
-              <SettingsApp 
+              <SettingsApp
                 settings={settings}
                 onUpdateSettings={onUpdateSettings}
                 onResetSettings={onResetSettings}
@@ -131,8 +131,8 @@ export function ViewportContent({
             ) : (
               <>
                 {space.type === 'page' && (
-                  <PageEditor 
-                    space={space} 
+                  <PageEditor
+                    space={space}
                     spacesState={spacesState}
                     viewportsState={viewportsState}
                     viewportId={viewport.id}
@@ -144,9 +144,9 @@ export function ViewportContent({
                   />
                 )}
                 {space.type === 'canvas' && (
-                  <CanvasSpace 
-                    space={space} 
-                    spacesState={spacesState} 
+                  <CanvasSpace
+                    space={space}
+                    spacesState={spacesState}
                     isActive={isFocused}
                     settings={settings}
                     onUpdateSettings={onUpdateSettings}
@@ -156,9 +156,9 @@ export function ViewportContent({
                   <DatabaseSpace space={space} spacesState={spacesState} />
                 )}
                 {space.type === 'dashboard' && (
-                  <DashboardSpace 
-                    space={space} 
-                    spacesState={spacesState} 
+                  <DashboardSpace
+                    space={space}
+                    spacesState={spacesState}
                     settings={settings}
                     onUpdateSettings={onUpdateSettings}
                   />

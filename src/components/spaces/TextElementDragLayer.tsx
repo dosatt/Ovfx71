@@ -18,7 +18,9 @@ export function TextElementDragLayer() {
 
   // Controlla sia itemType del monitor che item.itemType
   const isTextElement = itemType === ITEM_TYPE_TEXT_ELEMENT || item.itemType === ITEM_TYPE_TEXT_ELEMENT;
-  
+  const isCalendarEvent = itemType === 'CALENDAR_EVENT' || item.type === 'CALENDAR_EVENT';
+
+  // Don't show preview for calendar events - they use drop zone preview instead
   if (!isTextElement) {
     return null;
   }
@@ -28,7 +30,7 @@ export function TextElementDragLayer() {
 
   return (
     <>
-      {/* Preview del textElement */}
+      {/* Preview del textElement o calendarEvent */}
       <div
         style={{
           position: 'fixed',

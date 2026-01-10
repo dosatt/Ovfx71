@@ -1,7 +1,7 @@
 import { Component, ReactNode } from 'react';
-import Box from '@mui/joy@5.0.0-beta.48/Box';
-import Typography from '@mui/joy@5.0.0-beta.48/Typography';
-import Button from '@mui/joy@5.0.0-beta.48/Button';
+import Box from '@mui/joy/Box';
+import Typography from '@mui/joy/Typography';
+import Button from '@mui/joy/Button';
 import { AlertTriangle } from 'lucide-react';
 
 interface ErrorBoundaryProps {

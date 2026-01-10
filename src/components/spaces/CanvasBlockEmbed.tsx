@@ -18,7 +18,7 @@ import {
   Link2
 } from 'lucide-react';
 import { FileElement } from './FileElement';
-import { ImageWithFallback } from './ImageWithFallback';
+import { ImageWithFallback } from '../figma/ImageWithFallback';
 import { CalendarElement } from './CalendarElement';
 import { Settings } from '../../hooks/useSettings';
 

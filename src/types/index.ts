@@ -17,7 +17,7 @@ export interface Space {
 }
 
 // TextElement types for Page
-export type TextElementType = 
+export type TextElementType =
   | 'text'
   | 'heading1'
   | 'heading2'

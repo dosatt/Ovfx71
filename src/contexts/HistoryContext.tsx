@@ -1,7 +1,7 @@
 import { createContext, useContext, useState, ReactNode, useCallback, useEffect } from 'react';
-import Snackbar from '@mui/joy@5.0.0-beta.48/Snackbar';
-import Typography from '@mui/joy@5.0.0-beta.48/Typography';
-import Box from '@mui/joy@5.0.0-beta.48/Box';
+import Snackbar from '@mui/joy/Snackbar';
+import Typography from '@mui/joy/Typography';
+import Box from '@mui/joy/Box';
 import { Undo, Redo } from 'lucide-react';
 
 export interface HistoryAction {
@@ -53,7 +53,7 @@ export function HistoryProvider({ children }: HistoryProviderProps) {
       ...action,
       timestamp: Date.now()
     };
-    
+
     setUndoStack(prev => [...prev, fullAction]);
     setRedoStack([]); // Cancella la cronologia redo quando si fa una nuova azione
   }, []);
@@ -63,10 +63,10 @@ export function HistoryProvider({ children }: HistoryProviderProps) {
 
     const action = undoStack[undoStack.length - 1];
     action.undo();
-    
+
     setUndoStack(prev => prev.slice(0, -1));
     setRedoStack(prev => [...prev, action]);
-    
+
     showSnackbar(`Annullato: ${action.description}`, 'undo');
   }, [undoStack]);
 
@@ -75,10 +75,10 @@ export function HistoryProvider({ children }: HistoryProviderProps) {
 
     const action = redoStack[redoStack.length - 1];
     action.redo();
-    
+
     setRedoStack(prev => prev.slice(0, -1));
     setUndoStack(prev => [...prev, action]);
-    
+
     showSnackbar(`Ripristinato: ${action.description}`, 'redo');
   }, [redoStack]);
 
@@ -93,7 +93,7 @@ export function HistoryProvider({ children }: HistoryProviderProps) {
       // Cmd+Z (Mac) o Ctrl+Z (Windows/Linux)
       if ((e.metaKey || e.ctrlKey) && e.key === 'z') {
         e.preventDefault();
-        
+
         if (e.shiftKey) {
           // Cmd+Shift+Z = Redo
           redo();
@@ -102,7 +102,7 @@ export function HistoryProvider({ children }: HistoryProviderProps) {
           undo();
         }
       }
-      
+
       // Cmd+Y (alternativa per redo su Windows)
       if ((e.metaKey || e.ctrlKey) && e.key === 'y') {
         e.preventDefault();
@@ -126,8 +126,8 @@ export function HistoryProvider({ children }: HistoryProviderProps) {
       }}
     >
       {children}
-      
-      <Snackbar
+
+      {/* <Snackbar
         open={snackbarOpen}
         autoHideDuration={2000}
         onClose={() => setSnackbarOpen(false)}
@@ -146,7 +146,7 @@ export function HistoryProvider({ children }: HistoryProviderProps) {
             {snackbarMessage}
           </Typography>
         </Box>
-      </Snackbar>
+      </Snackbar> */}
     </HistoryContext.Provider>
   );
 }
