@@ -1,4 +1,4 @@
-import { useState, useMemo, useRef, useEffect, memo } from 'react';
+import { useState, useMemo, useRef, useEffect, memo, useCallback } from 'react';
 import { 
   format, 
   addMonths, 
@@ -83,6 +83,11 @@ function DraggableCalendarEvent({ event, onUpdate, onNavigate }: DraggableEventP
     }),
   }), [event]);
 
+  // Use a stable ref callback or direct assignment if possible. 
+  // Since drag is a function from useDrag, we can pass it directly if we don't need to chain.
+  // However, older react-dnd might need the function call. 
+  // Standard React 19 / Modern Dnd: ref={drag} works.
+  
   const handleResize = (e: React.MouseEvent, days: number) => {
     e.stopPropagation();
     e.preventDefault();
@@ -108,9 +113,13 @@ function DraggableCalendarEvent({ event, onUpdate, onNavigate }: DraggableEventP
     }
   };
 
+  const setDragRef = useCallback((el: HTMLDivElement | null) => {
+    drag(el);
+  }, [drag]);
+
   return (
     <div 
-      ref={(el) => { drag(el); }}
+      ref={setDragRef}
       className={`
         text-[10px] p-1.5 rounded bg-primary/10 text-primary-700 truncate border-l-2 border-primary 
         hover:bg-primary/20 transition-all cursor-grab active:cursor-grabbing
@@ -153,7 +162,8 @@ interface DraggableMultiDayEventProps extends Omit<DraggableEventProps, 'onNavig
   isStart: boolean;
   isEnd: boolean;
   onHoverDateChange?: (date: Date | null) => void;
-  activeResize: { id: string, direction: 'left' | 'right', offset: number } | null;
+  // Use boolean to avoid re-renders on every pixel move of resize
+  isResizing: boolean;
   onActiveResizeChange: (resize: { id: string, direction: 'left' | 'right', offset: number } | null) => void;
   isSelected: boolean;
   onSelect: (id: string) => void;
@@ -170,7 +180,7 @@ const DraggableMultiDayEvent = memo(({
   isEnd, 
   onUpdate,
   onHoverDateChange,
-  activeResize,
+  isResizing,
   onActiveResizeChange,
   isSelected,
   onSelect,
@@ -178,8 +188,6 @@ const DraggableMultiDayEvent = memo(({
   topOffset = 26
 }: DraggableMultiDayEventProps) => {
   const containerRef = useRef<HTMLDivElement>(null);
-
-  const isResizing = activeResize?.id === event.id;
 
   const [{ isDragging }, drag] = useDrag(() => ({
     type: 'CALENDAR_EVENT',
@@ -262,12 +270,16 @@ const DraggableMultiDayEvent = memo(({
     window.addEventListener('mouseup', handleMouseUp);
   };
 
+  const setRefs = useCallback((node: HTMLDivElement | null) => {
+    drag(node);
+    if (containerRef) {
+      (containerRef as any).current = node;
+    }
+  }, [drag]);
+
   const eventContent = (
     <div 
-      ref={(node) => {
-        drag(node);
-        (containerRef as any).current = node;
-      }}
+      ref={setRefs}
       style={{
         left: `calc(${(Math.max(0, startCol) / 7) * 100}% + 2px)`,
         width: `calc(${(colSpan / 7) * 100}% - 4px)`,
@@ -407,9 +419,13 @@ const CalendarDayCell = memo(({
     }),
   }), [day, allEvents, onUpdateEvent]);
 
+  const setDropRef = useCallback((node: HTMLDivElement | null) => {
+    drop(node);
+  }, [drop]);
+
   return (
     <div
-      ref={(el) => { drop(el); }}
+      ref={setDropRef}
       className={`
         min-h-[120px] p-1.5 border-r border-divider flex flex-col gap-1 transition-colors relative cursor-pointer
         ${isCurrentMonth ? 'bg-white' : 'bg-default-50/50 text-default-400'}
@@ -460,7 +476,11 @@ const CalendarDayCell = memo(({
 
 interface MonthWeekRowProps {
   weekStart: Date;
-  allEvents: any[];
+  events: any[];
+  allEvents: any[]; // Used for drop logic in CalendarDayCell
+  // We need the full list or the specific event for the ghost, because the ghost might be in a week where the event isn't originally.
+  // To avoid breaking memoization with 'allEvents', we can pass just the resizing event if it exists.
+  resizingEvent?: any; 
   currentMonth: Date;
   selectionRange: { start: Date; end: Date } | null;
   selectedEventId: string | null;
@@ -475,10 +495,10 @@ interface MonthWeekRowProps {
   onActiveResizeChange: (resize: { id: string, direction: 'left' | 'right', offset: number } | null) => void;
 }
 
-function ResizeGhost({ weekStart, weekEnd, activeResize, allEvents, originalRow, eventHeight = 24, topOffset = 26 }: any) {
-  const event = allEvents.find((e: any) => e.id === activeResize.id);
+function ResizeGhost({ weekStart, weekEnd, activeResize, resizingEvent, originalRow, eventHeight = 24, topOffset = 26 }: any) {
+  const event = resizingEvent;
   
-  if (!event) return null;
+  if (!event || event.id !== activeResize.id) return null;
 
   // Calculate inclusive start and end days
   const currentStartDay = startOfDay(event.start);
@@ -541,9 +561,36 @@ function ResizeGhost({ weekStart, weekEnd, activeResize, allEvents, originalRow,
   return null;
 }
 
+// Ensure ResizeGhost can find the event even if we only pass 'events' (which are local to week)
+// Actually, 'ResizeGhost' used 'allEvents' in the previous code. 
+// In my update to MonthWeekRow, I passed `allEvents={events}` to ResizeGhost.
+// This might break ResizeGhost if the event being resized is NOT in the current week's `events` list?
+// Wait, if ResizeGhost is being rendered for *this week*, it implies the ghost intersects this week.
+// If the ghost intersects this week, does the original event intersect this week? Not necessarily (if we moved it far away).
+// But `ResizeGhost` calculates `displayStart/End` based on the *new* geometry.
+// It needs `event` object to get title and original start/end?
+// Line 479: `const event = allEvents.find((e: any) => e.id === activeResize.id);`
+// If `allEvents` passed to ResizeGhost is just the local week events, and we dragged the ghost HERE but the event is originally elsewhere, `event` will be undefined!
+// FIX: We need to pass the FULL `allEvents` to ResizeGhost, OR pass the `event` object directly.
+// `MonthWeekRow` receives `events` (local) but not `allEvents` (global).
+// I should pass `allEvents` to `MonthWeekRow` as well? Or just the resizing event?
+// `MonthWeekRow` has `activeResize`.
+// Let's pass the full `allEvents` to `MonthWeekRow` BUT only use it for ResizeGhost.
+// Or better: `CalendarApp` can pass the `activeResizeEvent` object to `MonthWeekRow`.
+
+// Let's fix MonthWeekRow signature to include `allEvents` again OR `activeResizeEvent`.
+// Passing `allEvents` again invalidates the optimization if we are not careful (it changes on every add/remove).
+// Actually, `allEvents` changes reference on every edit.
+// If I pass it to `MonthWeekRow`, `memo` will fail to prevent re-renders unless I use `allEvents` ONLY for that ghost.
+// But `MonthWeekRow` renders frequently.
+// Better: Pass `resizingEvent` to `MonthWeekRow`.
+
+
 const MonthWeekRow = memo(({ 
   weekStart, 
-  allEvents, 
+  events, 
+  allEvents,
+  resizingEvent,
   currentMonth,
   selectionRange,
   selectedEventId,
@@ -562,11 +609,8 @@ const MonthWeekRow = memo(({
   
   // Layout calculation
   const layout = useMemo(() => {
-    const eventsInWeek = allEvents.filter(e => {
-      const eventStart = startOfDay(e.start);
-      const eventEnd = e.end ? startOfDay(e.end) : eventStart;
-      return (eventStart <= weekEnd && eventEnd >= weekStart);
-    });
+    // Events are already filtered for this week by parent optimization
+    const eventsInWeek = events;
 
     // Sort: earlier start first, then longer duration
     eventsInWeek.sort((a, b) => {
@@ -621,7 +665,7 @@ const MonthWeekRow = memo(({
         isEnd
       };
     });
-  }, [allEvents, weekStart, weekEnd]);
+  }, [events, weekStart, weekEnd]);
 
   // Find the row of the resizing event in ANY week to keep it consistent
   const resizingEventItem = useMemo(() => {
@@ -672,7 +716,7 @@ const MonthWeekRow = memo(({
                  onUpdateSelection={onUpdateSelection}
                  onUpdateEvent={onUpdateEvent}
                  onNavigate={onNavigate}
-                 allEvents={[]}
+                 allEvents={allEvents}
                />
              </div>
            );
@@ -687,7 +731,7 @@ const MonthWeekRow = memo(({
               {...item}
               onUpdate={(id, updates) => onUpdateEvent(id, item.event.id, item.event.sourceSpaceId, updates)}
               onHoverDateChange={onHoverDateChange}
-              activeResize={activeResize}
+              isResizing={activeResize?.id === item.event.id}
               onActiveResizeChange={onActiveResizeChange}
               isSelected={selectedEventId === item.event.id}
               onSelect={onSelectEvent}
@@ -719,7 +763,6 @@ export function CalendarApp({ spacesState, viewportsState }: CalendarAppProps) {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [view, setView] = useState<CalendarView>('month');
   const { isOpen, onOpen, onOpenChange, onClose } = useDisclosure();
-  const scrollContainerRef = useState<HTMLDivElement | null>(null)[0];
   const [containerRef, setContainerRef] = useState<HTMLDivElement | null>(null);
 
   // Selection/Drag state
@@ -739,7 +782,15 @@ export function CalendarApp({ spacesState, viewportsState }: CalendarAppProps) {
     spaceId: ''
   });
 
-  // Extract all calendar events from all spaces
+  // Keep a stable ref to spacesState to avoid re-creating callbacks on every render
+  // This is crucial for performance as spacesState changes frequently
+  const spacesStateRef = useRef(spacesState);
+  useEffect(() => {
+    spacesStateRef.current = spacesState;
+  });
+
+  // Extract all calendar events from all spaces with deep comparison check to avoid unnecessary updates
+  const prevEventsRef = useRef<any[]>([]);
   const allEvents = useMemo(() => {
     const events: any[] = [];
     spacesState.spaces.forEach((space: any) => {
@@ -762,36 +813,69 @@ export function CalendarApp({ spacesState, viewportsState }: CalendarAppProps) {
         });
       }
     });
-    return events;
+
+    // Simple length check first
+    if (events.length !== prevEventsRef.current.length) {
+      prevEventsRef.current = events;
+      return events;
+    }
+
+    // Deep comparison of content strings to avoid re-renders when other parts of state change
+    const currentString = JSON.stringify(events.map(e => ({ ...e, start: e.start.getTime(), end: e.end?.getTime() })));
+    const prevString = JSON.stringify(prevEventsRef.current.map(e => ({ ...e, start: e.start.getTime(), end: e.end?.getTime() })));
+
+    if (currentString !== prevString) {
+      prevEventsRef.current = events;
+      return events;
+    }
+
+    return prevEventsRef.current;
   }, [spacesState.spaces]);
 
-  const prevPeriod = () => {
-    let nextDate = currentDate;
-    if (view === 'month') {
-      nextDate = subMonths(currentDate, 1);
-      scrollToMonth(nextDate);
-    }
-    else if (view === 'week') nextDate = subWeeks(currentDate, 1);
-    else if (view === 'day') nextDate = subDays(currentDate, 1);
-    else if (view === 'year') nextDate = new Date(currentDate.getFullYear() - 1, currentDate.getMonth(), 1);
-    else if (view === 'timeline') nextDate = subDays(currentDate, 14);
-    setCurrentDate(nextDate);
-  };
+  const prevPeriod = useCallback(() => {
+    setCurrentDate(prev => {
+      let nextDate = prev;
+      if (view === 'month') nextDate = subMonths(prev, 1);
+      else if (view === 'week') nextDate = subWeeks(prev, 1);
+      else if (view === 'day') nextDate = subDays(prev, 1);
+      else if (view === 'year') nextDate = new Date(prev.getFullYear() - 1, prev.getMonth(), 1);
+      else if (view === 'timeline') nextDate = subDays(prev, 14);
+      
+      if (view === 'month' && containerRef) {
+          // We can't easily scroll inside set state, but we can trigger effect or use ref
+          setTimeout(() => {
+             const targetMonth = startOfMonth(nextDate);
+             const targetWeek = startOfWeek(targetMonth, { weekStartsOn: 1 });
+             const weekElement = containerRef.querySelector(`[data-week="${targetWeek.getTime()}"]`);
+             if (weekElement) weekElement.scrollIntoView({ block: 'start', behavior: 'smooth' });
+          }, 10);
+      }
+      return nextDate;
+    });
+  }, [view, containerRef]);
 
-  const nextPeriod = () => {
-    let nextDate = currentDate;
-    if (view === 'month') {
-      nextDate = addMonths(currentDate, 1);
-      scrollToMonth(nextDate);
-    }
-    else if (view === 'week') nextDate = addWeeks(currentDate, 1);
-    else if (view === 'day') nextDate = addDays(currentDate, 1);
-    else if (view === 'year') nextDate = new Date(currentDate.getFullYear() + 1, currentDate.getMonth(), 1);
-    else if (view === 'timeline') nextDate = addDays(currentDate, 14);
-    setCurrentDate(nextDate);
-  };
+  const nextPeriod = useCallback(() => {
+    setCurrentDate(prev => {
+      let nextDate = prev;
+      if (view === 'month') nextDate = addMonths(prev, 1);
+      else if (view === 'week') nextDate = addWeeks(prev, 1);
+      else if (view === 'day') nextDate = addDays(prev, 1);
+      else if (view === 'year') nextDate = new Date(prev.getFullYear() + 1, prev.getMonth(), 1);
+      else if (view === 'timeline') nextDate = addDays(prev, 14);
 
-  const scrollToMonth = (date: Date) => {
+       if (view === 'month' && containerRef) {
+          setTimeout(() => {
+             const targetMonth = startOfMonth(nextDate);
+             const targetWeek = startOfWeek(targetMonth, { weekStartsOn: 1 });
+             const weekElement = containerRef.querySelector(`[data-week="${targetWeek.getTime()}"]`);
+             if (weekElement) weekElement.scrollIntoView({ block: 'start', behavior: 'smooth' });
+          }, 10);
+      }
+      return nextDate;
+    });
+  }, [view, containerRef]);
+
+  const scrollToMonth = useCallback((date: Date) => {
     if (containerRef && view === 'month') {
       const targetMonth = startOfMonth(date);
       const targetWeek = startOfWeek(targetMonth, { weekStartsOn: 1 });
@@ -800,15 +884,16 @@ export function CalendarApp({ spacesState, viewportsState }: CalendarAppProps) {
         weekElement.scrollIntoView({ block: 'start', behavior: 'smooth' });
       }
     }
-  };
+  }, [containerRef, view]);
 
-  const goToToday = () => {
+  const goToToday = useCallback(() => {
     const today = new Date();
     setCurrentDate(today);
     if (view === 'month') {
-      scrollToMonth(today);
+      // Need a small timeout to allow render if view changed
+      setTimeout(() => scrollToMonth(today), 10);
     }
-  };
+  }, [view, scrollToMonth]);
   const weeksInRange = useMemo(() => {
     // 6 months before and 6 months after current "center" date
     const startRange = startOfWeek(startOfMonth(subMonths(new Date(), 6)), { weekStartsOn: 1 });
@@ -823,6 +908,23 @@ export function CalendarApp({ spacesState, viewportsState }: CalendarAppProps) {
     return weeks;
   }, []);
 
+  // Optimize: Group events by week for Month view to avoid filtering in every row
+  const eventsByWeek = useMemo(() => {
+    const map = new Map<number, any[]>();
+    // Iterate weeks in range and filter events for each week
+    // This moves the O(Weeks * Events) op here, instead of per-render of Row
+    weeksInRange.forEach(weekStart => {
+      const weekEnd = endOfWeek(weekStart, { weekStartsOn: 1 });
+      const weekEvents = allEvents.filter(e => {
+        const eventStart = startOfDay(e.start);
+        const eventEnd = e.end ? startOfDay(e.end) : eventStart;
+        return (eventStart <= weekEnd && eventEnd >= weekStart);
+      });
+      map.set(weekStart.getTime(), weekEvents);
+    });
+    return map;
+  }, [allEvents, weeksInRange]);
+
   // Scroll to "today" or current month on mount
   useEffect(() => {
     if (containerRef && view === 'month') {
@@ -835,19 +937,20 @@ export function CalendarApp({ spacesState, viewportsState }: CalendarAppProps) {
     }
   }, [containerRef, view]);
 
-  const handleCreateEvent = () => {
+  const handleCreateEvent = useCallback(() => {
     if (!newEvent.title) return;
 
     let targetSpaceId = newEvent.spaceId;
+    const spaces = spacesStateRef.current.spaces;
     
     // If no space selected, find or create a default "Calendario" space
     if (!targetSpaceId) {
-      const existingCalendarSpace = spacesState.spaces.find((s: any) => s.title === 'Calendario' && s.metadata?.isHidden);
+      const existingCalendarSpace = spaces.find((s: any) => s.title === 'Calendario' && s.metadata?.isHidden);
       if (existingCalendarSpace) {
         targetSpaceId = existingCalendarSpace.id;
       } else {
-        const newSpace = spacesState.createSpace('page');
-        spacesState.updateSpace(newSpace.id, { 
+        const newSpace = spacesStateRef.current.createSpace('page');
+        spacesStateRef.current.updateSpace(newSpace.id, { 
           title: 'Calendario',
           metadata: { isHidden: true } // Hide from sidebar
         });
@@ -855,7 +958,7 @@ export function CalendarApp({ spacesState, viewportsState }: CalendarAppProps) {
       }
     }
 
-    const targetSpace = spacesState.getSpace(targetSpaceId);
+    const targetSpace = spacesStateRef.current.getSpace(targetSpaceId);
     if (targetSpace) {
       const newBlock = {
         id: `block_${Date.now()}`,
@@ -871,7 +974,7 @@ export function CalendarApp({ spacesState, viewportsState }: CalendarAppProps) {
       };
 
       const updatedBlocks = [...(targetSpace.content?.blocks || []), newBlock];
-      spacesState.updateSpace(targetSpaceId, {
+      spacesStateRef.current.updateSpace(targetSpaceId, {
         content: { ...targetSpace.content, blocks: updatedBlocks }
       });
     }
@@ -885,33 +988,72 @@ export function CalendarApp({ spacesState, viewportsState }: CalendarAppProps) {
       notes: '',
       spaceId: ''
     });
-  };
+  }, [newEvent, onClose]);
 
-  const handleQuickCreate = () => {
+  const handleQuickCreate = useCallback(() => {
     if (!newEvent.title) return;
     handleCreateEvent();
     setPopoverAnchor(null);
-  };
+  }, [newEvent, handleCreateEvent]);
 
-  const handleStartSelection = (date: Date) => {
+  const handleStartSelection = useCallback((date: Date) => {
     setIsSelecting(true);
     setSelectionRange({ start: date, end: date });
-  };
+  }, []);
 
-  const handleUpdateSelection = (date: Date) => {
-    if (!isSelecting || !selectionRange) return;
-    setSelectionRange(prev => prev ? { ...prev, end: date } : null);
-  };
+  const handleUpdateSelection = useCallback((date: Date) => {
+    if (!isSelecting) return;
+    setSelectionRange(prev => prev ? { ...prev, end: date } : null); // Access prev from state, don't depend on selectionRange
+  }, [isSelecting]);
 
-  const handleEndSelection = (e?: React.MouseEvent | MouseEvent) => {
-    if (!isSelecting || !selectionRange) {
-      setIsSelecting(false);
-      return;
+  const handleEndSelection = useCallback((e?: React.MouseEvent | MouseEvent) => {
+    if (!isSelecting) {
+        // Just explicit false set
+        setIsSelecting(false);
+        return;
+    }
+    
+    // We need to access selectionRange state. 
+    // Since we can't get it from 'prev', we need it in deps, but then this changes.
+    // So we can use a ref or just accept selectionRange dependency (it changes on drag, which is frequent).
+    // BUT handleEndSelection is attached to container onMouseUp.
+    // If it changes, the listener re-attaches.
+    // However, onMouseUp is likely not a big deal if it's passive.
+    // But let's try to get selectionRange from state inside setSelectionRange if possible? No.
+    // We can use a ref for selectionRange.
+    // Let's defer 'handleEndSelection' logic to effect or just use selectionRange here.
+    // Actually, selectionRange updates every mousemove (hover).
+    // So handleEndSelection updates every mousemove.
+    // This is fine for the event handler itself.
+    // But let's see where it is used.
+    // It is used in `renderMonthView` -> `div onMouseUp`.
+    // The div re-renders every time handleEndSelection changes.
+    // The div contains the WHOLE calendar.
+    // This means the WHOLE CALENDAR re-renders on every mouse move during selection!
+    // THIS IS A BOTTLENECK.
+
+    // FIX: use a ref for selectionRange to read it in handleEndSelection without re-creating the function.
+  }, [isSelecting]); // Wait, implementation below.
+
+  // Using ref for selectionRange to stabilize handleEndSelection
+  const selectionRangeRef = useRef(selectionRange);
+  useEffect(() => { selectionRangeRef.current = selectionRange; }, [selectionRange]);
+
+  const handleEndSelectionStable = useCallback((e?: React.MouseEvent | MouseEvent) => {
+    if (!isSelecting) {
+        setIsSelecting(false);
+        return;
+    }
+
+    const range = selectionRangeRef.current;
+    if (!range) {
+        setIsSelecting(false);
+        return;
     }
     
     // Normalize range (start should be before end)
-    const start = selectionRange.start < selectionRange.end ? selectionRange.start : selectionRange.end;
-    const end = selectionRange.start < selectionRange.end ? selectionRange.end : selectionRange.start;
+    const start = range.start < range.end ? range.start : range.end;
+    const end = range.start < range.end ? range.end : range.start;
     
     // For week/day view, ensure at least 30min duration if it's the same time
     let finalEnd = end;
@@ -937,10 +1079,10 @@ export function CalendarApp({ spacesState, viewportsState }: CalendarAppProps) {
     }
     
     setIsSelecting(false);
-  };
+  }, [isSelecting, view]); // Removed selectionRange from deps
 
-  const handleUpdateEvent = (eventId: string, blockId: string, spaceId: string, updates: any) => {
-    const space = spacesState.spaces.find((s: any) => s.id === spaceId);
+  const handleUpdateEvent = useCallback((eventId: string, blockId: string, spaceId: string, updates: any) => {
+    const space = spacesStateRef.current.spaces.find((s: any) => s.id === spaceId);
     if (!space) return;
 
     const blocks = [...(space.content?.blocks || [])];
@@ -955,14 +1097,14 @@ export function CalendarApp({ spacesState, viewportsState }: CalendarAppProps) {
       }
     };
 
-    spacesState.updateSpace(spaceId, {
+    spacesStateRef.current.updateSpace(spaceId, {
       content: { ...space.content, blocks }
     });
-  };
+  }, []);
 
-  const handleToggleEventSelection = (id: string | null) => {
+  const handleToggleEventSelection = useCallback((id: string | null) => {
     setSelectedEventId(id);
-  };
+  }, []);
 
   const getViewTitle = () => {
     if (view === 'month') return format(currentDate, 'MMMM yyyy', { locale: it });
@@ -977,13 +1119,18 @@ export function CalendarApp({ spacesState, viewportsState }: CalendarAppProps) {
     return '';
   };
 
+  const resizingEvent = useMemo(() => {
+    if (!activeResize) return null;
+    return allEvents.find(e => e.id === activeResize.id);
+  }, [activeResize, allEvents]);
+
   const renderMonthView = () => {
     return (
       <div 
         ref={setContainerRef}
         className="h-full overflow-y-auto relative bg-white scroll-smooth no-scrollbar select-none calendar-grid-container"
-        onMouseUp={(e) => isSelecting && handleEndSelection(e)}
-        onMouseLeave={() => isSelecting && handleEndSelection()}
+        onMouseUp={(e) => isSelecting && handleEndSelectionStable(e)}
+        onMouseLeave={() => isSelecting && handleEndSelectionStable()}
         onClick={(e) => {
           const target = e.target as HTMLElement;
           if (!target.closest('.calendar-event-item')) {
@@ -1080,7 +1227,9 @@ export function CalendarApp({ spacesState, viewportsState }: CalendarAppProps) {
 
                 <MonthWeekRow
                   weekStart={weekStart}
+                  events={eventsByWeek.get(weekStart.getTime()) || []}
                   allEvents={allEvents}
+                  resizingEvent={resizingEvent}
                   currentMonth={monthOfThisWeek}
                   selectionRange={selectionRange}
                   selectedEventId={selectedEventId}
@@ -1179,7 +1328,7 @@ export function CalendarApp({ spacesState, viewportsState }: CalendarAppProps) {
     const monthsInYear = eachMonthOfInterval({ start: yearStart, end: endOfYear(yearStart) });
     
     return (
-      <div className="h-full overflow-auto p-6 bg-default-50/20" onMouseUp={(e) => isSelecting && handleEndSelection(e)}>
+      <div className="h-full overflow-auto p-6 bg-default-50/20" onMouseUp={(e) => isSelecting && handleEndSelectionStable(e)}>
         <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-8">
           {monthsInYear.map((month, mIdx) => {
             const monthDays = eachDayOfInterval({ start: startOfMonth(month), end: endOfMonth(month) });
@@ -1251,8 +1400,8 @@ export function CalendarApp({ spacesState, viewportsState }: CalendarAppProps) {
     return (
       <div 
         className="h-full overflow-x-auto overflow-y-hidden select-none whitespace-nowrap p-4 flex gap-1"
-        onMouseUp={(e) => isSelecting && handleEndSelection(e)}
-        onMouseLeave={() => isSelecting && handleEndSelection()}
+        onMouseUp={(e) => isSelecting && handleEndSelectionStable(e)}
+        onMouseLeave={() => isSelecting && handleEndSelectionStable()}
       >
         {timelineDays.map((day, i) => {
           const isToday = isSameDay(day, new Date());
@@ -1311,8 +1460,8 @@ export function CalendarApp({ spacesState, viewportsState }: CalendarAppProps) {
     return (
       <div 
         className="flex h-full overflow-auto select-none" 
-        onMouseUp={(e) => isSelecting && handleEndSelection(e)}
-        onMouseLeave={() => isSelecting && handleEndSelection()}
+        onMouseUp={(e) => isSelecting && handleEndSelectionStable(e)}
+        onMouseLeave={() => isSelecting && handleEndSelectionStable()}
       >
         <div className="w-[60px] shrink-0 border-r border-divider bg-default-50/50">
           <div className="h-[40px]" />
@@ -1576,9 +1725,13 @@ function CalendarDaySlot({ hour, day, onStartSelection, onUpdateSelection, onUpd
     collect: (monitor) => ({ isOver: !!monitor.isOver() })
   });
 
+  const setDropRef = useCallback((node: HTMLDivElement | null) => {
+    drop(node);
+  }, [drop]);
+
   return (
     <div 
-      ref={(el) => { drop(el); }}
+      ref={setDropRef}
       className={`h-[60px] border-t border-divider hover:bg-default-50/50 cursor-crosshair`}
       onMouseDown={() => {
         const d = new Date(day);
@@ -1618,9 +1771,13 @@ function DraggableTimelineEvent({ event, top, height, onUpdate, onNavigate }: an
     }
   };
 
+  const setDragRef = useCallback((el: HTMLDivElement | null) => {
+    drag(el);
+  }, [drag]);
+
   return (
     <div 
-      ref={(el) => { drag(el); }}
+      ref={setDragRef}
       className={`absolute left-1 right-1 rounded bg-primary text-white p-2 text-xs shadow-md z-20 overflow-hidden cursor-grab active:cursor-grabbing group ${isDragging ? 'opacity-50' : ''}`}
       style={{ top: `${top}px`, height: `${height}px` }}
       onClick={(e) => {
