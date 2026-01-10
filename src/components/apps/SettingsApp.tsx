@@ -8,10 +8,10 @@ import {
   CardBody,
   Divider,
 } from '@heroui/react';
-import { 
-  Monitor, 
-  Palette, 
-  Layout, 
+import {
+  Monitor,
+  Palette,
+  Layout,
   Terminal,
   RotateCcw,
   Sun,
@@ -43,7 +43,7 @@ const PRESET_GRADIENTS = [
 ];
 
 const PRESET_COLORS = [
-  '#ffffff', '#f5f7fa', '#e8ecf1', 
+  '#ffffff', '#f5f7fa', '#e8ecf1',
   '#667eea', '#ff6b6b', '#11998e',
   '#1e1e1e', '#2d3748', '#4a5568', '#000000',
   '#E5E2D1', '#E5E0D2', '#C7C7C7', '#D2E5DE', '#D4E5E8'
@@ -66,18 +66,18 @@ const DARK_THEME_DEFAULTS = {
 };
 
 // Custom Switch Component
-const SettingSwitch = ({ 
-  label, 
-  description, 
-  isSelected, 
-  onChange 
-}: { 
-  label: string; 
-  description?: string; 
-  isSelected: boolean; 
+const SettingSwitch = ({
+  label,
+  description,
+  isSelected,
+  onChange
+}: {
+  label: string;
+  description?: string;
+  isSelected: boolean;
   onChange: (val: boolean) => void;
 }) => (
-  <div 
+  <div
     className="flex justify-between items-center py-3 px-1 group cursor-pointer"
     onClick={() => onChange(!isSelected)}
   >
@@ -115,8 +115,8 @@ const RadioCard = ({
     onClick={onClick}
     className={`
       relative flex flex-col items-center justify-center p-4 rounded-xl border-2 cursor-pointer transition-all duration-200
-      ${isSelected 
-        ? 'border-primary bg-primary/5 shadow-sm' 
+      ${isSelected
+        ? 'border-primary bg-primary/5 shadow-sm'
         : 'border-default-200 bg-transparent hover:border-default-300 hover:bg-default-50'
       }
     `}
@@ -206,7 +206,7 @@ Colors:
 
 Please apply these settings to the application design.
     `.trim();
-    
+
     navigator.clipboard.writeText(prompt);
   };
 
@@ -216,18 +216,18 @@ Please apply these settings to the application design.
     <div className="h-full w-full flex flex-col bg-transparent">
       <div className="flex-1 overflow-y-auto">
         <div className="max-w-3xl mx-auto py-8 px-6 space-y-8">
-          
+
           {/* Header */}
           <div>
-            <h1 className="text-3xl font-bold tracking-tight mb-2">Impostazioni</h1>
+            <h1 className="text-3xl font-bold tracking-tight mb-2">Settings</h1>
             <p className="text-default-500">
-              Personalizza l'aspetto e l'esperienza del tuo spazio di lavoro.
+              Customize the look and feel of your workspace.
             </p>
           </div>
 
-          <Tabs 
-            aria-label="Opzioni Impostazioni" 
-            color="primary" 
+          <Tabs
+            aria-label="Settings Options"
+            color="primary"
             variant="underlined"
             classNames={{
               tabList: "gap-6 w-full relative rounded-none p-0 border-b border-divider",
@@ -242,31 +242,31 @@ Please apply these settings to the application design.
               title={
                 <div className="flex items-center space-x-2">
                   <Monitor className="w-4 h-4" />
-                  <span>Aspetto</span>
+                  <span>Appearance</span>
                 </div>
               }
             >
               <div className="flex flex-col gap-8 py-6">
-                
+
                 {/* Theme Section */}
                 <section className="space-y-4">
-                  <h3 className="text-xs font-semibold text-default-400 uppercase tracking-wider">Tema</h3>
+                  <h3 className="text-xs font-semibold text-default-400 uppercase tracking-wider">Theme</h3>
                   <div className="grid grid-cols-2 gap-4">
                     <RadioCard
-                      label="Chiaro"
+                      label="Light"
                       icon={Sun}
                       isSelected={settings.theme === 'light'}
-                      onClick={() => onUpdateSettings({ 
+                      onClick={() => onUpdateSettings({
                         theme: 'light',
                         // Apply light theme defaults if coming from dark
                         ...(settings.theme === 'dark' ? LIGHT_THEME_DEFAULTS : {})
                       })}
                     />
                     <RadioCard
-                      label="Scuro"
+                      label="Dark"
                       icon={Moon}
                       isSelected={settings.theme === 'dark'}
-                      onClick={() => onUpdateSettings({ 
+                      onClick={() => onUpdateSettings({
                         theme: 'dark',
                         // Apply dark theme defaults if coming from light
                         ...(settings.theme === 'light' ? DARK_THEME_DEFAULTS : {})
@@ -282,15 +282,15 @@ Please apply these settings to the application design.
                   <h3 className="text-xs font-semibold text-default-400 uppercase tracking-wider">Sidebar</h3>
                   <div className="bg-default-50/50 rounded-xl border border-divider p-4 space-y-2">
                     <SettingSwitch
-                      label="Trasparenza"
-                      description="Rende lo sfondo della sidebar semi-trasparente"
+                      label="Transparency"
+                      description="Makes the sidebar background semi-transparent"
                       isSelected={settings.transparency}
                       onChange={(val) => onUpdateSettings({ transparency: val })}
                     />
                     <Divider className="opacity-50" />
                     <SettingSwitch
-                      label="Sfocatura (Blur)"
-                      description="Applica un effetto vetro smerigliato (backdrop-filter)"
+                      label="Blur"
+                      description="Applies a frosted glass effect (backdrop-filter)"
                       isSelected={settings.blur}
                       onChange={(val) => onUpdateSettings({ blur: val })}
                     />
@@ -302,15 +302,15 @@ Please apply these settings to the application design.
                   <h3 className="text-xs font-semibold text-default-400 uppercase tracking-wider">Viewport</h3>
                   <div className="bg-default-50/50 rounded-xl border border-divider p-4 space-y-2">
                     <SettingSwitch
-                      label="Trasparenza Pannelli"
-                      description="Rende i pannelli di contenuto semi-trasparenti"
+                      label="Panel Transparency"
+                      description="Makes content panels semi-transparent"
                       isSelected={settings.viewportTransparency}
                       onChange={(val) => onUpdateSettings({ viewportTransparency: val })}
                     />
                     <Divider className="opacity-50" />
                     <SettingSwitch
-                      label="Sfocatura Pannelli"
-                      description="Applica un effetto vetro ai pannelli di contenuto"
+                      label="Panel Blur"
+                      description="Applies a glass effect to content panels"
                       isSelected={settings.viewportBlur}
                       onChange={(val) => onUpdateSettings({ viewportBlur: val })}
                     />
@@ -326,18 +326,18 @@ Please apply these settings to the application design.
               title={
                 <div className="flex items-center space-x-2">
                   <Layout className="w-4 h-4" />
-                  <span>Interfaccia</span>
+                  <span>Interface</span>
                 </div>
               }
             >
               <div className="flex flex-col gap-8 py-6">
-                
+
                 {/* Buttons Section */}
                 <section className="space-y-4">
-                  <h3 className="text-xs font-semibold text-default-400 uppercase tracking-wider">Stile Pulsanti</h3>
+                  <h3 className="text-xs font-semibold text-default-400 uppercase tracking-wider">Button Style</h3>
                   <div className="space-y-6">
                     <div>
-                      <span className="text-sm font-medium text-default-900 mb-3 block">Arrotondamento</span>
+                      <span className="text-sm font-medium text-default-900 mb-3 block">Radius</span>
                       <div className="flex gap-3">
                         {['4px', '8px', '12px', '999px'].map((radius) => (
                           <button
@@ -351,22 +351,22 @@ Please apply these settings to the application design.
                               }
                             `}
                           >
-                            {radius === '999px' ? 'Pillola' : radius}
+                            {radius === '999px' ? 'Pill' : radius}
                           </button>
                         ))}
                       </div>
                     </div>
 
                     <SettingSlider
-                      label="Padding Orizzontale"
+                      label="Horizontal Padding"
                       value={settings.buttonPaddingLeft}
                       min={0}
                       max={3}
                       step={0.1}
                       unit="rem"
-                      onChange={(val) => onUpdateSettings({ 
+                      onChange={(val) => onUpdateSettings({
                         buttonPaddingLeft: val,
-                        buttonPaddingRight: val 
+                        buttonPaddingRight: val
                       })}
                     />
                   </div>
@@ -376,10 +376,10 @@ Please apply these settings to the application design.
 
                 {/* Previews Section */}
                 <section className="space-y-4">
-                  <h3 className="text-xs font-semibold text-default-400 uppercase tracking-wider">Anteprime Spaces</h3>
+                  <h3 className="text-xs font-semibold text-default-400 uppercase tracking-wider">Space Previews</h3>
                   <div className="space-y-6">
-                     <div>
-                      <span className="text-sm font-medium text-default-900 mb-3 block">Arrotondamento Card</span>
+                    <div>
+                      <span className="text-sm font-medium text-default-900 mb-3 block">Card Radius</span>
                       <div className="flex gap-3">
                         {['4px', '8px', '12px', '16px'].map((radius) => (
                           <button
@@ -409,33 +409,33 @@ Please apply these settings to the application design.
               title={
                 <div className="flex items-center space-x-2">
                   <Palette className="w-4 h-4" />
-                  <span>Sfondo</span>
+                  <span>Background</span>
                 </div>
               }
             >
               <div className="flex flex-col gap-8 py-6">
-                
+
                 {/* Type Selection */}
                 <div className="bg-default-100 p-1 rounded-xl flex">
                   <button
                     className={`flex-1 py-2 rounded-lg text-sm font-medium transition-all ${settings.backgroundType === 'solid' ? 'bg-white shadow text-primary' : 'text-default-500 hover:text-default-700'}`}
                     onClick={() => onUpdateSettings({ backgroundType: 'solid' })}
                   >
-                    Tinta Unita
+                    Solid Color
                   </button>
                   <button
                     className={`flex-1 py-2 rounded-lg text-sm font-medium transition-all ${settings.backgroundType === 'gradient' ? 'bg-white shadow text-primary' : 'text-default-500 hover:text-default-700'}`}
                     onClick={() => onUpdateSettings({ backgroundType: 'gradient' })}
                   >
-                    Gradiente
+                    Gradient
                   </button>
                 </div>
 
                 {settings.backgroundType === 'solid' ? (
                   <div className="space-y-6 animate-in fade-in zoom-in-95 duration-200">
                     <section className="space-y-4">
-                       <h3 className="text-xs font-semibold text-default-400 uppercase tracking-wider">Colori Predefiniti</h3>
-                       <div className="grid grid-cols-6 gap-3">
+                      <h3 className="text-xs font-semibold text-default-400 uppercase tracking-wider">Preset Colors</h3>
+                      <div className="grid grid-cols-6 gap-3">
                         {PRESET_COLORS.map((color) => (
                           <button
                             key={color}
@@ -452,31 +452,31 @@ Please apply these settings to the application design.
                     </section>
 
                     <section className="space-y-4">
-                      <h3 className="text-xs font-semibold text-default-400 uppercase tracking-wider">Personalizza</h3>
+                      <h3 className="text-xs font-semibold text-default-400 uppercase tracking-wider">Customize</h3>
                       <div className="flex gap-4 items-center p-4 rounded-xl border border-divider bg-default-50">
-                        <div 
+                        <div
                           className="w-12 h-12 rounded-full border-2 border-white shadow-md"
                           style={{ backgroundColor: settings.backgroundColor }}
                         />
                         <div className="flex-1">
-                          <Input 
-                            type="text" 
-                            label="HEX Color" 
-                            value={settings.backgroundColor} 
+                          <Input
+                            type="text"
+                            label="HEX Color"
+                            value={settings.backgroundColor}
                             onChange={(e) => onUpdateSettings({ backgroundColor: e.target.value })}
                             size="sm"
                             variant="flat"
                           />
                         </div>
                         <div className="relative">
-                          <input 
-                            type="color" 
+                          <input
+                            type="color"
                             value={settings.backgroundColor}
                             onChange={(e) => onUpdateSettings({ backgroundColor: e.target.value })}
                             className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
                           />
                           <Button size="sm" variant="flat" isIconOnly>
-                             <Palette size={18} />
+                            <Palette size={18} />
                           </Button>
                         </div>
                       </div>
@@ -485,7 +485,7 @@ Please apply these settings to the application design.
                 ) : (
                   <div className="space-y-8 animate-in fade-in zoom-in-95 duration-200">
                     <section className="space-y-4">
-                      <h3 className="text-xs font-semibold text-default-400 uppercase tracking-wider">Gradienti Predefiniti</h3>
+                      <h3 className="text-xs font-semibold text-default-400 uppercase tracking-wider">Preset Gradients</h3>
                       <div className="grid grid-cols-2 gap-3">
                         {PRESET_GRADIENTS.map((grad) => (
                           <button
@@ -494,8 +494,8 @@ Please apply these settings to the application design.
                               h-14 rounded-xl border-2 transition-all hover:scale-[1.02] flex items-center justify-center relative overflow-hidden group
                               ${settings.gradientStart === grad.start ? 'border-primary shadow-md' : 'border-transparent'}
                             `}
-                            style={{ 
-                              background: `linear-gradient(to right, ${grad.start}, ${grad.end})` 
+                            style={{
+                              background: `linear-gradient(to right, ${grad.start}, ${grad.end})`
                             }}
                             onClick={() => onUpdateSettings({
                               gradientStart: grad.start,
@@ -509,47 +509,47 @@ Please apply these settings to the application design.
                         ))}
                       </div>
                     </section>
-                    
+
                     <section className="space-y-4">
-                      <h3 className="text-xs font-semibold text-default-400 uppercase tracking-wider">Configurazione</h3>
+                      <h3 className="text-xs font-semibold text-default-400 uppercase tracking-wider">Configuration</h3>
                       <div className="p-4 rounded-xl border border-divider bg-default-50 space-y-6">
                         <div className="flex gap-6">
-                           <div className="flex-1 space-y-2">
-                              <label className="text-xs font-medium text-default-500">Colore Iniziale</label>
-                              <div className="flex items-center gap-2">
-                                <div 
-                                  className="w-8 h-8 rounded border border-divider" 
-                                  style={{ backgroundColor: settings.gradientStart }}
-                                />
-                                <Input 
-                                  size="sm" 
-                                  value={settings.gradientStart} 
-                                  onChange={(e) => onUpdateSettings({ gradientStart: e.target.value })}
-                                  className="flex-1"
-                                />
-                              </div>
-                           </div>
-                           <div className="flex-1 space-y-2">
-                              <label className="text-xs font-medium text-default-500">Colore Finale</label>
-                              <div className="flex items-center gap-2">
-                                <div 
-                                  className="w-8 h-8 rounded border border-divider" 
-                                  style={{ backgroundColor: settings.gradientEnd }}
-                                />
-                                <Input 
-                                  size="sm" 
-                                  value={settings.gradientEnd} 
-                                  onChange={(e) => onUpdateSettings({ gradientEnd: e.target.value })}
-                                  className="flex-1"
-                                />
-                              </div>
-                           </div>
+                          <div className="flex-1 space-y-2">
+                            <label className="text-xs font-medium text-default-500">Start Color</label>
+                            <div className="flex items-center gap-2">
+                              <div
+                                className="w-8 h-8 rounded border border-divider"
+                                style={{ backgroundColor: settings.gradientStart }}
+                              />
+                              <Input
+                                size="sm"
+                                value={settings.gradientStart}
+                                onChange={(e) => onUpdateSettings({ gradientStart: e.target.value })}
+                                className="flex-1"
+                              />
+                            </div>
+                          </div>
+                          <div className="flex-1 space-y-2">
+                            <label className="text-xs font-medium text-default-500">End Color</label>
+                            <div className="flex items-center gap-2">
+                              <div
+                                className="w-8 h-8 rounded border border-divider"
+                                style={{ backgroundColor: settings.gradientEnd }}
+                              />
+                              <Input
+                                size="sm"
+                                value={settings.gradientEnd}
+                                onChange={(e) => onUpdateSettings({ gradientEnd: e.target.value })}
+                                className="flex-1"
+                              />
+                            </div>
+                          </div>
                         </div>
 
                         <Divider className="opacity-50" />
 
                         <SettingSlider
-                          label="Angolo Gradiente"
+                          label="Gradient Angle"
                           value={settings.gradientAngle}
                           min={0}
                           max={360}
@@ -583,11 +583,11 @@ Please apply these settings to the application design.
                     <div>
                       <h2 className="text-xl font-bold tracking-tight">OVFX Design System</h2>
                       <p className="text-sm text-default-500">
-                        Editor visuale del tema e dei token. Le modifiche sono applicate in tempo reale.
+                        Visual editor for themes and tokens. Changes are applied in real time.
                       </p>
                     </div>
                   </div>
-                  
+
                   <div className="flex gap-2">
                     <div className="px-2 py-1 rounded bg-primary/10 text-primary text-xs font-medium">v2.0.0</div>
                     <div className="px-2 py-1 rounded bg-default-100 text-default-600 text-xs font-medium">Hero UI</div>
@@ -600,9 +600,9 @@ Please apply these settings to the application design.
                 {/* Typography Section (Display Only as it relies on Tailwind classes) */}
                 <section className="space-y-6">
                   <div className="flex items-center gap-2">
-                    <span className="text-xs font-semibold text-default-400 uppercase tracking-wider">Tipografia</span>
+                    <span className="text-xs font-semibold text-default-400 uppercase tracking-wider">Typography</span>
                   </div>
-                  
+
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                     <div className="space-y-6">
                       <div>
@@ -645,7 +645,7 @@ Please apply these settings to the application design.
                 {/* Interactive Components Section */}
                 <section className="space-y-6">
                   <div className="flex items-center gap-2">
-                    <span className="text-xs font-semibold text-default-400 uppercase tracking-wider">Componenti & Stile</span>
+                    <span className="text-xs font-semibold text-default-400 uppercase tracking-wider">Components & Style</span>
                   </div>
 
                   <div className="grid grid-cols-1 gap-6">
@@ -653,7 +653,7 @@ Please apply these settings to the application design.
                     <Card className="bg-default-50 border-divider shadow-none">
                       <CardBody className="p-4 space-y-4">
                         <div className="flex justify-between items-center">
-                          <label className="text-sm font-medium">Arrotondamento Pulsanti</label>
+                          <label className="text-sm font-medium">Button Radius</label>
                           <span className="text-xs font-mono text-default-500">{settings.buttonBorderRadius}</span>
                         </div>
                         <div className="flex gap-2">
@@ -674,31 +674,31 @@ Please apply these settings to the application design.
                           ))}
                         </div>
                         <div className="flex flex-wrap gap-2 pt-2">
-                           <Button color="primary" size="sm">Primary</Button>
-                           <Button variant="flat" color="secondary" size="sm">Secondary</Button>
-                           <Button variant="bordered" size="sm">Outline</Button>
-                           <Button variant="ghost" size="sm">Ghost</Button>
+                          <Button color="primary" size="sm">Primary</Button>
+                          <Button variant="flat" color="secondary" size="sm">Secondary</Button>
+                          <Button variant="bordered" size="sm">Outline</Button>
+                          <Button variant="ghost" size="sm">Ghost</Button>
                         </div>
                       </CardBody>
                     </Card>
-                    
+
                     {/* Viewport Style Control */}
                     <Card className="bg-default-50 border-divider shadow-none">
                       <CardBody className="p-4 space-y-4">
-                         <div className="flex justify-between items-center">
-                          <label className="text-sm font-medium">Stile Viewport</label>
+                        <div className="flex justify-between items-center">
+                          <label className="text-sm font-medium">Viewport Style</label>
                         </div>
                         <div className="grid grid-cols-2 gap-4">
-                           <SettingSwitch
-                              label="Trasparenza"
-                              isSelected={settings.viewportTransparency}
-                              onChange={(val) => onUpdateSettings({ viewportTransparency: val })}
-                           />
-                           <SettingSwitch
-                              label="Blur"
-                              isSelected={settings.viewportBlur}
-                              onChange={(val) => onUpdateSettings({ viewportBlur: val })}
-                           />
+                          <SettingSwitch
+                            label="Transparency"
+                            isSelected={settings.viewportTransparency}
+                            onChange={(val) => onUpdateSettings({ viewportTransparency: val })}
+                          />
+                          <SettingSwitch
+                            label="Blur"
+                            isSelected={settings.viewportBlur}
+                            onChange={(val) => onUpdateSettings({ viewportBlur: val })}
+                          />
                         </div>
                         <div className={`
                           p-4 rounded-xl border border-divider transition-all
@@ -715,17 +715,17 @@ Please apply these settings to the application design.
 
                 {/* Prompt Generation */}
                 <section className="pt-2">
-                  <Button 
-                    className="w-full" 
-                    color="primary" 
+                  <Button
+                    className="w-full"
+                    color="primary"
                     size="lg"
                     startContent={<Copy size={18} />}
                     onPress={generateDesignSystemPrompt}
                   >
-                    Copia Prompt Design System
+                    Copy Design System Prompt
                   </Button>
                   <p className="text-xs text-center text-default-400 mt-2">
-                    Copia la configurazione attuale negli appunti per applicarla tramite prompt.
+                    Copy the current configuration to the clipboard to apply it via prompt.
                   </p>
                 </section>
               </div>
@@ -752,7 +752,7 @@ Please apply these settings to the application design.
                       onChange={(val) => onUpdateSettings({ showTextOutlines: val })}
                     />
                     <Divider className="opacity-50" />
-                    
+
                     <SettingSwitch
                       label="Show Padding"
                       description="Visualizes padding areas"
@@ -761,33 +761,33 @@ Please apply these settings to the application design.
                     />
                     {settings.showPadding && (
                       <div className="pl-4 pr-2 pb-3 pt-1">
-                         <div className="flex gap-4 items-center p-2 rounded-lg bg-default-100/50">
-                          <div 
+                        <div className="flex gap-4 items-center p-2 rounded-lg bg-default-100/50">
+                          <div
                             className="w-8 h-8 rounded border border-divider shadow-sm"
                             style={{ backgroundColor: settings.paddingColor }}
                           />
                           <div className="flex-1">
-                            <Input 
-                              type="text" 
-                              label="Padding Color" 
-                              value={settings.paddingColor} 
+                            <Input
+                              type="text"
+                              label="Padding Color"
+                              value={settings.paddingColor}
                               onChange={(e) => onUpdateSettings({ paddingColor: e.target.value })}
                               size="sm"
                               variant="flat"
                               classNames={{ inputWrapper: "h-8 min-h-0" }}
                             />
                           </div>
-                           <div className="relative w-8 h-8">
-                              <input 
-                                type="color" 
-                                value={settings.paddingColor}
-                                onChange={(e) => onUpdateSettings({ paddingColor: e.target.value })}
-                                className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
-                              />
-                              <Button size="sm" variant="flat" isIconOnly className="w-8 h-8 min-w-0">
-                                 <Palette size={16} />
-                              </Button>
-                            </div>
+                          <div className="relative w-8 h-8">
+                            <input
+                              type="color"
+                              value={settings.paddingColor}
+                              onChange={(e) => onUpdateSettings({ paddingColor: e.target.value })}
+                              className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                            />
+                            <Button size="sm" variant="flat" isIconOnly className="w-8 h-8 min-w-0">
+                              <Palette size={16} />
+                            </Button>
+                          </div>
                         </div>
                       </div>
                     )}
@@ -802,33 +802,33 @@ Please apply these settings to the application design.
                     />
                     {settings.showMargins && (
                       <div className="pl-4 pr-2 pb-3 pt-1">
-                         <div className="flex gap-4 items-center p-2 rounded-lg bg-default-100/50">
-                          <div 
+                        <div className="flex gap-4 items-center p-2 rounded-lg bg-default-100/50">
+                          <div
                             className="w-8 h-8 rounded border border-divider shadow-sm"
                             style={{ backgroundColor: settings.marginColor }}
                           />
                           <div className="flex-1">
-                            <Input 
-                              type="text" 
-                              label="Margin Color" 
-                              value={settings.marginColor} 
+                            <Input
+                              type="text"
+                              label="Margin Color"
+                              value={settings.marginColor}
                               onChange={(e) => onUpdateSettings({ marginColor: e.target.value })}
                               size="sm"
                               variant="flat"
                               classNames={{ inputWrapper: "h-8 min-h-0" }}
                             />
                           </div>
-                           <div className="relative w-8 h-8">
-                              <input 
-                                type="color" 
-                                value={settings.marginColor}
-                                onChange={(e) => onUpdateSettings({ marginColor: e.target.value })}
-                                className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
-                              />
-                              <Button size="sm" variant="flat" isIconOnly className="w-8 h-8 min-w-0">
-                                 <Palette size={16} />
-                              </Button>
-                            </div>
+                          <div className="relative w-8 h-8">
+                            <input
+                              type="color"
+                              value={settings.marginColor}
+                              onChange={(e) => onUpdateSettings({ marginColor: e.target.value })}
+                              className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                            />
+                            <Button size="sm" variant="flat" isIconOnly className="w-8 h-8 min-w-0">
+                              <Palette size={16} />
+                            </Button>
+                          </div>
                         </div>
                       </div>
                     )}
@@ -867,14 +867,14 @@ Please apply these settings to the application design.
                       Tree
                     </Button>
                   </div>
-                  <Button 
-                    size="sm" 
-                    color="danger" 
-                    variant="flat" 
+                  <Button
+                    size="sm"
+                    color="danger"
+                    variant="flat"
                     startContent={<RotateCcw className="w-4 h-4" />}
                     onPress={onResetSettings}
                   >
-                    Reset Totale
+                    Total Reset
                   </Button>
                 </div>
 
@@ -882,7 +882,7 @@ Please apply these settings to the application design.
                   <CardBody className="p-0">
                     <div className="h-[400px] overflow-auto p-4 font-mono text-xs text-default-300">
                       {debugMode === 'json' ? (
-                        <pre>{JSON.stringify({ 
+                        <pre>{JSON.stringify({
                           settings,
                           spacesCount: spacesState?.spaces?.length,
                           viewportRoot: viewportsState?.rootViewport?.id

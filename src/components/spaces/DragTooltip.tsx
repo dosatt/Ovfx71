@@ -8,22 +8,22 @@ export function DragTooltip({ mode }: DragTooltipProps) {
   const modeConfig = {
     link: {
       icon: Link2,
-      title: 'Collega',
-      description: 'Crea un link nell\'altro space',
+      title: 'Link',
+      description: 'Create a link in the other space',
       color: 'text-primary-500',
       bgColor: 'bg-primary-50',
     },
     duplicate: {
       icon: Copy,
-      title: 'Duplica',
-      description: 'Crea una copia indipendente',
+      title: 'Duplicate',
+      description: 'Create an independent copy',
       color: 'text-success-500',
       bgColor: 'bg-success-50',
     },
     move: {
       icon: MoveRight,
-      title: 'Sposta',
-      description: 'Rimuove dall\'originale',
+      title: 'Move',
+      description: 'Remove from original',
       color: 'text-warning-500',
       bgColor: 'bg-warning-50',
     },
@@ -63,25 +63,25 @@ export function DragTooltip({ mode }: DragTooltipProps) {
             Alt
           </code>
           <span className="text-xs text-default-500">
-            Duplica elemento
+            Duplicate element
           </span>
         </div>
-        
+
         <div className="flex items-center gap-3">
           <code className="bg-default-100 px-1.5 py-0.5 rounded text-xs min-w-[40px] text-center font-mono">
             Shift
           </code>
           <span className="text-xs text-default-500">
-            Sposta elemento
+            Move element
           </span>
         </div>
-        
+
         <div className="flex items-center gap-3">
           <code className="bg-default-100 px-1.5 py-0.5 rounded text-xs min-w-[40px] text-center font-mono">
             —
           </code>
           <span className="text-xs text-default-500">
-            Collega elemento
+            Link element
           </span>
         </div>
       </div>

@@ -54,29 +54,29 @@ export function useViewports() {
   };
 
   const splitViewport = (id: string, direction: ViewportSplit) => {
-    // Verifica se c'è spazio sufficiente per dividere
+    // Check if there is enough space to split
     const viewportElement = document.querySelector(`[data-viewport-id="${id}"]`);
     if (viewportElement) {
       const rect = viewportElement.getBoundingClientRect();
-      const minWidth = 360; // Larghezza minima per viewport
-      const minHeight = 400; // Altezza minima per viewport
-      
-      // Controlla se dopo la divisione ogni viewport sarebbe abbastanza grande
+      const minWidth = 360; // Minimum width for viewport
+      const minHeight = 400; // Minimum height for viewport
+
+      // Check if after split each viewport would be large enough
       if (direction === 'vertical') {
-        // Divisione verticale: controlla la larghezza
+        // Vertical split: check width
         if (rect.width / 2 < minWidth) {
           console.warn(`Cannot split viewport: minimum width of ${minWidth}px not met`);
           return;
         }
       } else {
-        // Divisione orizzontale: controlla l'altezza
+        // Horizontal split: check height
         if (rect.height / 2 < minHeight) {
           console.warn(`Cannot split viewport: minimum height of ${minHeight}px not met`);
           return;
         }
       }
     }
-    
+
     setRootViewport(prev => updateViewportInTree(id, (viewport) => {
       const newViewport1: Viewport = {
         ...viewport,
@@ -106,7 +106,7 @@ export function useViewports() {
     const removeViewportFromTree = (viewport: Viewport): Viewport | null => {
       if (viewport.children) {
         const [left, right] = viewport.children;
-        
+
         // If one child is the target, return the other child
         if (left.id === id) return right;
         if (right.id === id) return left;
@@ -190,7 +190,7 @@ export function useViewports() {
     setRootViewport(prev => updateViewportInTree(viewportId, (viewport) => {
       const newTabs = viewport.tabs.filter(t => t.id !== tabId);
       let newActiveTabId = viewport.activeTabId;
-      
+
       if (viewport.activeTabId === tabId && newTabs.length > 0) {
         const index = viewport.tabs.findIndex(t => t.id === tabId);
         newActiveTabId = newTabs[Math.max(0, index - 1)]?.id;
@@ -215,33 +215,33 @@ export function useViewports() {
       if (updates.spaceId !== undefined || updates.appType !== undefined) {
         const isContentChange = updates.spaceId !== tab.spaceId || updates.appType !== tab.appType;
         if (isContentChange) {
-           const history = tab.history || [];
-           const currentIndex = tab.historyIndex ?? -1;
-           
-           // Slice history if we were in the middle
-           // If history was empty/undefined, slice(0, 0) is empty array.
-           const newHistory = currentIndex >= 0 ? history.slice(0, currentIndex + 1) : [];
-           
-           // Push new state
-           newHistory.push({
-               spaceId: updatedTab.spaceId,
-               appType: updatedTab.appType,
-               title: updatedTab.title
-           });
-           
-           updatedTab.history = newHistory;
-           updatedTab.historyIndex = newHistory.length - 1;
+          const history = tab.history || [];
+          const currentIndex = tab.historyIndex ?? -1;
+
+          // Slice history if we were in the middle
+          // If history was empty/undefined, slice(0, 0) is empty array.
+          const newHistory = currentIndex >= 0 ? history.slice(0, currentIndex + 1) : [];
+
+          // Push new state
+          newHistory.push({
+            spaceId: updatedTab.spaceId,
+            appType: updatedTab.appType,
+            title: updatedTab.title
+          });
+
+          updatedTab.history = newHistory;
+          updatedTab.historyIndex = newHistory.length - 1;
         }
       }
-      
+
       // Safety: Ensure history exists
       if (!updatedTab.history || updatedTab.history.length === 0) {
-          updatedTab.history = [{
-              spaceId: updatedTab.spaceId,
-              appType: updatedTab.appType,
-              title: updatedTab.title
-          }];
-          updatedTab.historyIndex = 0;
+        updatedTab.history = [{
+          spaceId: updatedTab.spaceId,
+          appType: updatedTab.appType,
+          title: updatedTab.title
+        }];
+        updatedTab.historyIndex = 0;
       }
 
       return {
@@ -256,7 +256,7 @@ export function useViewports() {
       // Close all tabs with this spaceId
       const newTabs = viewport.tabs.filter(t => t.spaceId !== spaceId);
       let newActiveTabId = viewport.activeTabId;
-      
+
       // If active tab was removed, select another tab
       if (viewport.tabs.find(t => t.id === viewport.activeTabId)?.spaceId === spaceId) {
         newActiveTabId = newTabs[0]?.id;
@@ -308,7 +308,7 @@ export function useViewports() {
   const replaceCurrentTab = (viewportId: string, spaceId?: string, appType?: AppType, title?: string) => {
     setRootViewport(prev => updateViewportInTree(viewportId, (viewport) => {
       const currentTab = viewport.tabs.find(t => t.id === viewport.activeTabId);
-      
+
       // If current tab is empty (welcome page), replace it
       if (currentTab && !currentTab.spaceId && !currentTab.appType) {
         const updatedTab: Tab = {
@@ -317,17 +317,17 @@ export function useViewports() {
           appType,
           title: title || currentTab.title,
         };
-        
+
         // Add to history
         const history = currentTab.history || [];
         const currentIndex = currentTab.historyIndex ?? -1;
-        
+
         const newHistory = currentIndex >= 0 ? history.slice(0, currentIndex + 1) : [];
         newHistory.push({ spaceId, appType, title });
-        
+
         updatedTab.history = newHistory;
         updatedTab.historyIndex = newHistory.length - 1;
-        
+
         return {
           ...viewport,
           tabs: viewport.tabs.map(t => t.id === currentTab.id ? updatedTab : t)
@@ -355,13 +355,13 @@ export function useViewports() {
   const navigateHistory = (viewportId: string, direction: 'back' | 'forward') => {
     setRootViewport(prev => updateViewportInTree(viewportId, (viewport) => {
       if (!viewport.activeTabId) return viewport;
-      
+
       const currentTab = viewport.tabs.find(t => t.id === viewport.activeTabId);
       if (!currentTab) return viewport;
 
       const history = currentTab.history || [];
       const currentIndex = currentTab.historyIndex ?? -1;
-      
+
       let newIndex = currentIndex;
       if (direction === 'back' && currentIndex > 0) {
         newIndex = currentIndex - 1;
@@ -370,9 +370,9 @@ export function useViewports() {
       } else {
         return viewport;
       }
-      
+
       const historyItem = history[newIndex];
-      
+
       const updatedTab: Tab = {
         ...currentTab,
         spaceId: historyItem.spaceId,
@@ -380,7 +380,7 @@ export function useViewports() {
         title: historyItem.title || currentTab.title,
         historyIndex: newIndex
       };
-      
+
       return {
         ...viewport,
         tabs: viewport.tabs.map(t => t.id === currentTab.id ? updatedTab : t)
@@ -408,7 +408,7 @@ export function useViewports() {
   const moveTab = (sourceViewportId: string, targetViewportId: string, tabId: string, targetIndex: number) => {
     setRootViewport(prev => {
       let movedTab: Tab | null = null;
-      
+
       // Step 1: Find and remove the tab from source
       const removeTab = (viewport: Viewport): Viewport => {
         if (viewport.id === sourceViewportId) {
@@ -417,7 +417,7 @@ export function useViewports() {
             movedTab = viewport.tabs[tabIndex];
             const newTabs = viewport.tabs.filter(t => t.id !== tabId);
             let newActiveTabId = viewport.activeTabId;
-            
+
             if (viewport.activeTabId === tabId) {
               if (newTabs.length > 0) {
                 newActiveTabId = newTabs[Math.max(0, tabIndex - 1)].id;
@@ -425,11 +425,11 @@ export function useViewports() {
                 newActiveTabId = undefined;
               }
             }
-            
+
             return { ...viewport, tabs: newTabs, activeTabId: newActiveTabId };
           }
         }
-        
+
         if (viewport.children) {
           return {
             ...viewport,
@@ -447,7 +447,7 @@ export function useViewports() {
         if (viewport.id === targetViewportId) {
           const newTabs = [...viewport.tabs];
           newTabs.splice(targetIndex, 0, movedTab!);
-          
+
           return {
             ...viewport,
             tabs: newTabs,

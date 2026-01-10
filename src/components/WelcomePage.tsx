@@ -4,14 +4,14 @@ import {
   Card,
   CardBody
 } from '@heroui/react';
-import { 
-  FileText, 
-  Layout, 
-  Database, 
-  BarChart3, 
-  Globe, 
-  Mail, 
-  MessageSquare, 
+import {
+  FileText,
+  Layout,
+  Database,
+  BarChart3,
+  Globe,
+  Mail,
+  MessageSquare,
   Calendar,
   Clock,
   Search,
@@ -51,17 +51,17 @@ export function WelcomePage({ onCreateSpace, onOpenApp, onOpenSpace, recentSpace
   }, []);
 
   const spaces = [
-    { type: 'page' as const, icon: FileText, label: 'Page', description: 'Documento con editor di testo' },
-    { type: 'canvas' as const, icon: Layout, label: 'Canvas', description: 'Tela infinita per idee visive' },
-    { type: 'database' as const, icon: Database, label: 'Database', description: 'Tabelle e dati strutturati' },
-    { type: 'dashboard' as const, icon: BarChart3, label: 'Dashboard', description: 'Pannello di controllo' }
+    { type: 'page' as const, icon: FileText, label: 'Page', description: 'Document with text editor' },
+    { type: 'canvas' as const, icon: Layout, label: 'Canvas', description: 'Infinite canvas for visual ideas' },
+    { type: 'database' as const, icon: Database, label: 'Database', description: 'Tables and structured data' },
+    { type: 'dashboard' as const, icon: BarChart3, label: 'Dashboard', description: 'Modular control panel' }
   ];
 
   const apps = [
-    { type: 'browser' as const, icon: Globe, label: 'Browser', description: 'Naviga sul web' },
-    { type: 'mail' as const, icon: Mail, label: 'Mail', description: 'Gestisci le email' },
-    { type: 'chat' as const, icon: MessageSquare, label: 'Chat', description: 'Messaggistica istantanea' },
-    { type: 'calendar' as const, icon: Calendar, label: 'Calendar', description: 'Organizza eventi' }
+    { type: 'browser' as const, icon: Globe, label: 'Browser', description: 'Browse the web' },
+    { type: 'mail' as const, icon: Mail, label: 'Mail', description: 'Manage your emails' },
+    { type: 'chat' as const, icon: MessageSquare, label: 'Chat', description: 'Instant messaging' },
+    { type: 'calendar' as const, icon: Calendar, label: 'Calendar', description: 'Organize events' }
   ];
 
   return (
@@ -70,12 +70,12 @@ export function WelcomePage({ onCreateSpace, onOpenApp, onOpenSpace, recentSpace
         {/* Header */}
         <div className="mb-8 text-center">
           <h3 className="text-3xl font-bold mb-1">
-            Benvenuto in OVFX
+            Welcome to OVFX
           </h3>
           <p className="text-default-500 mb-6">
-            Crea un nuovo spazio o apri un'applicazione
+            Create a new space or open an application
           </p>
-          
+
           {/* Quick Search Bar */}
           <div className="max-w-md mx-auto relative group">
             <div className={`
@@ -83,10 +83,10 @@ export function WelcomePage({ onCreateSpace, onOpenApp, onOpenSpace, recentSpace
               ${searchFocused ? 'border-primary bg-background shadow-lg shadow-primary/10' : 'border-divider bg-default-50 hover:border-default-400'}
             `}>
               <Search size={18} className={searchFocused ? 'text-primary' : 'text-default-400'} />
-              <input 
+              <input
                 id="welcome-search-input"
-                type="text" 
-                placeholder="Cerca comandi o spazi..." 
+                type="text"
+                placeholder="Search for commands or spaces..."
                 className="flex-1 bg-transparent border-none outline-none text-sm"
                 onFocus={() => setSearchFocused(true)}
                 onBlur={() => setSearchFocused(false)}
@@ -101,7 +101,7 @@ export function WelcomePage({ onCreateSpace, onOpenApp, onOpenSpace, recentSpace
         {/* Spaces */}
         <div className="mb-8">
           <h4 className="text-sm font-semibold mb-4 px-2">
-            Nuovo Spazio
+            New Space
           </h4>
           <div className="grid grid-cols-[repeat(auto-fill,minmax(130px,1fr))] gap-4">
             {spaces.map(({ type, icon: Icon, label, description }) => (
@@ -132,7 +132,7 @@ export function WelcomePage({ onCreateSpace, onOpenApp, onOpenSpace, recentSpace
         {/* Apps */}
         <div className="mb-8">
           <h4 className="text-sm font-semibold mb-4 px-2">
-            Applicazioni
+            Applications
           </h4>
           <div className="grid grid-cols-[repeat(auto-fill,minmax(130px,1fr))] gap-4">
             {apps.map(({ type, icon: Icon, label, description }) => (
@@ -165,7 +165,7 @@ export function WelcomePage({ onCreateSpace, onOpenApp, onOpenSpace, recentSpace
           <div>
             <h4 className="text-sm font-semibold mb-4 px-2 flex items-center gap-2">
               <Clock size={16} />
-              Recenti
+              Recent
             </h4>
             <div className="flex flex-col gap-1">
               {recentSpaces.map((space) => (

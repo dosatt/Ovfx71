@@ -3,7 +3,7 @@ import { Input, Button } from '@heroui/react';
 import { Plus, Calendar, Search } from 'lucide-react';
 import { Space, Block } from '../../types';
 import { format } from 'date-fns';
-import { it } from 'date-fns/locale';
+import { enUS } from 'date-fns/locale';
 
 interface CalendarAutocompleteProps {
   spaces: Space[];
@@ -25,7 +25,7 @@ export function CalendarAutocomplete({
   const [selectedIndex, setSelectedIndex] = useState(0);
 
   // Extract all calendar events
-  const allEvents = spaces.flatMap(space => 
+  const allEvents = spaces.flatMap(space =>
     (space.content?.blocks || [])
       .filter((block: Block) => block.type === 'calendar')
       .map((block: Block) => ({
@@ -35,7 +35,7 @@ export function CalendarAutocomplete({
       }))
   );
 
-  const filteredEvents = allEvents.filter(event => 
+  const filteredEvents = allEvents.filter(event =>
     (event.metadata?.title || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
     (event.content || '').toLowerCase().includes(searchQuery.toLowerCase())
   );
@@ -76,7 +76,7 @@ export function CalendarAutocomplete({
           <Input
             ref={inputRef}
             size="sm"
-            placeholder="Cerca evento o crea nuovo..."
+            placeholder="Search event or create new..."
             value={searchQuery}
             onValueChange={setSearchQuery}
             startContent={<Search size={14} className="text-default-400" />}
@@ -94,13 +94,13 @@ export function CalendarAutocomplete({
               <Plus size={18} />
             </div>
             <div className="flex flex-col">
-              <span className="text-sm font-bold">Nuovo Evento</span>
-              <span className="text-[10px] text-default-400">Crea un nuovo elemento calendario</span>
+              <span className="text-sm font-bold">New Event</span>
+              <span className="text-[10px] text-default-400">Create a new calendar item</span>
             </div>
           </div>
 
           <div className="px-3 py-1 text-[10px] font-bold uppercase text-default-400 tracking-wider mt-2 mb-1">
-            Eventi Esistenti
+            Existing Events
           </div>
 
           {filteredEvents.length > 0 ? (
@@ -116,9 +116,9 @@ export function CalendarAutocomplete({
                     <Calendar size={18} />
                   </div>
                   <div className="flex flex-col min-w-0">
-                    <span className="text-sm font-medium truncate">{event.metadata?.title || 'Senza titolo'}</span>
+                    <span className="text-sm font-medium truncate">{event.metadata?.title || 'Untitled'}</span>
                     <span className="text-[10px] text-default-400 truncate">
-                      {event.metadata?.startDate ? format(new Date(event.metadata.startDate), 'd MMM yyyy', { locale: it }) : 'Nessuna data'}
+                      {event.metadata?.startDate ? format(new Date(event.metadata.startDate), 'd MMM yyyy', { locale: enUS }) : 'No date'}
                       {' • '}
                       {event.sourceSpaceTitle}
                     </span>
@@ -128,13 +128,13 @@ export function CalendarAutocomplete({
             })
           ) : (
             <div className="p-4 text-center text-xs text-default-400">
-              Nessun evento trovato
+              No events found
             </div>
           )}
         </div>
 
         <div className="p-2 bg-default-50 border-t border-divider text-[10px] text-center text-default-400">
-          ↑↓ per navigare • Enter per confermare
+          ↑↓ to navigate • Enter to confirm
         </div>
       </div>
     </>

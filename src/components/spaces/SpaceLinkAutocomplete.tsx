@@ -27,56 +27,56 @@ export function SpaceLinkAutocomplete({
   const listRef = useRef<HTMLDivElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
-  // Calcola se mostrare il menu sopra o sotto in base allo spazio disponibile
+  // Calculate whether to show the menu above or below based on available space
   const [adjustedPosition, setAdjustedPosition] = useState(position);
-  
+
   useEffect(() => {
-    // Verifica se c'è spazio sufficiente sotto
+    // Check if there is enough space below
     const menuHeight = 360; // maxHeight del menu
     const viewportHeight = window.innerHeight;
     const spaceBelow = viewportHeight - position.top;
     const spaceAbove = position.top;
-    
+
     if (spaceBelow < menuHeight && spaceAbove > spaceBelow) {
-      // Mostra sopra
+      // Show above
       setAdjustedPosition({
         top: position.top - menuHeight,
         left: position.left
       });
     } else {
-      // Mostra sotto (default)
+      // Show below (default)
       setAdjustedPosition(position);
     }
   }, [position]);
 
-  // Filtra gli spaces in base alla ricerca e ordina per ultima modifica
+  // Filter spaces based on search and sort by last modified
   const filteredSpaces = spaces
     .filter(space =>
-      space && 
-      space.title && 
+      space &&
+      space.title &&
       space.title.toLowerCase().includes(searchQuery.toLowerCase()) &&
-      space.id !== currentSpaceId // Escludi lo space corrente
+      space.id !== currentSpaceId // Exclude current space
     )
     .sort((a, b) => {
-      // Ordina per lastModified, più recenti prima
+      // Sort by lastModified, most recent first
       const dateA = a.updatedAt ? new Date(a.updatedAt).getTime() : 0;
       const dateB = b.updatedAt ? new Date(b.updatedAt).getTime() : 0;
       return dateB - dateA;
     });
 
   useEffect(() => {
-    // Focus sull'input quando il componente viene montato
+    // Focus on input when component mounts
     const timer = setTimeout(() => {
       if (inputRef.current) {
         inputRef.current.focus();
       }
     }, 50);
-    
+
     return () => clearTimeout(timer);
   }, []);
 
   useEffect(() => {
-    // Reset dell'indice selezionato quando cambiano i risultati filtrati
+    // Reset selected index when filtered results change
     if (onSelectedIndexChange) {
       onSelectedIndexChange(0);
     }
@@ -84,7 +84,7 @@ export function SpaceLinkAutocomplete({
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     console.log('Key pressed:', e.key); // Debug
-    
+
     if (e.key === 'ArrowDown') {
       e.preventDefault();
       e.stopPropagation();
@@ -114,7 +114,7 @@ export function SpaceLinkAutocomplete({
     }
   };
 
-  // Scroll automatico dell'elemento selezionato
+  // Auto scroll to selected element
   useEffect(() => {
     const selectedElement = listRef.current?.children[selectedIndex] as HTMLElement;
     if (selectedElement) {
@@ -122,7 +122,7 @@ export function SpaceLinkAutocomplete({
     }
   }, [selectedIndex]);
 
-  // Icona per ogni tipo di space
+  // Icon for each space type
   const getSpaceIcon = (space: Space) => {
     if (space.icon) return space.icon;
     switch (space.type) {
@@ -134,7 +134,7 @@ export function SpaceLinkAutocomplete({
     }
   };
 
-  // Badge per il tipo di space
+  // Badge for space type
   const getSpaceTypeBadge = (type: string) => {
     switch (type) {
       case 'page': return 'Page';
@@ -147,13 +147,13 @@ export function SpaceLinkAutocomplete({
 
   return (
     <>
-      {/* Overlay per catturare i click fuori dal menu */}
+      {/* Overlay to catch clicks outside the menu */}
       <div
         onClick={onClose}
-        onMouseDown={(e) => e.preventDefault()} // Previeni che l'overlay prenda il focus
+        onMouseDown={(e) => e.preventDefault()} // Prevent overlay from taking focus
         className="fixed inset-0 z-[9998]"
       />
-      
+
       {/* Menu autocomplete */}
       <div
         ref={containerRef}
@@ -225,7 +225,7 @@ export function SpaceLinkAutocomplete({
           )}
         </div>
 
-        {/* Footer con hint */}
+        {/* Footer with hint */}
         <div className="px-2 py-1.5 border-t border-divider bg-default-50">
           <p className="text-xs text-default-400 text-center">
             ↑↓ to navigate • Enter to select • Esc to close

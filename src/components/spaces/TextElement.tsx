@@ -74,36 +74,36 @@ import {
   TableRow,
 } from "../ui/table";
 
-// Helper components per rendering condizionale
+// Helper components for conditional rendering
 function RenderSpaceEmbed({ spaceId, spacesState, viewportsState }: any) {
   const embeddedSpace = spacesState.getSpace(spaceId);
-  
+
   if (!embeddedSpace) {
     return (
       <div className="p-4 bg-default-100 rounded-lg">
         <span className="text-small text-default-500">
-          Space non trovato
+          Space not found
         </span>
       </div>
     );
   }
-  
+
   const handleNavigate = (navigateSpaceId: string) => {
     if (!viewportsState || !viewportsState.focusedViewportId || !viewportsState.findViewport) {
       console.warn('Cannot navigate: viewportsState not available');
       return;
     }
-    
+
     const focusedViewport = viewportsState.findViewport(viewportsState.focusedViewportId);
-    
+
     if (!focusedViewport || !focusedViewport.activeTabId) {
       console.warn('Cannot navigate: no focused viewport or active tab');
       return;
     }
-    
+
     viewportsState.updateTab(focusedViewport.id, focusedViewport.activeTabId, { spaceId: navigateSpaceId });
   };
-  
+
   return (
     <SpaceEmbed
       space={embeddedSpace}
@@ -116,7 +116,7 @@ function RenderSpaceEmbed({ spaceId, spacesState, viewportsState }: any) {
 
 function RenderBlockEmbed({ blockId, sourceSpaceId, spacesState, viewportsState }: any) {
   const sourceSpace = spacesState.getSpace(sourceSpaceId);
-  
+
   if (!sourceSpace || !sourceSpace.content?.blocks) {
     return (
       <div className="p-4 bg-default-100 rounded-lg">
@@ -126,9 +126,9 @@ function RenderBlockEmbed({ blockId, sourceSpaceId, spacesState, viewportsState 
       </div>
     );
   }
-  
+
   const embeddedBlock = sourceSpace.content.blocks.find((b: Block) => b && b.id === blockId);
-  
+
   if (!embeddedBlock) {
     return (
       <div className="p-4 bg-default-100 rounded-lg">
@@ -138,23 +138,23 @@ function RenderBlockEmbed({ blockId, sourceSpaceId, spacesState, viewportsState 
       </div>
     );
   }
-  
+
   const handleNavigate = (spaceId: string) => {
     if (!viewportsState || !viewportsState.focusedViewportId || !viewportsState.findViewport) {
       console.warn('Cannot navigate: viewportsState not available');
       return;
     }
-    
+
     const focusedViewport = viewportsState.findViewport(viewportsState.focusedViewportId);
-    
+
     if (!focusedViewport || !focusedViewport.activeTabId) {
       console.warn('Cannot navigate: no focused viewport or active tab');
       return;
     }
-    
+
     viewportsState.updateTab(focusedViewport.id, focusedViewport.activeTabId, { spaceId });
   };
-  
+
   return (
     <BlockEmbed
       block={embeddedBlock}
@@ -169,9 +169,9 @@ function SimpleTableEditor({ content, onUpdate }: { content: string, onUpdate: (
   const [data, setData] = useState<{ rows: string[][] }>(() => {
     try {
       const parsed = JSON.parse(content || '{"rows":[["",""],["",""]]}');
-      return parsed.rows ? parsed : { rows: [['',''],['','']] };
+      return parsed.rows ? parsed : { rows: [['', ''], ['', '']] };
     } catch {
-      return { rows: [['',''],['','']] };
+      return { rows: [['', ''], ['', '']] };
     }
   });
 
@@ -183,7 +183,7 @@ function SimpleTableEditor({ content, onUpdate }: { content: string, onUpdate: (
     setData(newData);
     onUpdate(JSON.stringify(newData));
   };
-  
+
   const addRow = () => {
     const cols = data.rows[0]?.length || 2;
     const newRows = [...data.rows, Array(cols).fill('')];
@@ -201,30 +201,30 @@ function SimpleTableEditor({ content, onUpdate }: { content: string, onUpdate: (
 
   return (
     <div className="border rounded-md p-2 overflow-x-auto bg-default-50 mx-auto max-w-full">
-        <Table>
-            <TableBody>
-                {data.rows.map((row, i) => (
-                    <TableRow key={i}>
-                        {row.map((cell, j) => (
-                            <TableCell key={j} className="p-1 min-w-[100px]">
-                                <Input 
-                                    value={cell} 
-                                    onValueChange={(val) => updateCell(i, j, val)}
-                                    classNames={{
-                                        input: "bg-transparent",
-                                        inputWrapper: "bg-default-100 h-8 border border-default-200 hover:border-default-400 focus-within:border-primary shadow-none"
-                                    }}
-                                />
-                            </TableCell>
-                        ))}
-                    </TableRow>
-                ))}
-            </TableBody>
-        </Table>
-        <div className="flex gap-2 mt-2">
-            <Button size="sm" variant="flat" onPress={addRow} startContent={<Plus className="w-4 h-4"/>}>Row</Button>
-            <Button size="sm" variant="flat" onPress={addCol} startContent={<Plus className="w-4 h-4"/>}>Col</Button>
-        </div>
+      <Table>
+        <TableBody>
+          {data.rows.map((row, i) => (
+            <TableRow key={i}>
+              {row.map((cell, j) => (
+                <TableCell key={j} className="p-1 min-w-[100px]">
+                  <Input
+                    value={cell}
+                    onValueChange={(val) => updateCell(i, j, val)}
+                    classNames={{
+                      input: "bg-transparent",
+                      inputWrapper: "bg-default-100 h-8 border border-default-200 hover:border-default-400 focus-within:border-primary shadow-none"
+                    }}
+                  />
+                </TableCell>
+              ))}
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
+      <div className="flex gap-2 mt-2">
+        <Button size="sm" variant="flat" onPress={addRow} startContent={<Plus className="w-4 h-4" />}>Row</Button>
+        <Button size="sm" variant="flat" onPress={addCol} startContent={<Plus className="w-4 h-4" />}>Col</Button>
+      </div>
     </div>
   );
 }
@@ -334,13 +334,13 @@ export function TextElement({
   const [linkTriggerIndex, setLinkTriggerIndex] = useState<number>(-1);
   const [autocompleteMode, setAutocompleteMode] = useState<'inline' | 'pageLink' | 'spacePreview' | null>(null);
   const [autocompleteSelectedIndex, setAutocompleteSelectedIndex] = useState(0);
-  
+
   // Stati per il menu contestuale dei link
   const [showLinkContextMenu, setShowLinkContextMenu] = useState(false);
   const [linkContextMenuPosition, setLinkContextMenuPosition] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
   const [selectedLinkId, setSelectedLinkId] = useState<string>('');
   const [selectedLinkText, setSelectedLinkText] = useState<string>('');
-  
+
   // Stato per mostrare il menu di relink quando si clicca sull'icona broken
   const [showRelinkMenu, setShowRelinkMenu] = useState(false);
   const [relinkMenuPosition, setRelinkMenuPosition] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
@@ -360,14 +360,14 @@ export function TextElement({
   // Restore focus after type conversion
   useEffect(() => {
     if (shouldFocusRef.current) {
-        if (textareaRef.current) {
-            textareaRef.current.focus();
-            const len = textareaRef.current.value.length;
-            textareaRef.current.setSelectionRange(len, len);
-        } else if (contentEditableRef.current) {
-            contentEditableRef.current.focus();
-        }
-        shouldFocusRef.current = false;
+      if (textareaRef.current) {
+        textareaRef.current.focus();
+        const len = textareaRef.current.value.length;
+        textareaRef.current.setSelectionRange(len, len);
+      } else if (contentEditableRef.current) {
+        contentEditableRef.current.focus();
+      }
+      shouldFocusRef.current = false;
     }
   }, [block.type]);
 
@@ -376,18 +376,18 @@ export function TextElement({
     effectiveBlock.type === "heading2" ||
     effectiveBlock.type === "heading3" ||
     effectiveBlock.type === "heading4";
-    
+
   const space = currentSpaceId ? spacesState.getSpace(currentSpaceId) : null;
-  
+
   // Find the first header (H1-H4) in the entire page content
-  const firstHeaderInPage = space?.content?.blocks?.find((b: any) => 
+  const firstHeaderInPage = space?.content?.blocks?.find((b: any) =>
     b && ['heading1', 'heading2', 'heading3', 'heading4'].includes(b.type)
   );
   const isTargetHeader = firstHeaderInPage?.id === block.id;
   const isTitleSynced = space?.metadata?.syncTitleWithH1 !== false;
-    
+
   const isCollapsedHeader = isHeader && collapsedHeaders && collapsedHeaders.has(block.id);
-  
+
   const hidden = isBlockCollapsed
     ? isBlockCollapsed(index)
     : false;
@@ -397,7 +397,7 @@ export function TextElement({
     item: () => {
       const e = window.event as KeyboardEvent | undefined;
       let dragMode: 'link' | 'duplicate' | 'move' = 'link';
-      
+
       if (e) {
         if (e.shiftKey) {
           dragMode = 'move';
@@ -434,7 +434,7 @@ export function TextElement({
       if (dropResult?.handled && onDelete) {
         onDelete(block.id);
       }
-      
+
       if (monitor.didDrop()) {
         setJustMoved(true);
         setTimeout(() => setJustMoved(false), 700);
@@ -448,7 +448,7 @@ export function TextElement({
     accept: [ITEM_TYPE_TEXT_ELEMENT, FileItemTypes.FILE, FileItemTypes.EXTERNAL_ELEMENT],
     hover: (item: any, monitor) => {
       if (!ref.current) return;
-      
+
       const itemType = monitor.getItemType();
 
       if (itemType === ITEM_TYPE_TEXT_ELEMENT) {
@@ -497,7 +497,7 @@ export function TextElement({
           if (fileData) {
             const isImage = fileData.fileType?.startsWith('image/') || fileData.type?.startsWith('image/');
             const blockType = isImage ? 'image' : 'file';
-            
+
             const metadata = isImage ? {} : {
               fileName: fileData.fileName || fileData.name || 'File',
               fileSize: fileData.fileSize || fileData.size || 0,
@@ -511,19 +511,19 @@ export function TextElement({
 
             // Pass the data for the NEW block and also update the CURRENT block if it's just a blank line
             const isCurrentBlockEmpty = !block.content || block.content.trim() === '';
-            
+
             if (isCurrentBlockEmpty) {
               // Replace current block
-              onUpdate(block.id, { 
-                type: blockType, 
-                content, 
-                metadata: { ...block.metadata, ...metadata } 
+              onUpdate(block.id, {
+                type: blockType,
+                content,
+                metadata: { ...block.metadata, ...metadata }
               });
             } else {
               // Insert AFTER
-              handler(block.id, blockType, { 
+              handler(block.id, blockType, {
                 content,
-                metadata 
+                metadata
               });
             }
           }
@@ -565,7 +565,7 @@ export function TextElement({
     // Check if block type is allowed for shortcuts
     // Excluded: table, file, image, space link (pageLink, spaceEmbed)
     const excludedTypes = ['table', 'file', 'image', 'pageLink', 'spaceEmbed', 'blockEmbed'];
-    
+
     if (!excludedTypes.includes(block.type)) {
       // 1. Headings
       if (/^####\s/.test(newContent)) {
@@ -601,10 +601,10 @@ export function TextElement({
       if (numberedListMatch) {
         shouldFocusRef.current = true;
         const startNum = parseInt(numberedListMatch[1], 10);
-        onUpdate(block.id, { 
-          type: 'numberedList', 
+        onUpdate(block.id, {
+          type: 'numberedList',
           content: newContent.replace(/^\d+\.\s/, ''),
-          listNumber: startNum 
+          listNumber: startNum
         });
         return;
       }
@@ -626,9 +626,9 @@ export function TextElement({
       if (numberedCheckboxMatch) {
         shouldFocusRef.current = true;
         const startNum = parseInt(numberedCheckboxMatch[1], 10);
-        onUpdate(block.id, { 
-          type: 'checkboxNumberedList', 
-          content: newContent.replace(/^\d+\[\[\s/, ''), 
+        onUpdate(block.id, {
+          type: 'checkboxNumberedList',
+          content: newContent.replace(/^\d+\[\[\s/, ''),
           checked: false,
           listNumber: startNum
         });
@@ -639,9 +639,9 @@ export function TextElement({
       if (numberedCheckboxCheckedMatch) {
         shouldFocusRef.current = true;
         const startNum = parseInt(numberedCheckboxCheckedMatch[1], 10);
-        onUpdate(block.id, { 
-          type: 'checkboxNumberedList', 
-          content: newContent.replace(/^\d+\[\[\[\s/, ''), 
+        onUpdate(block.id, {
+          type: 'checkboxNumberedList',
+          content: newContent.replace(/^\d+\[\[\[\s/, ''),
           checked: true,
           listNumber: startNum
         });
@@ -652,14 +652,14 @@ export function TextElement({
       if (newContent.trim() === '___') {
         const handler = createNextBlock || onCreateNextBlock;
         if (handler) {
-            handler(block.id, 'text', { type: 'divider', content: '', metadata: { ...block.metadata, dividerVariant: 'stop' } });
+          handler(block.id, 'text', { type: 'divider', content: '', metadata: { ...block.metadata, dividerVariant: 'stop' } });
         } else {
-            onUpdate(block.id, { type: 'divider', content: '', metadata: { ...block.metadata, dividerVariant: 'stop' } });
-            if (focusBlockByIndex && totalBlocks) {
-                 if (index < totalBlocks - 1) {
-                    setTimeout(() => focusBlockByIndex(index + 1), 0);
-                 }
+          onUpdate(block.id, { type: 'divider', content: '', metadata: { ...block.metadata, dividerVariant: 'stop' } });
+          if (focusBlockByIndex && totalBlocks) {
+            if (index < totalBlocks - 1) {
+              setTimeout(() => focusBlockByIndex(index + 1), 0);
             }
+          }
         }
         return;
       }
@@ -667,37 +667,37 @@ export function TextElement({
       if (newContent.trim() === '---') {
         const handler = createNextBlock || onCreateNextBlock;
         if (handler) {
-            // Atomically update current block to divider and create new text block
-            handler(block.id, 'text', { type: 'divider', content: '', metadata: { ...block.metadata, dividerVariant: 'regular' } });
+          // Atomically update current block to divider and create new text block
+          handler(block.id, 'text', { type: 'divider', content: '', metadata: { ...block.metadata, dividerVariant: 'regular' } });
         } else {
-            // Fallback
-            onUpdate(block.id, { type: 'divider', content: '', metadata: { ...block.metadata, dividerVariant: 'regular' } });
-            if (focusBlockByIndex && totalBlocks) {
-                 if (index < totalBlocks - 1) {
-                    setTimeout(() => focusBlockByIndex(index + 1), 0);
-                 }
+          // Fallback
+          onUpdate(block.id, { type: 'divider', content: '', metadata: { ...block.metadata, dividerVariant: 'regular' } });
+          if (focusBlockByIndex && totalBlocks) {
+            if (index < totalBlocks - 1) {
+              setTimeout(() => focusBlockByIndex(index + 1), 0);
             }
+          }
         }
         return;
       }
 
       // 6. Space Preview shortcut (\\\)
       if (newContent.startsWith('\\\\\\')) {
-          setLinkTriggerIndex(0);
-          
-          // Calculate position for autocomplete
-          if (contentRef.current) {
-              const rect = contentRef.current.getBoundingClientRect();
-              setSpaceLinkPosition({
-                  top: rect.bottom + 4,
-                  left: rect.left
-              });
-          }
-          
-          setShowSpaceLinkAutocomplete(true);
-          setAutocompleteMode('spacePreview');
-          onUpdate(block.id, { content: '' });
-          return;
+        setLinkTriggerIndex(0);
+
+        // Calculate position for autocomplete
+        if (contentRef.current) {
+          const rect = contentRef.current.getBoundingClientRect();
+          setSpaceLinkPosition({
+            top: rect.bottom + 4,
+            left: rect.left
+          });
+        }
+
+        setShowSpaceLinkAutocomplete(true);
+        setAutocompleteMode('spacePreview');
+        onUpdate(block.id, { content: '' });
+        return;
       }
 
       // 7. Space Link shortcut (>>) - This is now handled inline by RichTextEditor
@@ -705,17 +705,17 @@ export function TextElement({
 
       // 8. Calendar shortcut (+++)
       if (newContent.startsWith('+++')) {
-          setLinkTriggerIndex(0);
-          if (contentRef.current) {
-              const rect = contentRef.current.getBoundingClientRect();
-              setSpaceLinkPosition({
-                  top: rect.bottom + 4,
-                  left: rect.left
-              });
-          }
-          setShowCalendarAutocomplete(true);
-          onUpdate(block.id, { content: '' });
-          return;
+        setLinkTriggerIndex(0);
+        if (contentRef.current) {
+          const rect = contentRef.current.getBoundingClientRect();
+          setSpaceLinkPosition({
+            top: rect.bottom + 4,
+            left: rect.left
+          });
+        }
+        setShowCalendarAutocomplete(true);
+        onUpdate(block.id, { content: '' });
+        return;
       }
 
       // 6. Numbered Checkbox List
@@ -724,9 +724,9 @@ export function TextElement({
       if (shortcutCheckboxMatch) {
         shouldFocusRef.current = true;
         const startNum = parseInt(shortcutCheckboxMatch[1], 10);
-        onUpdate(block.id, { 
-          type: 'checkboxNumberedList', 
-          content: newContent.replace(/^\d+\[\[\s/, ''), 
+        onUpdate(block.id, {
+          type: 'checkboxNumberedList',
+          content: newContent.replace(/^\d+\[\[\s/, ''),
           checked: false,
           listNumber: startNum
         });
@@ -737,9 +737,9 @@ export function TextElement({
       if (shortcutCheckboxCheckedMatch) {
         shouldFocusRef.current = true;
         const startNum = parseInt(shortcutCheckboxCheckedMatch[1], 10);
-        onUpdate(block.id, { 
-          type: 'checkboxNumberedList', 
-          content: newContent.replace(/^\d+\[\[\[\s/, ''), 
+        onUpdate(block.id, {
+          type: 'checkboxNumberedList',
+          content: newContent.replace(/^\d+\[\[\[\s/, ''),
           checked: true,
           listNumber: startNum
         });
@@ -776,50 +776,50 @@ export function TextElement({
 
   const handleSpaceSelected = (space: any) => {
     if (autocompleteMode === 'pageLink') {
-      onUpdate(block.id, { 
+      onUpdate(block.id, {
         type: 'pageLink',
         content: `[[${space.id}|${space.title}]]`,
-        spaceId: space.id 
+        spaceId: space.id
       });
-      
+
       setShowSpaceLinkAutocomplete(false);
       setAutocompleteMode(null);
       setLinkTriggerIndex(-1);
-      
+
       textareaRef.current?.blur();
       return;
     }
 
     if (autocompleteMode === 'spacePreview') {
-      onUpdate(block.id, { 
+      onUpdate(block.id, {
         type: 'spaceEmbed',
         spaceId: space.id,
         content: ''
       });
-      
+
       setShowSpaceLinkAutocomplete(false);
       setAutocompleteMode(null);
       setLinkTriggerIndex(-1);
-      
+
       textareaRef.current?.blur();
       return;
     }
-    
+
     // Altrimenti è un link inline normale
     const currentContent = block.content || '';
     const insertIndex = linkTriggerIndex;
-    
+
     if (insertIndex !== -1 && insertIndex <= currentContent.length) {
-        const linkText = `[[${space.id}|${space.title}]]`;
-        const newContent = currentContent.slice(0, insertIndex) + linkText + currentContent.slice(insertIndex);
-        onUpdate(block.id, { content: newContent });
-        
-        setShowSpaceLinkAutocomplete(false);
-        setAutocompleteMode(null);
-        setLinkTriggerIndex(-1);
-        
-        // Restore focus to editor
-        shouldFocusRef.current = true;
+      const linkText = `[[${space.id}|${space.title}]]`;
+      const newContent = currentContent.slice(0, insertIndex) + linkText + currentContent.slice(insertIndex);
+      onUpdate(block.id, { content: newContent });
+
+      setShowSpaceLinkAutocomplete(false);
+      setAutocompleteMode(null);
+      setLinkTriggerIndex(-1);
+
+      // Restore focus to editor
+      shouldFocusRef.current = true;
     }
   };
 
@@ -827,11 +827,11 @@ export function TextElement({
     // Inserisci un link all'evento (usando il suo ID blocco)
     const currentContent = block.content || '';
     const insertIndex = linkTriggerIndex;
-    
-    const linkText = `[[${event.id}|${event.metadata?.title || event.content || 'Evento'}]]`;
+
+    const linkText = `[[${event.id}|${event.metadata?.title || event.content || 'Event'}]]`;
     const newContent = currentContent.slice(0, insertIndex) + linkText + currentContent.slice(insertIndex);
     onUpdate(block.id, { content: newContent });
-    
+
     setShowCalendarAutocomplete(false);
     setLinkTriggerIndex(-1);
     shouldFocusRef.current = true;
@@ -839,33 +839,33 @@ export function TextElement({
 
   const handleCreateNewEvent = () => {
     setShowCalendarAutocomplete(false);
-    
+
     if (currentSpaceId) {
-       const newEventId = `block_${Date.now()}`;
-       const newEvent = {
-          id: newEventId,
-          type: 'calendar',
-          content: 'Nuovo Evento',
-          metadata: {
-             startDate: new Date().toISOString(),
-             endDate: new Date(Date.now() + 3600000).toISOString(),
-             title: 'Nuovo Evento',
-             displayMode: 'card'
-          }
-       };
-       
-       const space = spacesState.getSpace(currentSpaceId);
-       if (space) {
-          const updatedBlocks = [...(space.content?.blocks || []), newEvent];
-          spacesState.updateSpace(currentSpaceId, {
-             content: { ...space.content, blocks: updatedBlocks }
-          });
-          
-          const linkText = `[[${newEventId}|Nuovo Evento]]`;
-          const currentContent = block.content || '';
-          const newContent = currentContent.slice(0, linkTriggerIndex) + linkText + currentContent.slice(linkTriggerIndex);
-          onUpdate(block.id, { content: newContent });
-       }
+      const newEventId = `block_${Date.now()}`;
+      const newEvent = {
+        id: newEventId,
+        type: 'calendar',
+        content: 'New Event',
+        metadata: {
+          startDate: new Date().toISOString(),
+          endDate: new Date(Date.now() + 3600000).toISOString(),
+          title: 'New Event',
+          displayMode: 'card'
+        }
+      };
+
+      const space = spacesState.getSpace(currentSpaceId);
+      if (space) {
+        const updatedBlocks = [...(space.content?.blocks || []), newEvent];
+        spacesState.updateSpace(currentSpaceId, {
+          content: { ...space.content, blocks: updatedBlocks }
+        });
+
+        const linkText = `[[${newEventId}|New Event]]`;
+        const currentContent = block.content || '';
+        const newContent = currentContent.slice(0, linkTriggerIndex) + linkText + currentContent.slice(linkTriggerIndex);
+        onUpdate(block.id, { content: newContent });
+      }
     }
     setLinkTriggerIndex(-1);
     shouldFocusRef.current = true;
@@ -880,10 +880,10 @@ export function TextElement({
       if (now - lastAPressTime.current > 500) {
         aPressCount.current = 0;
       }
-      
+
       e.preventDefault();
       e.stopPropagation();
-      
+
       const newCount = aPressCount.current + 1;
       aPressCount.current = newCount;
       lastAPressTime.current = now;
@@ -933,18 +933,18 @@ export function TextElement({
 
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
-      
+
       // If current block is a list type OR HEADER and is empty, convert to text
       const typesToConvertToText = ['bulletList', 'numberedList', 'checkbox', 'checkboxNumberedList', 'heading1', 'heading2', 'heading3', 'heading4', 'math', 'callout'];
       if (typesToConvertToText.includes(block.type) && (!block.content || block.content.trim() === '')) {
         // If it's an indented list item, outdent it first before converting to text
         if (canIndent && (block.indent || 0) > 0) {
-            onUpdate(block.id, { indent: (block.indent || 0) - 1 });
-            return;
+          onUpdate(block.id, { indent: (block.indent || 0) - 1 });
+          return;
         }
 
         onConvertBlock(block.id, 'text');
-        
+
         // Use a timeout to ensure React has re-rendered the component as text
         // before attempting to focus it. We can't rely on existing refs because
         // the component structure might change (e.g. from check+input to just input).
@@ -954,7 +954,7 @@ export function TextElement({
           // Since we are inside the component instance, we can try using focusBlockByIndex 
           // if available, which searches by ID/Index.
           if (focusBlockByIndex) {
-             focusBlockByIndex(index);
+            focusBlockByIndex(index);
           }
         }, 10);
         return;
@@ -970,7 +970,7 @@ export function TextElement({
       const target = e.target as HTMLElement;
       let isAtStart = false;
       let isEmpty = false;
-      
+
       if (target.tagName === 'TEXTAREA' || target.tagName === 'INPUT') {
         const textAreaTarget = target as HTMLTextAreaElement;
         isAtStart = textAreaTarget.selectionStart === 0;
@@ -980,24 +980,24 @@ export function TextElement({
         if (selection && selection.rangeCount > 0) {
           const range = selection.getRangeAt(0);
           const root = contentEditableRef.current || target;
-          
+
           const preCaretRange = range.cloneRange();
           preCaretRange.selectNodeContents(root);
           preCaretRange.setEnd(range.endContainer, range.endOffset);
           isAtStart = preCaretRange.toString().length === 0;
-          
+
           // Use block content for emptiness check to be consistent with state
-          isEmpty = !block.content || block.content.trim() === ''; 
+          isEmpty = !block.content || block.content.trim() === '';
         }
       }
-      
+
       // Handle outdent on backspace at start
       if (isAtStart && canIndent && (block.indent || 0) > 0) {
         e.preventDefault();
         onUpdate(block.id, { indent: (block.indent || 0) - 1 });
         return;
       }
-      
+
       // Handle empty block deletion
       if (isEmpty && isAtStart && index > 0) {
         e.preventDefault();
@@ -1015,40 +1015,40 @@ export function TextElement({
 
       // Handle merge with previous block (non-empty)
       if (isAtStart && index > 0 && prevBlock) {
-         const mergeableTypes = ['text', 'heading1', 'heading2', 'heading3', 'heading4', 'bulletList', 'numberedList', 'checkbox', 'checkboxNumberedList', 'quote', 'callout'];
-         
-         if (mergeableTypes.includes(prevBlock.type) && mergeableTypes.includes(block.type)) {
-             e.preventDefault();
-             const prevContent = prevBlock.content || '';
-             const currentContent = block.content || '';
-             
-             // Update previous block with combined content
-             onUpdate(prevBlock.id, { content: prevContent + currentContent });
-             
-             // Delete current block
-             onDelete(block.id);
-             
-             // Focus previous block at the junction point
-             if (focusBlockByIndex) {
-                 focusBlockByIndex(index - 1, prevContent.length);
-             }
-         } else {
-             // If types are not mergeable, just focus the end of previous block
-             e.preventDefault();
-             if (focusBlockByIndex) {
-                 focusBlockByIndex(index - 1, 'end');
-             }
-         }
+        const mergeableTypes = ['text', 'heading1', 'heading2', 'heading3', 'heading4', 'bulletList', 'numberedList', 'checkbox', 'checkboxNumberedList', 'quote', 'callout'];
+
+        if (mergeableTypes.includes(prevBlock.type) && mergeableTypes.includes(block.type)) {
+          e.preventDefault();
+          const prevContent = prevBlock.content || '';
+          const currentContent = block.content || '';
+
+          // Update previous block with combined content
+          onUpdate(prevBlock.id, { content: prevContent + currentContent });
+
+          // Delete current block
+          onDelete(block.id);
+
+          // Focus previous block at the junction point
+          if (focusBlockByIndex) {
+            focusBlockByIndex(index - 1, prevContent.length);
+          }
+        } else {
+          // If types are not mergeable, just focus the end of previous block
+          e.preventDefault();
+          if (focusBlockByIndex) {
+            focusBlockByIndex(index - 1, 'end');
+          }
+        }
       }
     } else if (e.key === "ArrowUp") {
       // Don't intercept arrow keys when autocomplete is open
       if (showSpaceLinkAutocomplete) {
         return;
       }
-      
+
       const target = e.target as HTMLElement;
       let isAtStart = false;
-      
+
       if (target.tagName === 'TEXTAREA' || target.tagName === 'INPUT') {
         const textAreaTarget = target as HTMLTextAreaElement;
         isAtStart = textAreaTarget.selectionStart === 0;
@@ -1062,7 +1062,7 @@ export function TextElement({
           isAtStart = preCaretRange.toString().length === 0;
         }
       }
-      
+
       if (isAtStart && focusBlockByIndex) {
         e.preventDefault();
         focusBlockByIndex(index - 1);
@@ -1072,10 +1072,10 @@ export function TextElement({
       if (showSpaceLinkAutocomplete) {
         return;
       }
-      
+
       const target = e.target as HTMLElement;
       let isAtEnd = false;
-      
+
       if (target.tagName === 'TEXTAREA' || target.tagName === 'INPUT') {
         const textAreaTarget = target as HTMLTextAreaElement;
         isAtEnd = textAreaTarget.selectionStart === textAreaTarget.value.length;
@@ -1090,7 +1090,7 @@ export function TextElement({
           isAtEnd = preCaretRange.toString().length === totalLength;
         }
       }
-      
+
       if (isAtEnd && focusBlockByIndex && totalBlocks) {
         if (index < totalBlocks - 1) {
           e.preventDefault();
@@ -1122,11 +1122,11 @@ export function TextElement({
 
   const handleManualOverrideChange = (val: number | undefined) => {
     if (val !== undefined && blocks && blocks.length > 0 && blocks[0].id === block.id) {
-       blocks.slice(1).forEach(b => {
-           if (b.listNumber !== undefined) {
-               onUpdate(b.id, { listNumber: undefined });
-           }
-       });
+      blocks.slice(1).forEach(b => {
+        if (b.listNumber !== undefined) {
+          onUpdate(b.id, { listNumber: undefined });
+        }
+      });
     }
     onUpdate(block.id, { listNumber: val });
   };
@@ -1139,12 +1139,12 @@ export function TextElement({
   const getBlockMargins = () => {
     switch (effectiveBlock.type) {
       case 'heading1': return 'mt-4 mb-2';
-      case 'heading2': 
-      case 'heading3': 
+      case 'heading2':
+      case 'heading3':
       case 'heading4': return 'mt-1 mb-2';
-      case 'quote': 
-      case 'code': 
-      case 'math': 
+      case 'quote':
+      case 'code':
+      case 'math':
       case 'callout': return 'my-2';
       default: return 'my-1';
     }
@@ -1211,31 +1211,31 @@ export function TextElement({
       brokenLinksVersion={brokenLinksVersion}
       className={className || getTextAlignmentClass()}
       onTriggerSpaceLink={(position, triggerIndex) => {
-          setSpaceLinkPosition(position);
-          setLinkTriggerIndex(triggerIndex);
-          setShowSpaceLinkAutocomplete(true);
-          setAutocompleteSelectedIndex(0);
-          if (triggerIndex === 0) {
-              setAutocompleteMode('pageLink');
-          } else {
-              setAutocompleteMode('inline');
-          }
+        setSpaceLinkPosition(position);
+        setLinkTriggerIndex(triggerIndex);
+        setShowSpaceLinkAutocomplete(true);
+        setAutocompleteSelectedIndex(0);
+        if (triggerIndex === 0) {
+          setAutocompleteMode('pageLink');
+        } else {
+          setAutocompleteMode('inline');
+        }
       }}
       onTriggerCalendar={(position, triggerIndex) => {
-          setSpaceLinkPosition(position);
-          setLinkTriggerIndex(triggerIndex);
-          setShowCalendarAutocomplete(true);
+        setSpaceLinkPosition(position);
+        setLinkTriggerIndex(triggerIndex);
+        setShowCalendarAutocomplete(true);
       }}
       onLinkContextMenu={(linkId, linkText, position) => {
-          setSelectedLinkId(linkId);
-          setSelectedLinkText(linkText);
-          setLinkContextMenuPosition(position);
-          setShowLinkContextMenu(true);
+        setSelectedLinkId(linkId);
+        setSelectedLinkText(linkText);
+        setLinkContextMenuPosition(position);
+        setShowLinkContextMenu(true);
       }}
       onBrokenLinkClick={(linkId, position) => {
-          setRelinkingLinkId(linkId);
-          setRelinkMenuPosition(position);
-          setShowRelinkMenu(true);
+        setRelinkingLinkId(linkId);
+        setRelinkMenuPosition(position);
+        setShowRelinkMenu(true);
       }}
       onNavigateUp={() => focusBlockByIndex && focusBlockByIndex(index - 1)}
       onNavigateDown={() => focusBlockByIndex && focusBlockByIndex(index + 1)}
@@ -1260,584 +1260,584 @@ export function TextElement({
         )}
 
         <div
-            data-block-id={block.id}
-            style={{
-                boxShadow: settings?.showMargins ? `0 0 0 1px ${settings.marginColor}` : undefined,
-                marginLeft: `${(ALLOWED_INDENT_TYPES.includes(block.type) ? (block.indent || 0) : 0) * 24}px`
-            }}
-            className={`
+          data-block-id={block.id}
+          style={{
+            boxShadow: settings?.showMargins ? `0 0 0 1px ${settings.marginColor}` : undefined,
+            marginLeft: `${(ALLOWED_INDENT_TYPES.includes(block.type) ? (block.indent || 0) : 0) * 24}px`
+          }}
+          className={`
                 flex gap-2 items-stretch
                 ${getBlockMargins()}
                 ${settings?.showTextOutlines ? 'border border-dashed border-primary/50 rounded-sm' : ''}
             `}
         >
-      {/* Drag Handle & Context Menu */}
-      <div className="flex items-stretch gap-1 mr-0 relative w-4 shrink-0">
-        {/* Collapse Handle for Headers */}
-        {isHeader && (
-          <div
-            className={`
+          {/* Drag Handle & Context Menu */}
+          <div className="flex items-stretch gap-1 mr-0 relative w-4 shrink-0">
+            {/* Collapse Handle for Headers */}
+            {isHeader && (
+              <div
+                className={`
               absolute -left-5 top-0 bottom-0
               w-4 flex items-center justify-center rounded hover:bg-default-200 cursor-pointer transition-all
               text-default-400
               ${isCollapsedHeader ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}
             `}
-            onClick={(e) => {
-              e.stopPropagation();
-              toggleHeaderCollapse && toggleHeaderCollapse(block.id);
-            }}
-            title="Toggle Collapse"
-          >
-             {isCollapsedHeader ? (
-                <ChevronRight size={14} />
-             ) : (
-                <ChevronDown size={14} />
-             )}
-          </div>
-        )}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  toggleHeaderCollapse && toggleHeaderCollapse(block.id);
+                }}
+                title="Toggle Collapse"
+              >
+                {isCollapsedHeader ? (
+                  <ChevronRight size={14} />
+                ) : (
+                  <ChevronDown size={14} />
+                )}
+              </div>
+            )}
 
-          <div
-            ref={dragHandleRef}
-            className={`
+            <div
+              ref={dragHandleRef}
+              className={`
               ${(isMenuOpen || (effectiveBlock.type !== 'divider' && isFocused) || isSelected) ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}
               transition-all duration-200
               cursor-grab active:cursor-grabbing focus:outline-none relative flex justify-center w-4 py-[5px] rounded-sm
               ${isSelected ? 'bg-blue-50' : ''}
             `}
-            onClick={(e) => {
-               e.stopPropagation();
-               if (onToggleSelection) {
-                   onToggleSelection(block.id, e.shiftKey);
-               }
-               // Se è un click semplice (senza shift) e non era già selezionato, apriamo anche il menu
-               // Ma se è un click per aggiungere alla selezione, non apriamo il menu
-               if (!e.shiftKey) {
-                   setIsMenuOpen(true);
-               }
-            }}
-          >
-          <div className={`w-[3px] h-full rounded-full transition-colors ${isSelected ? 'bg-blue-500' : 'bg-[#6b6b6b]'} pointer-events-none`} />
-             
-             <DropdownMenu open={isMenuOpen} onOpenChange={(open) => {
+              onClick={(e) => {
+                e.stopPropagation();
+                if (onToggleSelection) {
+                  onToggleSelection(block.id, e.shiftKey);
+                }
+                // Se è un click semplice (senza shift) e non era già selezionato, apriamo anche il menu
+                // Ma se è un click per aggiungere alla selezione, non apriamo il menu
+                if (!e.shiftKey) {
+                  setIsMenuOpen(true);
+                }
+              }}
+            >
+              <div className={`w-[3px] h-full rounded-full transition-colors ${isSelected ? 'bg-blue-500' : 'bg-[#6b6b6b]'} pointer-events-none`} />
+
+              <DropdownMenu open={isMenuOpen} onOpenChange={(open) => {
                 setIsMenuOpen(open);
                 if (!open) setPreviewType(null);
-             }}>
+              }}>
                 <DropdownMenuTrigger className="absolute top-0 left-0 w-full h-6 opacity-0 pointer-events-none" />
                 <DropdownMenuContent align="start" className="w-[180px] p-2">
                   <div className="grid grid-cols-2 gap-1 mb-2">
-                  <DropdownMenuItem 
-                    onClick={() => onAddBefore && onAddBefore(block.id)}
-                    className="flex flex-col items-center justify-center w-20 h-16 p-1 cursor-pointer focus:bg-default-100 rounded-md outline-none mx-auto"
-                  >
-                     <Plus className="h-6 w-6 mb-1 text-default-500" />
-                     <span className="text-[10px] leading-tight text-center text-default-500 w-full truncate">Add Before</span>
-                  </DropdownMenuItem>
-                  
-                  <DropdownMenuItem 
-                    onClick={handleCopy}
-                    className="flex flex-col items-center justify-center w-20 h-16 p-1 cursor-pointer focus:bg-default-100 rounded-md outline-none mx-auto"
-                  >
-                    <Copy className="h-6 w-6 mb-1 text-default-500" />
-                    <span className="text-[10px] leading-tight text-center text-default-500 w-full truncate">Copy</span>
-                  </DropdownMenuItem>
-  
-                  <DropdownMenuItem 
-                    onClick={handleCut}
-                    className="flex flex-col items-center justify-center w-20 h-16 p-1 cursor-pointer focus:bg-default-100 rounded-md outline-none mx-auto"
-                  >
-                    <Scissors className="h-6 w-6 mb-1 text-default-500" />
-                    <span className="text-[10px] leading-tight text-center text-default-500 w-full truncate">Cut</span>
-                  </DropdownMenuItem>
-  
-                  <DropdownMenuItem 
-                    onClick={handlePaste}
-                    className="flex flex-col items-center justify-center w-20 h-16 p-1 cursor-pointer focus:bg-default-100 rounded-md outline-none mx-auto"
-                  >
-                    <Clipboard className="h-6 w-6 mb-1 text-default-500" />
-                    <span className="text-[10px] leading-tight text-center text-default-500 w-full truncate">Paste</span>
-                  </DropdownMenuItem>
-  
-                  <DropdownMenuItem 
-                    onClick={() => onDelete(block.id)}
-                    className="flex flex-col items-center justify-center w-20 h-16 p-1 cursor-pointer focus:bg-red-50 rounded-md outline-none group/delete col-span-2 mx-auto"
-                  >
-                    <Trash2 className="h-6 w-6 mb-1 text-red-600" />
-                    <span className="text-[10px] leading-tight text-center text-red-600 w-full truncate">Delete</span>
-                  </DropdownMenuItem>
-                </div>
+                    <DropdownMenuItem
+                      onClick={() => onAddBefore && onAddBefore(block.id)}
+                      className="flex flex-col items-center justify-center w-20 h-16 p-1 cursor-pointer focus:bg-default-100 rounded-md outline-none mx-auto"
+                    >
+                      <Plus className="h-6 w-6 mb-1 text-default-500" />
+                      <span className="text-[10px] leading-tight text-center text-default-500 w-full truncate">Add Before</span>
+                    </DropdownMenuItem>
 
-                {block.type === 'file' && (
-                  <>
-                    <DropdownMenuSeparator className="my-2" />
-                    <DropdownMenuSub>
-                      <DropdownMenuSubTrigger className="flex items-center p-2 cursor-pointer focus:bg-default-100 rounded-md outline-none">
-                        <span className="text-sm text-default-700">Options</span>
-                      </DropdownMenuSubTrigger>
-                      <DropdownMenuSubContent className="p-2 w-48">
-                        <DropdownMenuLabel className="text-xs text-default-400 font-bold uppercase tracking-wider mb-1 px-2">Layout</DropdownMenuLabel>
-                        <DropdownMenuItem onClick={() => onUpdate(block.id, { metadata: { ...block.metadata, layout: 'compact' } })} className="flex items-center gap-2 p-2 rounded-md cursor-pointer hover:bg-default-100 text-sm">
-                          <List className="w-4 h-4" /> Compact View
-                        </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => onUpdate(block.id, { metadata: { ...block.metadata, layout: 'preview' } })} className="flex items-center gap-2 p-2 rounded-md cursor-pointer hover:bg-default-100 text-sm">
-                          <LayoutGrid className="w-4 h-4" /> Preview
-                        </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => onUpdate(block.id, { metadata: { ...block.metadata, layout: 'collection' } })} className="flex items-center gap-2 p-2 rounded-md cursor-pointer hover:bg-default-100 text-sm">
-                          <Library className="w-4 h-4" /> Collection View
-                        </DropdownMenuItem>
-                      </DropdownMenuSubContent>
-                    </DropdownMenuSub>
-                  </>
-                )}
+                    <DropdownMenuItem
+                      onClick={handleCopy}
+                      className="flex flex-col items-center justify-center w-20 h-16 p-1 cursor-pointer focus:bg-default-100 rounded-md outline-none mx-auto"
+                    >
+                      <Copy className="h-6 w-6 mb-1 text-default-500" />
+                      <span className="text-[10px] leading-tight text-center text-default-500 w-full truncate">Copy</span>
+                    </DropdownMenuItem>
 
-                {(effectiveBlock.type === 'numberedList' || effectiveBlock.type === 'checkboxNumberedList') && (
-                  <>
-                    <DropdownMenuSeparator className="my-2" />
-                    <DropdownMenuSub>
-                      <DropdownMenuSubTrigger className="flex items-center p-2 cursor-pointer focus:bg-default-100 rounded-md outline-none">
-                        <ListOrdered className="mr-2 h-4 w-4" />
-                        <span className="text-sm text-default-700">Start from...</span>
-                      </DropdownMenuSubTrigger>
-                      <DropdownMenuSubContent className="p-2 w-52">
-                         <div className="flex items-center justify-between mb-2 px-1">
+                    <DropdownMenuItem
+                      onClick={handleCut}
+                      className="flex flex-col items-center justify-center w-20 h-16 p-1 cursor-pointer focus:bg-default-100 rounded-md outline-none mx-auto"
+                    >
+                      <Scissors className="h-6 w-6 mb-1 text-default-500" />
+                      <span className="text-[10px] leading-tight text-center text-default-500 w-full truncate">Cut</span>
+                    </DropdownMenuItem>
+
+                    <DropdownMenuItem
+                      onClick={handlePaste}
+                      className="flex flex-col items-center justify-center w-20 h-16 p-1 cursor-pointer focus:bg-default-100 rounded-md outline-none mx-auto"
+                    >
+                      <Clipboard className="h-6 w-6 mb-1 text-default-500" />
+                      <span className="text-[10px] leading-tight text-center text-default-500 w-full truncate">Paste</span>
+                    </DropdownMenuItem>
+
+                    <DropdownMenuItem
+                      onClick={() => onDelete(block.id)}
+                      className="flex flex-col items-center justify-center w-20 h-16 p-1 cursor-pointer focus:bg-red-50 rounded-md outline-none group/delete col-span-2 mx-auto"
+                    >
+                      <Trash2 className="h-6 w-6 mb-1 text-red-600" />
+                      <span className="text-[10px] leading-tight text-center text-red-600 w-full truncate">Delete</span>
+                    </DropdownMenuItem>
+                  </div>
+
+                  {block.type === 'file' && (
+                    <>
+                      <DropdownMenuSeparator className="my-2" />
+                      <DropdownMenuSub>
+                        <DropdownMenuSubTrigger className="flex items-center p-2 cursor-pointer focus:bg-default-100 rounded-md outline-none">
+                          <span className="text-sm text-default-700">Options</span>
+                        </DropdownMenuSubTrigger>
+                        <DropdownMenuSubContent className="p-2 w-48">
+                          <DropdownMenuLabel className="text-xs text-default-400 font-bold uppercase tracking-wider mb-1 px-2">Layout</DropdownMenuLabel>
+                          <DropdownMenuItem onClick={() => onUpdate(block.id, { metadata: { ...block.metadata, layout: 'compact' } })} className="flex items-center gap-2 p-2 rounded-md cursor-pointer hover:bg-default-100 text-sm">
+                            <List className="w-4 h-4" /> Compact View
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => onUpdate(block.id, { metadata: { ...block.metadata, layout: 'preview' } })} className="flex items-center gap-2 p-2 rounded-md cursor-pointer hover:bg-default-100 text-sm">
+                            <LayoutGrid className="w-4 h-4" /> Preview
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => onUpdate(block.id, { metadata: { ...block.metadata, layout: 'collection' } })} className="flex items-center gap-2 p-2 rounded-md cursor-pointer hover:bg-default-100 text-sm">
+                            <Library className="w-4 h-4" /> Collection View
+                          </DropdownMenuItem>
+                        </DropdownMenuSubContent>
+                      </DropdownMenuSub>
+                    </>
+                  )}
+
+                  {(effectiveBlock.type === 'numberedList' || effectiveBlock.type === 'checkboxNumberedList') && (
+                    <>
+                      <DropdownMenuSeparator className="my-2" />
+                      <DropdownMenuSub>
+                        <DropdownMenuSubTrigger className="flex items-center p-2 cursor-pointer focus:bg-default-100 rounded-md outline-none">
+                          <ListOrdered className="mr-2 h-4 w-4" />
+                          <span className="text-sm text-default-700">Start from...</span>
+                        </DropdownMenuSubTrigger>
+                        <DropdownMenuSubContent className="p-2 w-52">
+                          <div className="flex items-center justify-between mb-2 px-1">
                             <span className="text-sm text-default-600">Manual Override</span>
-                            <Switch 
-                               checked={block.listNumber !== undefined}
-                               onCheckedChange={(checked) => {
-                                  handleManualOverrideChange(checked ? (listNumber || 1) : undefined);
-                                  if (!checked) setIsMenuOpen(false);
-                               }}
-                               className="scale-75" 
+                            <Switch
+                              checked={block.listNumber !== undefined}
+                              onCheckedChange={(checked) => {
+                                handleManualOverrideChange(checked ? (listNumber || 1) : undefined);
+                                if (!checked) setIsMenuOpen(false);
+                              }}
+                              className="scale-75"
                             />
-                         </div>
-                         {block.listNumber !== undefined && (
-                           <>
-                             <div className="flex items-center gap-2 mt-2">
+                          </div>
+                          {block.listNumber !== undefined && (
+                            <>
+                              <div className="flex items-center gap-2 mt-2">
                                 <span className="text-sm text-default-500 w-12">Value:</span>
-                                <Input 
-                                   autoFocus
-                                   type="number" 
-                                   defaultValue={block.listNumber.toString()} 
-                                   size="sm"
-                                   className="h-8"
-                                   onKeyDown={(e) => {
-                                      if (e.key === 'Enter') {
-                                         const val = parseInt(e.currentTarget.value, 10);
-                                         if (!isNaN(val)) {
-                                            handleManualOverrideChange(val);
-                                            setIsMenuOpen(false); 
-                                         }
+                                <Input
+                                  autoFocus
+                                  type="number"
+                                  defaultValue={block.listNumber.toString()}
+                                  size="sm"
+                                  className="h-8"
+                                  onKeyDown={(e) => {
+                                    if (e.key === 'Enter') {
+                                      const val = parseInt(e.currentTarget.value, 10);
+                                      if (!isNaN(val)) {
+                                        handleManualOverrideChange(val);
+                                        setIsMenuOpen(false);
                                       }
-                                   }}
-                                   onClick={(e) => e.stopPropagation()} 
+                                    }
+                                  }}
+                                  onClick={(e) => e.stopPropagation()}
                                 />
-                             </div>
-                             <div className="text-[10px] text-default-400 mt-1 px-1">Press Enter to apply. Supports negative.</div>
-                           </>
-                         )}
-                      </DropdownMenuSubContent>
-                    </DropdownMenuSub>
-                  </>
-                )}
+                              </div>
+                              <div className="text-[10px] text-default-400 mt-1 px-1">Press Enter to apply. Supports negative.</div>
+                            </>
+                          )}
+                        </DropdownMenuSubContent>
+                      </DropdownMenuSub>
+                    </>
+                  )}
 
-                {effectiveBlock.type === 'divider' && (
-                  <>
-                    <DropdownMenuSeparator className="my-2" />
-                    <DropdownMenuLabel className="text-[10px] text-default-400 uppercase font-bold px-2 mb-1">Divider Type</DropdownMenuLabel>
-                    <DropdownMenuItem 
-                       className={`flex items-center p-2 cursor-pointer focus:bg-default-100 rounded-md outline-none ${block.metadata?.dividerVariant === 'regular' || !block.metadata?.dividerVariant ? 'bg-default-50' : ''}`}
-                       onClick={(e) => {
+                  {effectiveBlock.type === 'divider' && (
+                    <>
+                      <DropdownMenuSeparator className="my-2" />
+                      <DropdownMenuLabel className="text-[10px] text-default-400 uppercase font-bold px-2 mb-1">Divider Type</DropdownMenuLabel>
+                      <DropdownMenuItem
+                        className={`flex items-center p-2 cursor-pointer focus:bg-default-100 rounded-md outline-none ${block.metadata?.dividerVariant === 'regular' || !block.metadata?.dividerVariant ? 'bg-default-50' : ''}`}
+                        onClick={(e) => {
                           e.stopPropagation();
                           onUpdate(block.id, { metadata: { ...block.metadata, dividerVariant: 'regular' } });
                           setIsMenuOpen(false);
-                       }}
-                     >
+                        }}
+                      >
                         <Minus className="mr-2 h-4 w-4" />
                         <span className="text-sm text-default-700">Regular Divider</span>
-                     </DropdownMenuItem>
-                     <DropdownMenuItem 
-                       className={`flex items-center p-2 cursor-pointer focus:bg-default-100 rounded-md outline-none ${block.metadata?.dividerVariant === 'stop' ? 'bg-default-50' : ''}`}
-                       onClick={(e) => {
+                      </DropdownMenuItem>
+                      <DropdownMenuItem
+                        className={`flex items-center p-2 cursor-pointer focus:bg-default-100 rounded-md outline-none ${block.metadata?.dividerVariant === 'stop' ? 'bg-default-50' : ''}`}
+                        onClick={(e) => {
                           e.stopPropagation();
                           onUpdate(block.id, { metadata: { ...block.metadata, dividerVariant: 'stop' } });
                           setIsMenuOpen(false);
-                       }}
-                     >
+                        }}
+                      >
                         <AlertCircle className="mr-2 h-4 w-4" />
                         <span className="text-sm text-default-700">Stop Divider</span>
-                     </DropdownMenuItem>
-                  </>
-                )}
-  
-                {(isHeader || effectiveBlock.type === 'text') && (
-                <>
+                      </DropdownMenuItem>
+                    </>
+                  )}
+
+                  {(isHeader || effectiveBlock.type === 'text') && (
+                    <>
+                      <DropdownMenuSeparator className="my-2" />
+                      <DropdownMenuSub>
+                        <DropdownMenuSubTrigger>
+                          <Palette className="mr-2 h-4 w-4" />
+                          <span>Appearance</span>
+                        </DropdownMenuSubTrigger>
+                        <DropdownMenuSubContent className="w-[160px] p-1">
+                          <DropdownMenuItem
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setIsMenuOpen(false);
+                              onUpdate(block.id, { align: 'left' });
+                            }}
+                            className={`flex items-center p-2 cursor-pointer focus:bg-default-100 rounded-md outline-none ${block.align === 'left' ? 'bg-default-100' : ''}`}
+                          >
+                            <AlignLeft className="mr-2 h-4 w-4 text-default-500" />
+                            <span className="text-sm text-default-700">Left</span>
+                          </DropdownMenuItem>
+
+                          <DropdownMenuItem
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setIsMenuOpen(false);
+                              onUpdate(block.id, { align: 'center' });
+                            }}
+                            className={`flex items-center p-2 cursor-pointer focus:bg-default-100 rounded-md outline-none ${block.align === 'center' ? 'bg-default-100' : ''}`}
+                          >
+                            <AlignCenter className="mr-2 h-4 w-4 text-default-500" />
+                            <span className="text-sm text-default-700">Center</span>
+                          </DropdownMenuItem>
+
+                          <DropdownMenuItem
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setIsMenuOpen(false);
+                              onUpdate(block.id, { align: 'right' });
+                            }}
+                            className={`flex items-center p-2 cursor-pointer focus:bg-default-100 rounded-md outline-none ${block.align === 'right' ? 'bg-default-100' : ''}`}
+                          >
+                            <AlignRight className="mr-2 h-4 w-4 text-default-500" />
+                            <span className="text-sm text-default-700">Right</span>
+                          </DropdownMenuItem>
+                        </DropdownMenuSubContent>
+                      </DropdownMenuSub>
+                    </>
+                  )}
+
                   <DropdownMenuSeparator className="my-2" />
+
                   <DropdownMenuSub>
-                    <DropdownMenuSubTrigger>
-                      <Palette className="mr-2 h-4 w-4" />
-                      <span>Appearance</span>
+                    <DropdownMenuSubTrigger onDoubleClick={(e) => { e.stopPropagation(); e.preventDefault(); }}>
+                      <Type className="mr-2 h-4 w-4" />
+                      <span>Convert to...</span>
                     </DropdownMenuSubTrigger>
-                    <DropdownMenuSubContent className="w-[160px] p-1">
-                        <DropdownMenuItem 
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setIsMenuOpen(false);
-                            onUpdate(block.id, { align: 'left' });
-                          }}
-                          className={`flex items-center p-2 cursor-pointer focus:bg-default-100 rounded-md outline-none ${block.align === 'left' ? 'bg-default-100' : ''}`}
-                        >
-                          <AlignLeft className="mr-2 h-4 w-4 text-default-500" />
-                          <span className="text-sm text-default-700">Left</span>
-                        </DropdownMenuItem>
-                        
-                        <DropdownMenuItem 
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setIsMenuOpen(false);
-                            onUpdate(block.id, { align: 'center' });
-                          }}
-                          className={`flex items-center p-2 cursor-pointer focus:bg-default-100 rounded-md outline-none ${block.align === 'center' ? 'bg-default-100' : ''}`}
-                        >
-                          <AlignCenter className="mr-2 h-4 w-4 text-default-500" />
-                          <span className="text-sm text-default-700">Center</span>
-                        </DropdownMenuItem>
-                        
-                        <DropdownMenuItem 
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setIsMenuOpen(false);
-                            onUpdate(block.id, { align: 'right' });
-                          }}
-                          className={`flex items-center p-2 cursor-pointer focus:bg-default-100 rounded-md outline-none ${block.align === 'right' ? 'bg-default-100' : ''}`}
-                        >
-                          <AlignRight className="mr-2 h-4 w-4 text-default-500" />
-                          <span className="text-sm text-default-700">Right</span>
-                        </DropdownMenuItem>
+                    <DropdownMenuSubContent className="w-[160px] p-1 overflow-y-auto max-h-[300px]">
+                      {orderedBlockTypes.map(type => {
+                        const Icon = blockTypeConfig[type]?.icon || Type;
+                        const isCurrent = type === block.type;
+                        return (
+                          <DropdownMenuItem
+                            key={type}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setPreviewType(null);
+                              setIsMenuOpen(false);
+                              if (type !== block.type) {
+                                if (type === 'spaceEmbed') {
+                                  setShowSpaceLinkAutocomplete(true);
+                                  setAutocompleteMode('spacePreview');
+                                  setLinkTriggerIndex(0);
+
+                                  if (dragHandleRef.current) {
+                                    const rect = dragHandleRef.current.getBoundingClientRect();
+                                    setSpaceLinkPosition({
+                                      top: rect.bottom + 4,
+                                      left: rect.left
+                                    });
+                                  }
+                                } else {
+                                  onConvertBlock(block.id, type as BlockType);
+                                }
+                              }
+                            }}
+                            className={`flex items-center p-2 cursor-pointer focus:bg-default-100 rounded-md outline-none ${isCurrent ? 'italic font-bold bg-default-50' : ''}`}
+                          >
+                            <Icon className="mr-2 h-4 w-4 text-default-500" />
+                            <span className={`text-sm text-default-700 ${isCurrent ? 'italic font-bold' : ''}`}>{blockTypeConfig[type]?.label}</span>
+                          </DropdownMenuItem>
+                        );
+                      })}
                     </DropdownMenuSubContent>
                   </DropdownMenuSub>
-                </>
-              )}
-
-              <DropdownMenuSeparator className="my-2" />
-              
-              <DropdownMenuSub>
-                <DropdownMenuSubTrigger onDoubleClick={(e) => { e.stopPropagation(); e.preventDefault(); }}>
-                  <Type className="mr-2 h-4 w-4" />
-                  <span>Convert to...</span>
-                </DropdownMenuSubTrigger>
-                <DropdownMenuSubContent className="w-[160px] p-1 overflow-y-auto max-h-[300px]">
-                    {orderedBlockTypes.map(type => {
-                      const Icon = blockTypeConfig[type]?.icon || Type;
-                      const isCurrent = type === block.type;
-                      return (
-                        <DropdownMenuItem 
-                          key={type}
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setPreviewType(null);
-                            setIsMenuOpen(false);
-                            if (type !== block.type) {
-                               if (type === 'spaceEmbed') {
-                                   setShowSpaceLinkAutocomplete(true);
-                                   setAutocompleteMode('spacePreview');
-                                   setLinkTriggerIndex(0);
-                                   
-                                   if (dragHandleRef.current) {
-                                       const rect = dragHandleRef.current.getBoundingClientRect();
-                                       setSpaceLinkPosition({
-                                           top: rect.bottom + 4,
-                                           left: rect.left
-                                       });
-                                   }
-                               } else {
-                                   onConvertBlock(block.id, type as BlockType);
-                               }
-                            }
-                          }}
-                          className={`flex items-center p-2 cursor-pointer focus:bg-default-100 rounded-md outline-none ${isCurrent ? 'italic font-bold bg-default-50' : ''}`}
-                        >
-                          <Icon className="mr-2 h-4 w-4 text-default-500" />
-                          <span className={`text-sm text-default-700 ${isCurrent ? 'italic font-bold' : ''}`}>{blockTypeConfig[type]?.label}</span>
-                        </DropdownMenuItem>
-                      );
-                    })}
-                </DropdownMenuSubContent>
-              </DropdownMenuSub>
-            </DropdownMenuContent>
-         </DropdownMenu>
-      </div>
-      </div>
-
-      {/* Content */}
-      <div 
-        ref={contentRef}
-        className={`flex-1 min-w-0 relative ${getBlockStyles()}`}
-        style={{
-          backgroundColor: settings?.showPadding ? (settings.paddingColor + '33') : undefined
-        }}
-        onDoubleClick={(e) => {
-          if (isHeader && toggleHeaderCollapse) {
-            e.stopPropagation();
-            toggleHeaderCollapse(block.id);
-          }
-        }}
-      >
-        {/* Sync Button for the first header in the page */}
-        {isTargetHeader && (
-          <div className="absolute -right-10 top-1/2 -translate-y-1/2 z-10 opacity-0 group-hover:opacity-100 transition-opacity">
-            <Tooltip content={isTitleSynced ? "Unsync title" : "Sync title with header"}>
-              <Button
-                isIconOnly
-                size="sm"
-                variant="light"
-                onClick={handleToggleSync}
-                className={`min-w-0 w-8 h-8 ${isTitleSynced ? 'text-primary' : 'text-default-400'}`}
-              >
-                {isTitleSynced ? <LinkIcon size={14} /> : <Link2Off size={14} />}
-              </Button>
-            </Tooltip>
-          </div>
-        )}
-
-        {effectiveBlock.type === 'text' ? (
-           <div className="flex items-start gap-2 w-full group/text relative">
-            <div className="flex-1 min-w-0 relative">
-              {renderRichText(" ", getTextAlignmentClass())}
-              
-              {/* Custom Placeholder and Insert Button */}
-              {!block.content && (isFocused || isDropdownOpen) && (
-                <div className={`absolute top-0 left-0 w-full h-full pointer-events-none flex items-baseline pb-1 select-none px-0 ${block.align === 'center' ? 'justify-center' : block.align === 'right' ? 'justify-end' : 'justify-start'}`}>
-                  <span className="text-default-400 opacity-50 font-normal leading-[1.2]">{activeConfig.placeholder || "Type something"}</span>
-                  <div className="pointer-events-auto flex items-baseline ml-2">
-                     <span className="text-default-300 mr-2 font-normal">or</span>
-                     <DropdownMenu onOpenChange={setIsDropdownOpen}>
-                        <DropdownMenuTrigger asChild>
-                           <button
-                              className="bg-neutral-200 hover:bg-neutral-300 cursor-pointer border-none rounded-full px-3 py-1 flex items-center gap-1 leading-none text-neutral-600 font-normal text-[14px] transition-colors"
-                           >
-                              add an element <ChevronDown className="h-3 w-3" />
-                           </button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent 
-                          align="start" 
-                          side="bottom"
-                          sideOffset={5}
-                          className="z-[2000]"
-                          onCloseAutoFocus={(e) => {
-                            e.preventDefault();
-                            if (contentEditableRef.current) {
-                                contentEditableRef.current.focus();
-                            } else if (textareaRef.current) {
-                                textareaRef.current.focus();
-                            }
-                          }}
-                        >
-                           <DropdownMenuLabel>Insert Element</DropdownMenuLabel>
-                           <DropdownMenuSeparator />
-                           {orderedBlockTypes.map(type => {
-                              const Icon = blockTypeConfig[type]?.icon || Type;
-                              return (
-                                 <DropdownMenuItem 
-                                    key={type}
-                                    onSelect={() => {
-                                        if (type === 'spaceEmbed') {
-                                            setShowSpaceLinkAutocomplete(true);
-                                            setAutocompleteMode('spacePreview');
-                                            setLinkTriggerIndex(0);
-                                            
-                                            // Fallback position if chip is used
-                                            if (contentRef.current) {
-                                                const rect = contentRef.current.getBoundingClientRect();
-                                                setSpaceLinkPosition({
-                                                    top: rect.bottom + 4,
-                                                    left: rect.left
-                                                });
-                                            }
-                                        } else {
-                                            onConvertBlock(block.id, type as BlockType);
-                                        }
-                                    }}
-                                    onMouseEnter={() => setPreviewType(type as BlockType)}
-                                    onMouseLeave={() => setPreviewType(null)}
-                                 >
-                                    <Icon className="mr-2 h-4 w-4" />
-                                    <span>{blockTypeConfig[type]?.label}</span>
-                                 </DropdownMenuItem>
-                              );
-                           })}
-                        </DropdownMenuContent>
-                     </DropdownMenu>
-                  </div>
-                </div>
-              )}
+                </DropdownMenuContent>
+              </DropdownMenu>
             </div>
           </div>
-        ) : effectiveBlock.type === 'checkbox' ? (
-          <div className="flex gap-2 items-start">
-            <Checkbox 
-              checked={block.checked} 
-              onCheckedChange={(checked) => onUpdate(block.id, { checked: checked === true })}
-              className="mt-1"
-            />
-            {renderRichText(activeConfig.placeholder, `min-h-[24px] outline-none text-base w-full ${block.checked ? 'line-through text-default-400' : ''}`)}
-          </div>
-        ) : effectiveBlock.type === 'divider' ? (
-          <div className="py-2 group/divider relative select-none">
-            {block.metadata?.dividerVariant === 'stop' ? (
-              <hr className="border-t-[3px] border-default-600 w-full my-2" />
-            ) : (
-              <hr className="border-t-2 border-default-300 w-full my-2" />
-            )}
-          </div>
-        ) : effectiveBlock.type === 'bulletList' ? (
-          <div className="flex gap-2 items-start">
-             <div className="min-w-[24px] h-[24px] shrink-0 flex items-center justify-center">
-               <span className="text-3xl leading-none mt-[-2px]">•</span>
-             </div>
-             {renderRichText(activeConfig.placeholder, "min-h-[24px] outline-none text-base w-full")}
-          </div>
-        ) : effectiveBlock.type === 'checkboxNumberedList' ? (
-          <div className="flex gap-2 items-start">
-             <span className="font-medium min-w-[24px] shrink-0 text-right tabular-nums">{listNumber !== undefined ? listNumber + '.' : '1.'}</span>
-            <Checkbox 
-              checked={block.checked} 
-              onCheckedChange={(checked) => onUpdate(block.id, { checked: checked === true })}
-              className="mt-1"
-            />
-            {renderRichText(activeConfig.placeholder, `min-h-[24px] outline-none text-base w-full ${block.checked ? 'line-through text-default-400' : ''}`)}
-          </div>
-        ) : effectiveBlock.type === 'table' ? (
-           <SimpleTableEditor 
-             content={block.content} 
-             onUpdate={(content) => onUpdate(block.id, { content })} 
-           />
-        ) : effectiveBlock.type === 'numberedList' ? (
-          <div className="flex gap-2 items-start">
-            <span className="font-medium min-w-[24px] shrink-0 text-right tabular-nums">{listNumber !== undefined ? listNumber + '.' : '1.'}</span>
-            {renderRichText(activeConfig.placeholder, "min-h-[24px] outline-none text-base w-full")}
-          </div>
-        ) : effectiveBlock.type === 'image' ? (
-          <div className="flex flex-col gap-2">
-            {block.content ? (
-              <img 
-                src={block.content} 
-                alt="Block content" 
-                className="max-w-full rounded-lg border border-divider"
-              />
-            ) : (
-              <div className="p-8 bg-default-50 border-2 border-dashed border-default-200 rounded-lg flex items-center justify-center text-default-400">
-                <ImageIcon size={24} className="mr-2" />
-                <span>Add an image URL</span>
+
+          {/* Content */}
+          <div
+            ref={contentRef}
+            className={`flex-1 min-w-0 relative ${getBlockStyles()}`}
+            style={{
+              backgroundColor: settings?.showPadding ? (settings.paddingColor + '33') : undefined
+            }}
+            onDoubleClick={(e) => {
+              if (isHeader && toggleHeaderCollapse) {
+                e.stopPropagation();
+                toggleHeaderCollapse(block.id);
+              }
+            }}
+          >
+            {/* Sync Button for the first header in the page */}
+            {isTargetHeader && (
+              <div className="absolute -right-10 top-1/2 -translate-y-1/2 z-10 opacity-0 group-hover:opacity-100 transition-opacity">
+                <Tooltip content={isTitleSynced ? "Unsync title" : "Sync title with header"}>
+                  <Button
+                    isIconOnly
+                    size="sm"
+                    variant="light"
+                    onClick={handleToggleSync}
+                    className={`min-w-0 w-8 h-8 ${isTitleSynced ? 'text-primary' : 'text-default-400'}`}
+                  >
+                    {isTitleSynced ? <LinkIcon size={14} /> : <Link2Off size={14} />}
+                  </Button>
+                </Tooltip>
               </div>
             )}
-            <Input
-              value={block.content}
-              onValueChange={(content) => onUpdate(block.id, { content })}
-              onFocus={() => setIsFocused(true)}
-              onBlur={() => setIsFocused(false)}
-              placeholder="Image URL"
-              size="sm"
-              variant="flat"
-            />
-          </div>
-        ) : effectiveBlock.type === 'calendar' ? (
-           <div className="w-full">
-              <CalendarElement 
-                className="w-full"
-                data={{
-                  startDate: block.metadata?.startDate || new Date().toISOString(),
-                  endDate: block.metadata?.endDate || new Date(Date.now() + 3600000).toISOString(),
-                  recurrence: block.metadata?.recurrence || 'none',
-                  notes: block.metadata?.notes,
-                  completed: block.metadata?.completed,
-                  attachments: block.metadata?.attachments,
-                  displayMode: block.metadata?.displayMode || 'card'
-                }}
-                onUpdate={(updates) => onUpdate(block.id, { metadata: { ...block.metadata, ...updates } })}
-                spacesState={spacesState}
-                isReadOnly={false}
+
+            {effectiveBlock.type === 'text' ? (
+              <div className="flex items-start gap-2 w-full group/text relative">
+                <div className="flex-1 min-w-0 relative">
+                  {renderRichText(" ", getTextAlignmentClass())}
+
+                  {/* Custom Placeholder and Insert Button */}
+                  {!block.content && (isFocused || isDropdownOpen) && (
+                    <div className={`absolute top-0 left-0 w-full h-full pointer-events-none flex items-baseline pb-1 select-none px-0 ${block.align === 'center' ? 'justify-center' : block.align === 'right' ? 'justify-end' : 'justify-start'}`}>
+                      <span className="text-default-400 opacity-50 font-normal leading-[1.2]">{activeConfig.placeholder || "Type something"}</span>
+                      <div className="pointer-events-auto flex items-baseline ml-2">
+                        <span className="text-default-300 mr-2 font-normal">or</span>
+                        <DropdownMenu onOpenChange={setIsDropdownOpen}>
+                          <DropdownMenuTrigger asChild>
+                            <button
+                              className="bg-neutral-200 hover:bg-neutral-300 cursor-pointer border-none rounded-full px-3 py-1 flex items-center gap-1 leading-none text-neutral-600 font-normal text-[14px] transition-colors"
+                            >
+                              add an element <ChevronDown className="h-3 w-3" />
+                            </button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent
+                            align="start"
+                            side="bottom"
+                            sideOffset={5}
+                            className="z-[2000]"
+                            onCloseAutoFocus={(e) => {
+                              e.preventDefault();
+                              if (contentEditableRef.current) {
+                                contentEditableRef.current.focus();
+                              } else if (textareaRef.current) {
+                                textareaRef.current.focus();
+                              }
+                            }}
+                          >
+                            <DropdownMenuLabel>Insert Element</DropdownMenuLabel>
+                            <DropdownMenuSeparator />
+                            {orderedBlockTypes.map(type => {
+                              const Icon = blockTypeConfig[type]?.icon || Type;
+                              return (
+                                <DropdownMenuItem
+                                  key={type}
+                                  onSelect={() => {
+                                    if (type === 'spaceEmbed') {
+                                      setShowSpaceLinkAutocomplete(true);
+                                      setAutocompleteMode('spacePreview');
+                                      setLinkTriggerIndex(0);
+
+                                      // Fallback position if chip is used
+                                      if (contentRef.current) {
+                                        const rect = contentRef.current.getBoundingClientRect();
+                                        setSpaceLinkPosition({
+                                          top: rect.bottom + 4,
+                                          left: rect.left
+                                        });
+                                      }
+                                    } else {
+                                      onConvertBlock(block.id, type as BlockType);
+                                    }
+                                  }}
+                                  onMouseEnter={() => setPreviewType(type as BlockType)}
+                                  onMouseLeave={() => setPreviewType(null)}
+                                >
+                                  <Icon className="mr-2 h-4 w-4" />
+                                  <span>{blockTypeConfig[type]?.label}</span>
+                                </DropdownMenuItem>
+                              );
+                            })}
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            ) : effectiveBlock.type === 'checkbox' ? (
+              <div className="flex gap-2 items-start">
+                <Checkbox
+                  checked={block.checked}
+                  onCheckedChange={(checked) => onUpdate(block.id, { checked: checked === true })}
+                  className="mt-1"
+                />
+                {renderRichText(activeConfig.placeholder, `min-h-[24px] outline-none text-base w-full ${block.checked ? 'line-through text-default-400' : ''}`)}
+              </div>
+            ) : effectiveBlock.type === 'divider' ? (
+              <div className="py-2 group/divider relative select-none">
+                {block.metadata?.dividerVariant === 'stop' ? (
+                  <hr className="border-t-[3px] border-default-600 w-full my-2" />
+                ) : (
+                  <hr className="border-t-2 border-default-300 w-full my-2" />
+                )}
+              </div>
+            ) : effectiveBlock.type === 'bulletList' ? (
+              <div className="flex gap-2 items-start">
+                <div className="min-w-[24px] h-[24px] shrink-0 flex items-center justify-center">
+                  <span className="text-3xl leading-none mt-[-2px]">•</span>
+                </div>
+                {renderRichText(activeConfig.placeholder, "min-h-[24px] outline-none text-base w-full")}
+              </div>
+            ) : effectiveBlock.type === 'checkboxNumberedList' ? (
+              <div className="flex gap-2 items-start">
+                <span className="font-medium min-w-[24px] shrink-0 text-right tabular-nums">{listNumber !== undefined ? listNumber + '.' : '1.'}</span>
+                <Checkbox
+                  checked={block.checked}
+                  onCheckedChange={(checked) => onUpdate(block.id, { checked: checked === true })}
+                  className="mt-1"
+                />
+                {renderRichText(activeConfig.placeholder, `min-h-[24px] outline-none text-base w-full ${block.checked ? 'line-through text-default-400' : ''}`)}
+              </div>
+            ) : effectiveBlock.type === 'table' ? (
+              <SimpleTableEditor
+                content={block.content}
+                onUpdate={(content) => onUpdate(block.id, { content })}
               />
-           </div>
-        ) : effectiveBlock.type === 'file' ? (
-          <div className={`w-full flex ${block.metadata?.layout === 'preview' ? 'justify-center' : 'justify-start'}`}>
-            <FileElement
-              layout={block.metadata?.layout || 'compact'}
-              fileName={block.metadata?.fileName || (block.content || 'New File')}
-              fileSize={block.metadata?.fileSize || 0}
-              fileType={block.metadata?.fileType || 'application/octet-stream'}
-              filePreview={block.metadata?.filePreview}
-              files={block.metadata?.files}
-              searchQuery={block.metadata?.searchQuery}
-              onUpdate={(updates) => onUpdate(block.id, { metadata: { ...block.metadata, ...updates } })}
-              onDelete={() => onDelete(block.id)}
-              settings={settings}
-              onUpdateSettings={onUpdateSettings}
-            />
+            ) : effectiveBlock.type === 'numberedList' ? (
+              <div className="flex gap-2 items-start">
+                <span className="font-medium min-w-[24px] shrink-0 text-right tabular-nums">{listNumber !== undefined ? listNumber + '.' : '1.'}</span>
+                {renderRichText(activeConfig.placeholder, "min-h-[24px] outline-none text-base w-full")}
+              </div>
+            ) : effectiveBlock.type === 'image' ? (
+              <div className="flex flex-col gap-2">
+                {block.content ? (
+                  <img
+                    src={block.content}
+                    alt="Block content"
+                    className="max-w-full rounded-lg border border-divider"
+                  />
+                ) : (
+                  <div className="p-8 bg-default-50 border-2 border-dashed border-default-200 rounded-lg flex items-center justify-center text-default-400">
+                    <ImageIcon size={24} className="mr-2" />
+                    <span>Add an image URL</span>
+                  </div>
+                )}
+                <Input
+                  value={block.content}
+                  onValueChange={(content) => onUpdate(block.id, { content })}
+                  onFocus={() => setIsFocused(true)}
+                  onBlur={() => setIsFocused(false)}
+                  placeholder="Image URL"
+                  size="sm"
+                  variant="flat"
+                />
+              </div>
+            ) : effectiveBlock.type === 'calendar' ? (
+              <div className="w-full">
+                <CalendarElement
+                  className="w-full"
+                  data={{
+                    startDate: block.metadata?.startDate || new Date().toISOString(),
+                    endDate: block.metadata?.endDate || new Date(Date.now() + 3600000).toISOString(),
+                    recurrence: block.metadata?.recurrence || 'none',
+                    notes: block.metadata?.notes,
+                    completed: block.metadata?.completed,
+                    attachments: block.metadata?.attachments,
+                    displayMode: block.metadata?.displayMode || 'card'
+                  }}
+                  onUpdate={(updates) => onUpdate(block.id, { metadata: { ...block.metadata, ...updates } })}
+                  spacesState={spacesState}
+                  isReadOnly={false}
+                />
+              </div>
+            ) : effectiveBlock.type === 'file' ? (
+              <div className={`w-full flex ${block.metadata?.layout === 'preview' ? 'justify-center' : 'justify-start'}`}>
+                <FileElement
+                  layout={block.metadata?.layout || 'compact'}
+                  fileName={block.metadata?.fileName || (block.content || 'New File')}
+                  fileSize={block.metadata?.fileSize || 0}
+                  fileType={block.metadata?.fileType || 'application/octet-stream'}
+                  filePreview={block.metadata?.filePreview}
+                  files={block.metadata?.files}
+                  searchQuery={block.metadata?.searchQuery}
+                  onUpdate={(updates) => onUpdate(block.id, { metadata: { ...block.metadata, ...updates } })}
+                  onDelete={() => onDelete(block.id)}
+                  settings={settings}
+                  onUpdateSettings={onUpdateSettings}
+                />
+              </div>
+            ) : effectiveBlock.type === 'spaceEmbed' ? (
+              <RenderSpaceEmbed
+                spaceId={block.spaceId}
+                spacesState={spacesState}
+                viewportsState={viewportsState}
+              />
+            ) : effectiveBlock.type === 'blockEmbed' ? (
+              <RenderBlockEmbed
+                blockId={block.blockId}
+                sourceSpaceId={block.sourceSpaceId}
+                spacesState={spacesState}
+                viewportsState={viewportsState}
+              />
+            ) : (
+              renderRichText(activeConfig.placeholder, `bg-transparent border-none shadow-none outline-none p-0 font-inherit w-full ${getTextAlignmentClass()}`)
+            )}
           </div>
-        ) : effectiveBlock.type === 'spaceEmbed' ? (
-          <RenderSpaceEmbed 
-            spaceId={block.spaceId} 
-            spacesState={spacesState} 
-            viewportsState={viewportsState} 
-          />
-        ) : effectiveBlock.type === 'blockEmbed' ? (
-          <RenderBlockEmbed 
-            blockId={block.blockId} 
-            sourceSpaceId={block.sourceSpaceId} 
-            spacesState={spacesState} 
-            viewportsState={viewportsState} 
-          />
-        ) : (
-          renderRichText(activeConfig.placeholder, `bg-transparent border-none shadow-none outline-none p-0 font-inherit w-full ${getTextAlignmentClass()}`)
-        )}
-      </div>
 
-      {/* Balancing Spacer for symmetry (compensates for the left-hand handle) */}
-      <div className="w-4 shrink-0 pointer-events-none" aria-hidden="true" />
+          {/* Balancing Spacer for symmetry (compensates for the left-hand handle) */}
+          <div className="w-4 shrink-0 pointer-events-none" aria-hidden="true" />
 
-      {/* Link Autocomplete */}
-      {showSpaceLinkAutocomplete && (
-        <SpaceLinkAutocomplete
-          spaces={spacesState.spaces}
-          onSelect={handleSpaceSelected}
-          onClose={() => {
-            setShowSpaceLinkAutocomplete(false);
-            setLinkTriggerIndex(-1);
-            setAutocompleteMode(null);
-          }}
-          position={spaceLinkPosition}
-          currentSpaceId={currentSpaceId}
-          selectedIndex={autocompleteSelectedIndex}
-          onSelectedIndexChange={setAutocompleteSelectedIndex}
-        />
-      )}
+          {/* Link Autocomplete */}
+          {showSpaceLinkAutocomplete && (
+            <SpaceLinkAutocomplete
+              spaces={spacesState.spaces}
+              onSelect={handleSpaceSelected}
+              onClose={() => {
+                setShowSpaceLinkAutocomplete(false);
+                setLinkTriggerIndex(-1);
+                setAutocompleteMode(null);
+              }}
+              position={spaceLinkPosition}
+              currentSpaceId={currentSpaceId}
+              selectedIndex={autocompleteSelectedIndex}
+              onSelectedIndexChange={setAutocompleteSelectedIndex}
+            />
+          )}
 
-      {showCalendarAutocomplete && (
-        <CalendarAutocomplete
-          spaces={spacesState.spaces}
-          onSelect={handleEventSelected}
-          onCreateNew={handleCreateNewEvent}
-          onClose={() => {
-            setShowCalendarAutocomplete(false);
-            setLinkTriggerIndex(-1);
-          }}
-          position={spaceLinkPosition}
-        />
-      )}
+          {showCalendarAutocomplete && (
+            <CalendarAutocomplete
+              spaces={spacesState.spaces}
+              onSelect={handleEventSelected}
+              onCreateNew={handleCreateNewEvent}
+              onClose={() => {
+                setShowCalendarAutocomplete(false);
+                setLinkTriggerIndex(-1);
+              }}
+              position={spaceLinkPosition}
+            />
+          )}
 
-      {/* Link Context Menu */}
-      {showLinkContextMenu && (
-        <LinkContextMenu
-          linkId={selectedLinkId}
-          linkText={selectedLinkText}
-          position={linkContextMenuPosition}
-          spacesState={spacesState}
-          onRename={() => {}} // TODO
-          onRelink={() => {}} // TODO
-          onClose={() => setShowLinkContextMenu(false)}
-        />
-      )}
-      
-       </div>
+          {/* Link Context Menu */}
+          {showLinkContextMenu && (
+            <LinkContextMenu
+              linkId={selectedLinkId}
+              linkText={selectedLinkText}
+              position={linkContextMenuPosition}
+              spacesState={spacesState}
+              onRename={() => { }} // TODO
+              onRelink={() => { }} // TODO
+              onClose={() => setShowLinkContextMenu(false)}
+            />
+          )}
+
+        </div>
       </div>
     </div>
   );

@@ -1,4 +1,4 @@
-import { useState, useMemo, useRef, useEffect, memo, useCallback } from 'react';
+import { useState, useMemo, useRef, useEffect, useLayoutEffect, memo, useCallback } from 'react';
 import {
   format,
   addMonths,
@@ -29,8 +29,8 @@ import {
   isBefore,
   isAfter
 } from 'date-fns';
-import { it } from 'date-fns/locale';
-import { useDisclosure, Button, Input, Modal, ModalContent, ModalHeader, ModalBody, ModalFooter, Select, SelectItem, Popover, PopoverTrigger, PopoverContent, Textarea } from '@heroui/react';
+import { enUS } from 'date-fns/locale';
+import { useDisclosure, Button, Input, Modal, ModalContent, ModalHeader, ModalBody, ModalFooter, Select, SelectItem, Popover, PopoverTrigger, PopoverContent, Textarea, Chip } from '@heroui/react';
 import { motion, AnimatePresence } from 'motion/react';
 import {
   ChevronLeft,
@@ -49,9 +49,9 @@ import {
 import { useDrag, useDrop } from 'react-dnd';
 import { getEmptyImage } from 'react-dnd-html5-backend';
 
-const daysOfWeek = ['Lun', 'Mar', 'Mer', 'Gio', 'Ven', 'Sab', 'Dom'];
-const daysOfWeekShort = ['L', 'M', 'M', 'G', 'V', 'S', 'D'];
-const months = ['Gennaio', 'Febbraio', 'Marzo', 'Aprile', 'Maggio', 'Giugno', 'Luglio', 'Agosto', 'Settembre', 'Ottobre', 'Novembre', 'Dicembre'];
+const daysOfWeek = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+const daysOfWeekShort = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
+const months = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
 
 type CalendarView = 'month' | 'week' | 'day' | 'year' | 'timeline';
 
@@ -64,6 +64,9 @@ interface DraggableEventProps {
   event: any;
   onUpdate: (id: string, updates: any) => void;
   onNavigate: (spaceId: string, title: string) => void;
+  onDragEnd?: () => void;
+  onHoverEvent: (id: string | null) => void;
+  isHovered: boolean;
 }
 
 interface DraggableMultiDayEventProps extends Omit<DraggableEventProps, 'onNavigate'> {
@@ -75,7 +78,7 @@ interface DraggableMultiDayEventProps extends Omit<DraggableEventProps, 'onNavig
   onHoverDateChange?: (date: Date | null) => void;
 }
 
-function DraggableCalendarEvent({ event, onUpdate, onNavigate }: DraggableEventProps) {
+function DraggableCalendarEvent({ event, onUpdate, onNavigate, onDragEnd, onHoverEvent, isHovered }: DraggableEventProps) {
   const [{ isDragging }, drag, preview] = useDrag(() => ({
     type: 'CALENDAR_EVENT',
     item: {
@@ -89,10 +92,13 @@ function DraggableCalendarEvent({ event, onUpdate, onNavigate }: DraggableEventP
       end: event.end,
       sourceSpaceTitle: event.sourceSpaceTitle
     },
+    end: (item, monitor) => {
+      onDragEnd?.();
+    },
     collect: (monitor) => ({
       isDragging: !!monitor.isDragging(),
     }),
-  }), [event]);
+  }), [event, onDragEnd]);
 
   // Suppress native preview
   useEffect(() => {
@@ -139,10 +145,13 @@ function DraggableCalendarEvent({ event, onUpdate, onNavigate }: DraggableEventP
       className={`
         text-[10px] p-1.5 rounded bg-primary/10 text-primary-700 truncate border-l-2 border-primary 
         hover:bg-primary/20 transition-all cursor-grab active:cursor-grabbing
-        flex items-center gap-1 group relative h-7 select-none
-        ${isDragging ? 'opacity-50 scale-95' : 'opacity-100 scale-100'}
+        flex items-center gap-1 group relative h-7 select-none calendar-event-item
+        ${isHovered ? 'ring-2 ring-primary/50 bg-primary/20 shadow-md' : ''}
+        ${isDragging ? 'opacity-20 scale-95' : 'opacity-100 scale-100'}
       `}
-      title={`${event.metadata?.title || 'Evento'}`}
+      onMouseEnter={() => onHoverEvent(event.id)}
+      onMouseLeave={() => onHoverEvent(null)}
+      title={`${event.metadata?.title || 'Event'}`}
       onClick={(e) => {
         e.stopPropagation();
       }}
@@ -151,19 +160,19 @@ function DraggableCalendarEvent({ event, onUpdate, onNavigate }: DraggableEventP
       <div
         className="absolute left-0 top-0 bottom-0 w-2 cursor-ew-resize opacity-0 group-hover:opacity-100 bg-primary/30 flex items-center justify-center rounded-l z-20"
         onMouseDown={(e) => handleResizeLeft(e, -1)}
-        title="Anticipa di 1 giorno"
+        title="1 day earlier"
       >
         <div className="w-0.5 h-3 bg-primary/50 rounded-full" />
       </div>
 
       <GripVertical size={10} className="opacity-0 group-hover:opacity-40 shrink-0 mx-1" />
-      <span className="truncate flex-1">{event.metadata?.title || 'Senza titolo'}</span>
+      <span className="truncate flex-1">{event.metadata?.title || 'Untitled'}</span>
 
       {/* Right Resizer */}
       <div
         className="absolute right-0 top-0 bottom-0 w-2 cursor-ew-resize opacity-0 group-hover:opacity-100 bg-primary/30 flex items-center justify-center rounded-r z-20"
         onMouseDown={(e) => handleResize(e, 1)}
-        title="Posticipa di 1 giorno"
+        title="1 day later"
       >
         <div className="w-0.5 h-3 bg-primary/50 rounded-full" />
       </div>
@@ -182,26 +191,31 @@ interface DraggableMultiDayEventProps extends Omit<DraggableEventProps, 'onNavig
   isResizing: boolean;
   onActiveResizeChange: (resize: { id: string, direction: 'left' | 'right', offset: number } | null) => void;
   isSelected: boolean;
-  onSelect: (id: string) => void;
+  onSelect: (id: string, anchor: { x: number; y: number }) => void;
   eventHeight?: number;
   topOffset?: number;
+  onHoverEvent: (id: string | null) => void;
+  isHovered: boolean;
 }
 
 const DraggableMultiDayEvent = memo(({
   event,
+  onUpdate,
+  onHoverDateChange,
+  isResizing,
+  onActiveResizeChange,
   startCol,
   colSpan,
   row,
   isStart,
   isEnd,
-  onUpdate,
-  onHoverDateChange,
-  isResizing,
-  onActiveResizeChange,
   isSelected,
   onSelect,
+  onDragEnd,
   eventHeight = 24,
-  topOffset = 26
+  topOffset = 26,
+  onHoverEvent,
+  isHovered
 }: DraggableMultiDayEventProps) => {
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -212,17 +226,20 @@ const DraggableMultiDayEvent = memo(({
       blockId: event.id,
       spaceId: event.sourceSpaceId,
       type: 'CALENDAR_EVENT',
-      title: event.metadata?.title || 'Senza titolo',
+      title: event.metadata?.title || 'Untitled',
       content: event.metadata?.notes,
       start: event.start,
       end: event.end,
       sourceSpaceTitle: event.sourceSpaceTitle
     },
     canDrag: !isResizing,
+    end: (item, monitor) => {
+      onDragEnd?.();
+    },
     collect: (monitor) => ({
       isDragging: !!monitor.isDragging(),
     }),
-  }), [event, isResizing]);
+  }), [event, isResizing, onDragEnd]);
 
   useEffect(() => {
     preview(getEmptyImage(), { captureDraggingState: true });
@@ -325,18 +342,21 @@ const DraggableMultiDayEvent = memo(({
         text-[10px] px-1.5 rounded-sm truncate select-none shadow-sm
         flex items-center gap-1 group calendar-event-item
         ${isSelected ? 'ring-2 ring-primary bg-primary/30 text-primary-900 z-[110]' : (isResizing ? 'bg-primary/5 ring-1 ring-primary/10' : 'bg-primary/15 text-primary-700 hover:bg-primary/25')}
+        ${isHovered && !isSelected && !isResizing ? 'ring-2 ring-primary/50 bg-primary/20' : ''}
         ${isStart ? 'rounded-l border-l-2 border-primary' : ''}
         ${isEnd ? 'rounded-r' : ''}
         ${isDragging ? 'opacity-50 scale-95' : 'opacity-100 scale-100'}
       `}
+      onMouseEnter={() => onHoverEvent(event.id)}
+      onMouseLeave={() => onHoverEvent(null)}
       onClick={(e) => {
         e.stopPropagation();
-        onSelect(event.id);
+        onSelect(event.id, { x: e.clientX, y: e.clientY });
       }}
     >
       {isResizing && isStart && (
         <div className="absolute -top-8 left-1/2 -translate-x-1/2 bg-primary-800 text-white text-[9px] px-2 py-1 rounded shadow-lg font-bold whitespace-nowrap z-[100] border border-primary-600">
-          Sto ridimensionando...
+          Resizing...
           <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-2 h-2 bg-primary-800 rotate-45 border-r border-b border-primary-600" />
         </div>
       )}
@@ -349,7 +369,7 @@ const DraggableMultiDayEvent = memo(({
         </div>
       )}
       {isStart && eventHeight > 16 && <GripVertical size={10} className="opacity-0 group-hover:opacity-40 shrink-0" />}
-      {eventHeight > 10 && <span className="truncate flex-1 font-medium">{event.metadata?.title || 'Senza titolo'}</span>}
+      {eventHeight > 10 && <span className="truncate flex-1 font-medium">{event.metadata?.title || 'Untitled'}</span>}
       {isEnd && eventHeight > 12 && (
         <div
           className="absolute right-0 top-0 bottom-0 w-3 cursor-ew-resize opacity-0 group-hover:opacity-100 bg-primary/40 flex items-center justify-center rounded-r z-30 transition-opacity"
@@ -391,7 +411,9 @@ const CalendarDayCell = memo(({
   onUpdateEvent,
   onNavigate,
   allEvents,
-  renderEvents = true
+  renderEvents = true,
+  onDragEnter,
+  onDragLeave
 }: CalendarDayCellProps) => {
   const [{ isOver, draggedItem }, drop] = useDrop(() => ({
     accept: 'CALENDAR_EVENT',
@@ -430,8 +452,6 @@ const CalendarDayCell = memo(({
         min-h-[120px] p-1.5 border-r border-divider flex flex-col gap-1 transition-colors relative cursor-pointer
         ${isCurrentMonth ? 'bg-white' : 'bg-default-50/50 text-default-400'}
         ${isToday ? 'bg-primary/5' : ''}
-        ${isSelected ? 'bg-primary/10 ring-2 ring-primary/30 z-10' : ''}
-        ${isOver ? 'bg-primary/20 ring-2 ring-primary/50 ring-inset shadow-lg' : ''}
       `}
       onMouseDown={(e) => {
         if (e.button !== 0) return;
@@ -448,18 +468,30 @@ const CalendarDayCell = memo(({
         onUpdateSelection(dragDate);
       }}
     >
-      <div className="flex justify-between items-start h-5">
+      <div className="flex justify-end items-center gap-1.5 h-6 px-1">
+        {day.getDate() === 1 && (
+          <span
+            className="inline-flex items-center justify-center text-[10px] font-black uppercase tracking-[0.2em] rounded-full mr-auto shadow-xl z-20 px-4 h-6 border-none"
+            style={{
+              backgroundColor: '#000000',
+              color: '#ffffff',
+              display: 'inline-flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              lineHeight: '1'
+            }}
+          >
+            {format(day, 'MMMM', { locale: enUS })}
+          </span>
+        )}
         <span className={`
-          text-[10px] font-bold w-5 h-5 flex items-center justify-center rounded-full
-          ${isToday ? 'bg-primary text-white shadow-sm' : ''}
+          text-[11px] font-bold w-6 h-6 flex items-center justify-center rounded-lg transition-all
+          ${isToday
+            ? 'bg-primary text-white shadow-[0_2px_8px_-2px_rgba(0,0,0,0.2)] scale-110'
+            : isCurrentMonth ? 'text-default-600 hover:bg-default-100' : 'text-default-300'}
         `}>
           {format(day, 'd')}
         </span>
-        {renderEvents && dayEvents.length > 0 && (
-          <span className="text-[9px] font-bold text-default-400 bg-default-100 px-1 rounded">
-            {dayEvents.length}
-          </span>
-        )}
       </div>
       <div className="flex flex-col gap-1 mt-1">
         {renderEvents && dayEvents.map((event, idx) => (
@@ -468,16 +500,10 @@ const CalendarDayCell = memo(({
             event={event}
             onUpdate={(id, updates) => onUpdateEvent(id, event.id, event.sourceSpaceId, updates)}
             onNavigate={onNavigate}
+            onDragEnd={onDragLeave}
           />
         ))}
       </div>
-      {/* Ghost preview when dragging over - always show regardless of renderEvents */}
-      {isOver && draggedItem && (
-        <div className="absolute bottom-2 left-2 right-2 text-[10px] p-1.5 rounded bg-primary/30 text-primary-900 truncate border-l-2 border-primary border-dashed flex items-center gap-1 h-7 select-none animate-pulse z-50">
-          <GripVertical size={10} className="opacity-40 shrink-0 mx-1" />
-          <span className="truncate flex-1">{draggedItem.title || 'Event'}</span>
-        </div>
-      )}
     </div>
   );
 });
@@ -505,6 +531,8 @@ interface MonthWeekRowProps {
   dragGhostItem: any | null;
   onDragEnter: (date: Date, item: any) => void;
   onDragLeave: () => void;
+  hoveredEventId: string | null;
+  onHoverEvent: (id: string | null) => void;
 }
 
 
@@ -515,41 +543,74 @@ interface DragGhostProps {
   weekEnd: Date;
   rowHeight?: number;
   topOffset?: number;
+  layout?: Array<{ event: any; startCol: number; colSpan: number; row: number; isStart: boolean; isEnd: boolean }>;
+  eventHeight?: number;
 }
 
-function DragGhost({ date, event, weekStart, weekEnd, rowHeight = 24, topOffset = 26 }: DragGhostProps) {
+function DragGhost({ date, event, weekStart, weekEnd, rowHeight = 24, topOffset = 26, layout = [], eventHeight = 24 }: DragGhostProps) {
   if (!event || !date) return null;
 
   // Calculate duration to show correct span
   const durationMs = (event.end ? new Date(event.end).getTime() : new Date(event.start).getTime() + 3600000) - new Date(event.start).getTime();
   const ghostEnd = new Date(date.getTime() + durationMs);
 
-  const startCol = differenceInCalendarDays(date, weekStart);
-  let span = differenceInCalendarDays(ghostEnd, date);
+  // Replicate MonthWeekRow logic for consistent span
+  const eventStart = startOfDay(date);
+  const eventEnd = startOfDay(ghostEnd);
+
+  const startIndex = differenceInCalendarDays(eventStart, weekStart);
+  const endIndex = differenceInCalendarDays(eventEnd, weekStart);
+
+  const startCol = startIndex;
+  const span = Math.max(1, endIndex - startIndex + 1);
 
   // Basic constraints for the current week view
-  if (startCol < 0 || startCol > 6) return null; // Simplified for now, complex multi-week ghosts might need more logic
-  span = Math.max(1, span); // Ensure at least 1 day
+  if (startCol < 0 || startCol > 6) return null;
+
+  // Calculate next available row based on existing layout
+  const slots: string[][] = Array(7).fill(null).map(() => []);
+
+  // Fill slots with existing events
+  layout.forEach(item => {
+    for (let d = item.startCol; d < item.startCol + item.colSpan && d < 7; d++) {
+      slots[d][item.row] = item.event.id;
+    }
+  });
+
+  // Find first available row for the ghost
+  let ghostRow = 0;
+  const maxRows = 20; // Safety limit to prevent infinite loop
+  while (ghostRow < maxRows) {
+    let isRowFree = true;
+    for (let d = startCol; d < startCol + span && d < 7; d++) {
+      if (slots[d][ghostRow]) {
+        isRowFree = false;
+        break;
+      }
+    }
+    if (isRowFree) break;
+    ghostRow++;
+  }
 
   return (
     <div
       className="absolute bg-primary/20 border-2 border-primary/50 border-dashed rounded-sm pointer-events-none z-[150] flex items-center px-2 overflow-hidden"
       style={{
-        top: `${topOffset}px`, // Always render at top of cell for now or calculate free slot
+        top: `${topOffset + ghostRow * eventHeight}px`,
         left: `calc(${(startCol / 7) * 100}% + 2px)`,
         width: `calc(${(span / 7) * 100}% - 4px)`,
-        height: `${rowHeight}px`
+        height: `${eventHeight}px`
       }}
     >
       <span className="text-[9px] font-bold text-primary truncate opacity-70">
-        {event.metadata?.title || 'Spostamento...'}
+        {event.metadata?.title || 'Moving...'}
       </span>
     </div>
   );
 }
 
 // Ensure ResizeGhost can find the event even if we only pass 'events' (which are local to week)
-// Actually, 'ResizeGhost' used 'allEvents' in the previous code. 
+// Actually, 'ResizeGhost' used 'allEvents' in the previous code.
 // In my update to MonthWeekRow, I passed `allEvents={events}` to ResizeGhost.
 // This might break ResizeGhost if the event being resized is NOT in the current week's `events` list?
 // Wait, if ResizeGhost is being rendered for *this week*, it implies the ghost intersects this week.
@@ -593,7 +654,9 @@ const MonthWeekRow = memo(({
   dragGhostDate,
   dragGhostItem,
   onDragEnter,
-  onDragLeave
+  onDragLeave,
+  hoveredEventId,
+  onHoverEvent
 }: MonthWeekRowProps) => {
   const weekEnd = endOfWeek(weekStart, { weekStartsOn: 1 });
   const days = useMemo(() => eachDayOfInterval({ start: weekStart, end: weekEnd }), [weekStart, weekEnd]);
@@ -603,8 +666,16 @@ const MonthWeekRow = memo(({
     // Events are already filtered for this week by parent optimization
     const eventsInWeek = events;
 
-    // Sort: earlier start first, then longer duration
+    // Sort: Respect manual order (updatedAt) first, then standard time-based sort
+    // This ensures recently moved/created events stay at the "bottom" (processed last)
     eventsInWeek.sort((a, b) => {
+      const updatedA = a.metadata?.updatedAt || 0;
+      const updatedB = b.metadata?.updatedAt || 0;
+
+      if (updatedA !== updatedB) {
+        return updatedA - updatedB;
+      }
+
       if (a.start.getTime() !== b.start.getTime()) return a.start.getTime() - b.start.getTime();
       const durA = (a.end || a.start).getTime() - a.start.getTime();
       const durB = (b.end || b.start).getTime() - b.start.getTime();
@@ -664,16 +735,44 @@ const MonthWeekRow = memo(({
     return layout.find(l => l.event.id === activeResize.id);
   }, [activeResize, layout]);
 
-  // Since we need the original row even in weeks where the event wasn't present, 
-  // we might need a more global way to determine the row. 
+  // Since we need the original row even in weeks where the event wasn't present,
+  // we might need a more global way to determine the row.
   // However, within MonthWeekRow, we only know about our own layout.
   // For now, let's assume we can find the row if the event intersects this week.
 
   const maxRow = layout.length > 0 ? Math.max(...layout.map(l => l.row)) : -1;
   const rowHeight = 160;
-  const topOffset = 26; // Spazio ridotto per il numero del giorno
+  const topOffset = 26; // Reduced space for the day number
   const availableHeight = rowHeight - topOffset - 4; // Padding inferiore
   const eventHeight = (maxRow + 1) * 24 > availableHeight ? Math.max(4, Math.floor(availableHeight / (maxRow + 1))) : 24;
+
+  const resizeGhostProps = useMemo(() => {
+    if (!activeResize || !hoveredResizeDate || !activeResize.id) return null;
+    const event = allEvents.find(e => e.id === activeResize.id);
+    if (!event) return null;
+
+    // Construct modified event
+    const modifiedEvent = { ...event };
+    if (activeResize.direction === 'left') {
+      modifiedEvent.start = hoveredResizeDate;
+    } else {
+      modifiedEvent.end = hoveredResizeDate;
+    }
+    return { event: modifiedEvent, date: modifiedEvent.start };
+  }, [activeResize, hoveredResizeDate, allEvents]);
+
+  const selectionGhostProps = useMemo(() => {
+    if (!selectionRange) return null;
+    return {
+      event: {
+        id: 'selection',
+        start: selectionRange.start,
+        end: selectionRange.end,
+        metadata: { title: 'New Event' }
+      },
+      date: selectionRange.start
+    };
+  }, [selectionRange]);
 
   return (
     <div
@@ -700,7 +799,7 @@ const MonthWeekRow = memo(({
                 day={day}
                 isToday={isToday}
                 isCurrentMonth={isCurrentMonth}
-                isSelected={isSelected}
+                isSelected={false}
                 dayEvents={[]} // Pass empty events as we render them in overlay
                 renderEvents={false}
                 onStartSelection={onStartSelection}
@@ -728,13 +827,42 @@ const MonthWeekRow = memo(({
               onActiveResizeChange={onActiveResizeChange}
               isSelected={selectedEventId === item.event.id}
               onSelect={onSelectEvent}
+              onDragEnd={onDragLeave}
               eventHeight={eventHeight}
               topOffset={topOffset}
+              onHoverEvent={onHoverEvent}
+              isHovered={hoveredEventId === item.event.id}
             />
           </div>
         ))}
 
-        {/* Resize Ghost Overlay - Now handles any week intersection */}
+        {/* Resize Ghost Overlay */}
+        {resizeGhostProps && (
+          <DragGhost
+            date={resizeGhostProps.date}
+            event={resizeGhostProps.event}
+            weekStart={weekStart}
+            weekEnd={weekEnd}
+            rowHeight={eventHeight}
+            topOffset={topOffset}
+            layout={layout}
+            eventHeight={eventHeight}
+          />
+        )}
+
+        {/* Selection Ghost Overlay */}
+        {selectionGhostProps && (
+          <DragGhost
+            date={selectionGhostProps.date}
+            event={selectionGhostProps.event}
+            weekStart={weekStart}
+            weekEnd={weekEnd}
+            rowHeight={eventHeight}
+            topOffset={topOffset}
+            layout={layout}
+            eventHeight={eventHeight}
+          />
+        )}
 
         {/* Drag Ghost Overlay */}
         {dragGhostDate && dragGhostItem && (
@@ -745,6 +873,8 @@ const MonthWeekRow = memo(({
             weekEnd={weekEnd}
             rowHeight={eventHeight}
             topOffset={topOffset}
+            layout={layout}
+            eventHeight={eventHeight}
           />
         )}
       </div>
@@ -767,6 +897,8 @@ export function CalendarApp({ spacesState, viewportsState }: CalendarAppProps) {
   const [activeResize, setActiveResize] = useState<{ id: string, direction: 'left' | 'right', offset: number } | null>(null);
   const [dragGhostDate, setDragGhostDate] = useState<Date | null>(null);
   const [dragGhostItem, setDragGhostItem] = useState<any | null>(null);
+  const [hoveredEventId, setHoveredEventId] = useState<string | null>(null);
+  const [editPopoverAnchor, setEditPopoverAnchor] = useState<{ x: number, y: number } | null>(null);
 
   // New event state
   const [newEvent, setNewEvent] = useState({
@@ -776,6 +908,129 @@ export function CalendarApp({ spacesState, viewportsState }: CalendarAppProps) {
     notes: '',
     spaceId: ''
   });
+
+  // Refs for auto-saving on outside click
+  const newEventRef = useRef(newEvent);
+  const popoverAnchorRef = useRef(popoverAnchor);
+  const handleCreateEventRef = useRef<() => void>(() => { });
+
+  useEffect(() => { newEventRef.current = newEvent; }, [newEvent]);
+  useEffect(() => { popoverAnchorRef.current = popoverAnchor; }, [popoverAnchor]);
+
+  const popoverRef = useRef<HTMLDivElement>(null);
+  const editPopoverRef = useRef<HTMLDivElement>(null);
+
+  // Bulletproof popover repositioning
+  useLayoutEffect(() => {
+    const updatePosition = () => {
+      const reposition = (ref: React.RefObject<HTMLDivElement | null>, anchor: { x: number, y: number } | null) => {
+        if (!ref.current || !anchor) return;
+        const el = ref.current;
+        const rect = el.getBoundingClientRect();
+        const winW = window.innerWidth;
+        const winH = window.innerHeight;
+        const padding = 12;
+
+        let targetX = anchor.x;
+        let targetY = anchor.y;
+
+        // X Positioning: try to center, but clamp to viewport
+        let left = targetX - rect.width / 2;
+        if (left < padding) left = padding;
+        if (left + rect.width > winW - padding) left = winW - rect.width - padding;
+
+        // Y Positioning: try to show below anchor, if clippped, show above, if still clipped, clamp
+        let top = targetY + 10; // offset from click
+        if (top + rect.height > winH - padding) {
+          // No space below? Try above
+          top = targetY - rect.height - 10;
+        }
+
+        // Final safety clamp for Y
+        if (top < padding) top = padding;
+        if (top + rect.height > winH - padding) top = winH - rect.height - padding;
+
+        el.style.left = `${left}px`;
+        el.style.top = `${top}px`;
+        el.style.transform = 'none'; // Disable the translateX(-50%) from style to avoid conflict
+      };
+
+      reposition(popoverRef, popoverAnchor);
+      reposition(editPopoverRef, editPopoverAnchor);
+    };
+
+    updatePosition();
+
+    // Watch for size changes (inputs, textareas growing)
+    const observer = new ResizeObserver(updatePosition);
+    if (popoverRef.current) observer.observe(popoverRef.current);
+    if (editPopoverRef.current) observer.observe(editPopoverRef.current);
+
+    window.addEventListener('resize', updatePosition);
+    return () => {
+      observer.disconnect();
+      window.removeEventListener('resize', updatePosition);
+    };
+  }, [popoverAnchor, editPopoverAnchor]);
+
+  // Global interaction listener for auto-save/destroy
+  useEffect(() => {
+    if (!popoverAnchor && !editPopoverAnchor) {
+      setSelectionRange(null);
+      setDragGhostDate(null);
+      setDragGhostItem(null); // Ensure drag ghost is cleared
+      return;
+    }
+
+    const handleInteraction = (e: Event) => {
+      // If ref is null, it means it was already handled by handleStartSelection (race condition prevention)
+      if (!popoverAnchorRef.current && !editPopoverAnchor) return; // Check both anchors
+
+      const target = e.target as HTMLElement;
+
+      // If interacting inside popover, ignore
+      if (popoverRef.current && popoverRef.current.contains(target as Node)) {
+        return;
+      }
+      if (editPopoverRef.current && editPopoverRef.current.contains(target as Node)) {
+        return;
+      }
+
+      // If interacting with a Portal (e.g., Select dropdowns), ignore
+      if (target.closest && target.closest('[role="listbox"], [role="menu"], [data-slot="listbox"], [data-overlay-container="true"]')) {
+        return;
+      }
+
+      // If interacting outside: auto-save if title exists, otherwise destroy
+      if (popoverAnchorRef.current) { // Only auto-save for new event popover
+        if (newEventRef.current.title) {
+          handleCreateEventRef.current();
+        } else {
+          setSelectionRange(null);
+        }
+      }
+
+      setPopoverAnchor(null);
+      popoverAnchorRef.current = null; // Mark as handled
+      setEditPopoverAnchor(null);
+      setDragGhostDate(null); // Clear drag ghost on outside interaction
+      setDragGhostItem(null); // Clear drag ghost item on outside interaction
+    };
+
+    // Use capture phase to handle events before they are stopped by other components (e.g. existing value drags)
+    const options = { capture: true };
+    document.addEventListener('mousedown', handleInteraction, options);
+    document.addEventListener('dragstart', handleInteraction, options);
+    document.addEventListener('wheel', handleInteraction, options);
+    document.addEventListener('contextmenu', handleInteraction, options);
+
+    return () => {
+      document.removeEventListener('mousedown', handleInteraction, options);
+      document.removeEventListener('dragstart', handleInteraction, options);
+      document.removeEventListener('wheel', handleInteraction, options);
+      document.removeEventListener('contextmenu', handleInteraction, options);
+    };
+  }, [popoverAnchor, editPopoverAnchor]);
 
   // Keep a stable ref to spacesState to avoid re-creating callbacks on every render
   // This is crucial for performance as spacesState changes frequently
@@ -938,15 +1193,15 @@ export function CalendarApp({ spacesState, viewportsState }: CalendarAppProps) {
     let targetSpaceId = newEvent.spaceId;
     const spaces = spacesStateRef.current.spaces;
 
-    // If no space selected, find or create a default "Calendario" space
+    // If no space selected, find or create a default "Calendar" space
     if (!targetSpaceId) {
-      const existingCalendarSpace = spaces.find((s: any) => s.title === 'Calendario' && s.metadata?.isHidden);
+      const existingCalendarSpace = spaces.find((s: any) => s.title === 'Calendar' && s.metadata?.isHidden);
       if (existingCalendarSpace) {
         targetSpaceId = existingCalendarSpace.id;
       } else {
         const newSpace = spacesStateRef.current.createSpace('page');
         spacesStateRef.current.updateSpace(newSpace.id, {
-          title: 'Calendario',
+          title: 'Calendar',
           metadata: { isHidden: true } // Hide from sidebar
         });
         targetSpaceId = newSpace.id;
@@ -964,7 +1219,8 @@ export function CalendarApp({ spacesState, viewportsState }: CalendarAppProps) {
           endDate: newEvent.endDate,
           notes: newEvent.notes,
           title: newEvent.title,
-          displayMode: 'card'
+          displayMode: 'card',
+          updatedAt: Date.now() // Track for sort order
         }
       };
 
@@ -985,6 +1241,10 @@ export function CalendarApp({ spacesState, viewportsState }: CalendarAppProps) {
     });
   }, [newEvent, onClose]);
 
+  useEffect(() => {
+    handleCreateEventRef.current = handleCreateEvent;
+  }, [handleCreateEvent]);
+
   const handleQuickCreate = useCallback(() => {
     if (!newEvent.title) return;
     handleCreateEvent();
@@ -992,6 +1252,13 @@ export function CalendarApp({ spacesState, viewportsState }: CalendarAppProps) {
   }, [newEvent, handleCreateEvent]);
 
   const handleStartSelection = useCallback((date: Date) => {
+    // Auto-save draft if clicking outside (starting new selection) while popover is open
+    if (popoverAnchorRef.current && newEventRef.current.title) {
+      handleCreateEventRef.current();
+    }
+    setPopoverAnchor(null);
+    popoverAnchorRef.current = null;
+
     setIsSelecting(true);
     setSelectionRange({ start: date, end: date });
   }, []);
@@ -1008,7 +1275,7 @@ export function CalendarApp({ spacesState, viewportsState }: CalendarAppProps) {
       return;
     }
 
-    // We need to access selectionRange state. 
+    // We need to access selectionRange state.
     // Since we can't get it from 'prev', we need it in deps, but then this changes.
     // So we can use a ref or just accept selectionRange dependency (it changes on drag, which is frequent).
     // BUT handleEndSelection is attached to container onMouseUp.
@@ -1061,7 +1328,7 @@ export function CalendarApp({ spacesState, viewportsState }: CalendarAppProps) {
 
     setNewEvent(prev => ({
       ...prev,
-      title: 'Nuovo Evento', // Updated placeholder name
+      title: '', // Empty title to allow cancellation on outside click
       startDate: format(start, "yyyy-MM-dd'T'HH:mm"),
       endDate: format(finalEnd, "yyyy-MM-dd'T'HH:mm")
     }));
@@ -1088,7 +1355,8 @@ export function CalendarApp({ spacesState, viewportsState }: CalendarAppProps) {
       ...blocks[blockIndex],
       metadata: {
         ...blocks[blockIndex].metadata,
-        ...updates
+        ...updates,
+        updatedAt: Date.now() // Track for sort order
       }
     };
 
@@ -1097,20 +1365,33 @@ export function CalendarApp({ spacesState, viewportsState }: CalendarAppProps) {
     });
   }, []);
 
-  const handleToggleEventSelection = useCallback((id: string | null) => {
+  const handleToggleEventSelection = useCallback((id: string | null, anchor?: { x: number, y: number }) => {
     setSelectedEventId(id);
+    if (anchor) setEditPopoverAnchor(anchor);
+    else setEditPopoverAnchor(null);
+  }, []);
+
+  const handleDragEnter = useCallback((date: Date, item: any) => {
+    setDragGhostDate(date);
+    setDragGhostItem(item);
+    handleToggleEventSelection(null); // Dismiss edit popover on drag
+  }, [handleToggleEventSelection]);
+
+  const handleDragLeave = useCallback(() => {
+    setDragGhostDate(null);
+    setDragGhostItem(null);
   }, []);
 
   const getViewTitle = () => {
-    if (view === 'month') return format(currentDate, 'MMMM yyyy', { locale: it });
+    if (view === 'month') return format(currentDate, 'MMMM yyyy', { locale: enUS });
     if (view === 'week') {
       const start = startOfWeek(currentDate, { weekStartsOn: 1 });
       const end = endOfWeek(currentDate, { weekStartsOn: 1 });
       return `${format(start, 'd MMM')} - ${format(end, 'd MMM yyyy')}`;
     }
-    if (view === 'day') return format(currentDate, 'd MMMM yyyy', { locale: it });
+    if (view === 'day') return format(currentDate, 'd MMMM yyyy', { locale: enUS });
     if (view === 'year') return `${currentDate.getFullYear()}`;
-    if (view === 'timeline') return `Timeline - ${format(currentDate, 'MMMM yyyy', { locale: it })}`;
+    if (view === 'timeline') return `Timeline - ${format(currentDate, 'MMMM yyyy', { locale: enUS })}`;
     return '';
   };
 
@@ -1118,6 +1399,11 @@ export function CalendarApp({ spacesState, viewportsState }: CalendarAppProps) {
     if (!activeResize) return null;
     return allEvents.find(e => e.id === activeResize.id);
   }, [activeResize, allEvents]);
+
+  const selectedEvent = useMemo(() => {
+    if (!selectedEventId) return null;
+    return allEvents.find(e => e.id === selectedEventId);
+  }, [selectedEventId, allEvents]);
 
   const renderMonthView = () => {
     return (
@@ -1129,7 +1415,7 @@ export function CalendarApp({ spacesState, viewportsState }: CalendarAppProps) {
         onClick={(e) => {
           const target = e.target as HTMLElement;
           if (!target.closest('.calendar-event-item')) {
-            setSelectedEventId(null);
+            handleToggleEventSelection(null);
           }
         }}
         onScroll={(e) => {
@@ -1156,70 +1442,10 @@ export function CalendarApp({ spacesState, viewportsState }: CalendarAppProps) {
             const monthOfThisWeek = startOfMonth(firstDayInWeek || weekStart);
             const weekEnd = endOfWeek(weekStart, { weekStartsOn: 1 });
 
-            // Calculate selection preview for this week
-            const selectionInWeek = selectionRange ? (() => {
-              const s = selectionRange.start < selectionRange.end ? selectionRange.start : selectionRange.end;
-              const e = selectionRange.start < selectionRange.end ? selectionRange.end : selectionRange.start;
 
-              const eventStart = startOfDay(s);
-              const eventEnd = startOfDay(e);
-
-              if (eventStart <= weekEnd && eventEnd >= weekStart) {
-                let startIndex = differenceInCalendarDays(eventStart, weekStart);
-                let endIndex = differenceInCalendarDays(eventEnd, weekStart);
-
-                const isStart = startIndex >= 0;
-                const isEnd = endIndex <= 6;
-
-                startIndex = Math.max(0, startIndex);
-                endIndex = Math.min(6, endIndex);
-                const span = endIndex - startIndex + 1;
-
-                return { startCol: startIndex, colSpan: span, isStart, isEnd };
-              }
-              return null;
-            })() : null;
 
             return (
-              <div key={weekStart.getTime()} data-week={weekStart.getTime()} className={`relative ${showMonthBar && idx > 0 ? 'mt-6' : ''}`}>
-                {showMonthBar && (
-                  <div className="sticky top-[31px] z-40 bg-default-100/90 backdrop-blur-sm border-b border-divider py-1 px-4 shadow-sm mb-1">
-                    <div className="flex items-center">
-                      {weekDays.map((day, i) => {
-                        const isFirstDay = day.getDate() === 1;
-                        const isFirstWeekFirstDay = idx === 0 && i === 0;
-
-                        if (isFirstDay || isFirstWeekFirstDay) {
-                          return (
-                            <span key={i} className="text-[10px] font-black uppercase tracking-widest text-primary-600 whitespace-nowrap">
-                              {format(day, 'MMMM yyyy', { locale: it })}
-                            </span>
-                          );
-                        }
-                        return null;
-                      })}
-                    </div>
-                  </div>
-                )}
-
-                {/* Selection Preview Overlay */}
-                {selectionInWeek && !activeResize && (
-                  <div
-                    className="absolute z-30 pointer-events-none bg-primary/20 border-y-2 border-primary/40 flex items-center px-2 text-[10px] font-bold text-primary-700 overflow-hidden"
-                    style={{
-                      left: `calc(${(selectionInWeek.startCol / 7) * 100}% + 2px)`,
-                      width: `calc(${(selectionInWeek.colSpan / 7) * 100}% - 4px)`,
-                      top: '26px',
-                      height: '24px',
-                      borderLeftWidth: selectionInWeek.isStart ? '2px' : '0',
-                      borderRightWidth: selectionInWeek.isEnd ? '2px' : '0',
-                      borderRadius: `${selectionInWeek.isStart ? '4px' : '0'} ${selectionInWeek.isEnd ? '4px' : '0'} ${selectionInWeek.isEnd ? '4px' : '0'} ${selectionInWeek.isStart ? '4px' : '0'}`
-                    }}
-                  >
-                    {selectionInWeek.isStart && <span className="truncate">Nuovo Evento...</span>}
-                  </div>
-                )}
-
+              <div key={weekStart.getTime()} data-week={weekStart.getTime()} className="relative">
                 <MonthWeekRow
                   weekStart={weekStart}
                   events={eventsByWeek.get(weekStart.getTime()) || []}
@@ -1237,13 +1463,23 @@ export function CalendarApp({ spacesState, viewportsState }: CalendarAppProps) {
                   onHoverDateChange={setHoveredResizeDate}
                   activeResize={activeResize}
                   onActiveResizeChange={setActiveResize}
+                  dragGhostDate={dragGhostDate}
+                  dragGhostItem={dragGhostItem}
+                  onDragEnter={handleDragEnter}
+                  onDragLeave={handleDragLeave}
+                  hoveredEventId={hoveredEventId}
+                  onHoverEvent={(id) => {
+                    if (!dragGhostItem && !isSelecting) {
+                      setHoveredEventId(id);
+                    }
+                  }}
                 />
               </div>
             );
           })}
           {/* Infinite-like bottom spacer */}
           <div className="h-[300px] bg-default-50/10 flex items-center justify-center">
-            <span className="text-[10px] font-medium text-default-300 uppercase tracking-[0.2em]">Fine del Calendario</span>
+            <span className="text-[10px] font-medium text-default-300 uppercase tracking-[0.2em]">End of Calendar</span>
           </div>
         </div>
       </div>
@@ -1271,7 +1507,7 @@ export function CalendarApp({ spacesState, viewportsState }: CalendarAppProps) {
 
         <div className="flex-1 relative">
           <div className="h-[40px] flex items-center justify-center border-b border-divider sticky top-0 bg-white z-10 font-bold">
-            {format(currentDate, 'EEEE d MMMM', { locale: it })}
+            {format(currentDate, 'EEEE d MMMM', { locale: enUS })}
           </div>
           <div className="relative h-[1440px]">
             {hours.map(hour => (
@@ -1309,6 +1545,13 @@ export function CalendarApp({ spacesState, viewportsState }: CalendarAppProps) {
                   top={top}
                   height={Math.max(24, duration)}
                   onUpdate={(id, updates) => handleUpdateEvent(id, id, event.sourceSpaceId, updates)}
+                  onHoverEvent={(id) => {
+                    if (!dragGhostItem && !isSelecting) {
+                      setHoveredEventId(id);
+                    }
+                  }}
+                  isHovered={hoveredEventId === event.id}
+                  onSelect={handleToggleEventSelection}
                 />
               );
             })}
@@ -1331,7 +1574,7 @@ export function CalendarApp({ spacesState, viewportsState }: CalendarAppProps) {
 
             return (
               <div key={mIdx} className="flex flex-col gap-2">
-                <h3 className="font-bold text-sm capitalize">{format(month, 'MMMM', { locale: it })}</h3>
+                <h3 className="font-bold text-sm capitalize">{format(month, 'MMMM', { locale: enUS })}</h3>
                 <div className="grid grid-cols-7 gap-1">
                   {['L', 'M', 'M', 'G', 'V', 'S', 'D'].map((d, i) => (
                     <div key={`${mIdx}-${d}-${i}`} className="text-[9px] text-default-400 text-center font-bold">
@@ -1428,9 +1671,9 @@ export function CalendarApp({ spacesState, viewportsState }: CalendarAppProps) {
               }}
             >
               <div className="p-3 border-b border-divider flex flex-col items-center">
-                <span className="text-[10px] uppercase font-bold text-default-400">{format(day, 'EEE', { locale: it })}</span>
+                <span className="text-[10px] uppercase font-bold text-default-400">{format(day, 'EEE', { locale: enUS })}</span>
                 <span className={`text-lg font-bold ${isToday ? 'text-primary' : ''}`}>{format(day, 'd')}</span>
-                <span className="text-[10px] text-default-400">{format(day, 'MMM', { locale: it })}</span>
+                <span className="text-[10px] text-default-400">{format(day, 'MMM', { locale: enUS })}</span>
               </div>
               <div className="flex-1 p-2 flex flex-col gap-1 overflow-y-auto no-scrollbar">
                 {dayEvents.map((event, idx) => (
@@ -1521,6 +1764,13 @@ export function CalendarApp({ spacesState, viewportsState }: CalendarAppProps) {
                           viewportsState.replaceCurrentTab(viewportsState.focusedViewportId, sid, undefined, title);
                         }
                       }}
+                      onHoverEvent={(id) => {
+                        if (!dragGhostItem && !isSelecting) {
+                          setHoveredEventId(id);
+                        }
+                      }}
+                      isHovered={hoveredEventId === event.id}
+                      onSelect={handleToggleEventSelection}
                     />
                   );
                 })}
@@ -1534,6 +1784,11 @@ export function CalendarApp({ spacesState, viewportsState }: CalendarAppProps) {
 
   return (
     <div className="flex flex-col h-full overflow-hidden bg-white">
+      <style>{`
+        .is-dragging-event .calendar-event-item {
+          pointer-events: none !important;
+        }
+      `}</style>
       {/* Header */}
       <div className="flex justify-between items-center p-3 border-b border-divider shrink-0 bg-default-50/30">
         <div className="flex items-center gap-2">
@@ -1548,7 +1803,7 @@ export function CalendarApp({ spacesState, viewportsState }: CalendarAppProps) {
               <ChevronRight size={16} />
             </Button>
           </div>
-          <Button size="sm" variant="flat" onPress={goToToday}>Oggi</Button>
+          <Button size="sm" variant="flat" onPress={goToToday}>Today</Button>
         </div>
 
         <div className="flex gap-3 items-center">
@@ -1562,18 +1817,18 @@ export function CalendarApp({ spacesState, viewportsState }: CalendarAppProps) {
                 onPress={() => setView(v)}
                 className="capitalize text-xs h-7 px-3"
               >
-                {v === 'month' ? 'Mese' : v === 'week' ? 'Settimana' : v === 'day' ? 'Giorno' : v === 'year' ? 'Anno' : 'Timeline'}
+                {v === 'month' ? 'Month' : v === 'week' ? 'Week' : v === 'day' ? 'Day' : v === 'year' ? 'Year' : 'Timeline'}
               </Button>
             ))}
           </div>
           <Button startContent={<Plus size={16} />} size="sm" color="primary" className="font-bold" onPress={onOpen}>
-            Nuovo Evento
+            New Event
           </Button>
         </div>
       </div>
 
       {/* Content */}
-      <div className="flex-1 overflow-hidden">
+      <div className={`flex-1 overflow-hidden ${dragGhostItem ? 'is-dragging-event' : ''}`}>
         {view === 'month' && renderMonthView()}
         {view === 'week' && renderWeekView()}
         {view === 'day' && renderDayView()}
@@ -1585,26 +1840,26 @@ export function CalendarApp({ spacesState, viewportsState }: CalendarAppProps) {
       <AnimatePresence>
         {popoverAnchor && (
           <motion.div
+            ref={popoverRef}
             initial={{ opacity: 0, scale: 0.95, y: 10 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.95, y: 10 }}
             className="fixed z-[9999] pointer-events-none"
             style={{
               left: popoverAnchor.x,
-              top: popoverAnchor.y,
-              transform: 'translateX(-50%)'
+              top: popoverAnchor.y
             }}
           >
             <div className="pointer-events-auto w-[300px] p-4 bg-white rounded-xl shadow-2xl border border-divider flex flex-col gap-3">
               <div className="flex items-center justify-between">
-                <span className="text-xs font-bold text-default-700 uppercase tracking-wider">Nuovo Evento</span>
+                <span className="text-xs font-bold text-default-700 uppercase tracking-wider">New Event</span>
                 <Button size="sm" isIconOnly variant="light" onClick={() => setPopoverAnchor(null)}>
                   <Plus size={14} className="rotate-45" />
                 </Button>
               </div>
               <Input
                 autoFocus
-                placeholder="Nuovo Evento"
+                placeholder="New Event"
                 variant="bordered"
                 size="sm"
                 value={newEvent.title}
@@ -1622,14 +1877,146 @@ export function CalendarApp({ spacesState, viewportsState }: CalendarAppProps) {
               </div>
               <div className="flex gap-2">
                 <Button size="sm" fullWidth variant="flat" className="font-medium" onClick={() => { setPopoverAnchor(null); onOpen(); }}>
-                  Dettagli
+                  Details
                 </Button>
                 <Button size="sm" fullWidth color="primary" className="font-bold shadow-lg shadow-primary/20" onClick={handleQuickCreate} isDisabled={!newEvent.title}>
-                  Crea
+                  Create
                 </Button>
               </div>
               {/* Tooltip arrow */}
               <div className="absolute -top-1.5 left-1/2 -translate-x-1/2 w-3 h-3 bg-white border-t border-l border-divider rotate-45" />
+            </div>
+          </motion.div>
+        )}
+
+        {selectedEvent && editPopoverAnchor && (
+          <motion.div
+            ref={editPopoverRef}
+            initial={{ opacity: 0, scale: 0.95, y: 10 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.95, y: 10 }}
+            className="fixed z-[9999] pointer-events-none"
+            style={{
+              left: editPopoverAnchor.x,
+              top: editPopoverAnchor.y
+            }}
+          >
+            <div className="pointer-events-auto w-[340px] p-6 bg-white rounded-2xl shadow-[0_25px_50px_-12px_rgba(0,0,0,0.25)] border border-divider flex flex-col gap-5">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-black text-default-400 uppercase tracking-[0.2em]">Event Details</span>
+                <Button size="sm" isIconOnly variant="light" radius="full" className="h-8 w-8" onClick={() => handleToggleEventSelection(null)}>
+                  <Plus size={18} className="rotate-45 text-default-400" />
+                </Button>
+              </div>
+
+              <Input
+                label="Title"
+                labelPlacement="inside"
+                placeholder="Event title"
+                variant="flat"
+                size="md"
+                value={selectedEvent.metadata?.title || ''}
+                onValueChange={(v) => handleUpdateEvent(selectedEvent.id, selectedEvent.id, selectedEvent.sourceSpaceId, { title: v })}
+                classNames={{
+                  inputWrapper: "bg-default-50 hover:bg-default-100 transition-colors h-14"
+                }}
+              />
+
+              <div className="grid grid-cols-2 gap-3">
+                <Input
+                  type="datetime-local"
+                  label="Start"
+                  labelPlacement="inside"
+                  variant="flat"
+                  size="md"
+                  value={format(selectedEvent.start, "yyyy-MM-dd'T'HH:mm")}
+                  onChange={(e) => handleUpdateEvent(selectedEvent.id, selectedEvent.id, selectedEvent.sourceSpaceId, { startDate: e.target.value })}
+                  classNames={{
+                    inputWrapper: "bg-default-50 h-14"
+                  }}
+                />
+                <Input
+                  type="datetime-local"
+                  label="End"
+                  labelPlacement="inside"
+                  variant="flat"
+                  size="md"
+                  value={selectedEvent.end ? format(selectedEvent.end, "yyyy-MM-dd'T'HH:mm") : ''}
+                  onChange={(e) => handleUpdateEvent(selectedEvent.id, selectedEvent.id, selectedEvent.sourceSpaceId, { endDate: e.target.value })}
+                  classNames={{
+                    inputWrapper: "bg-default-50 h-14"
+                  }}
+                />
+              </div>
+
+              <Textarea
+                label="Notes"
+                labelPlacement="inside"
+                placeholder="Additional notes..."
+                variant="flat"
+                size="md"
+                minRows={2}
+                maxRows={10}
+                value={selectedEvent.metadata?.notes || ''}
+                onValueChange={(v) => handleUpdateEvent(selectedEvent.id, selectedEvent.id, selectedEvent.sourceSpaceId, { notes: v })}
+                classNames={{
+                  inputWrapper: "bg-default-50 py-3"
+                }}
+              />
+
+              <div className="flex flex-col gap-2">
+                <span className="text-[10px] font-bold text-default-400 uppercase tracking-widest pl-1">Linked Spaces</span>
+                <Select
+                  selectionMode="multiple"
+                  placeholder="Select spaces..."
+                  variant="flat"
+                  size="md"
+                  selectedKeys={new Set(selectedEvent.metadata?.linkedSpaceIds || [])}
+                  onSelectionChange={(keys: any) => {
+                    const linkedSpaceIds = Array.from(keys);
+                    handleUpdateEvent(selectedEvent.id, selectedEvent.id, selectedEvent.sourceSpaceId, { linkedSpaceIds });
+                  }}
+                  classNames={{
+                    trigger: "bg-default-50 min-h-14 py-2"
+                  }}
+                  renderValue={(items) => (
+                    <div className="flex flex-wrap gap-1">
+                      {items.map((item) => (
+                        <Chip key={item.key} size="sm" variant="flat" className="h-5 text-[10px] bg-white shadow-sm border border-default-200">{item.textValue}</Chip>
+                      ))}
+                    </div>
+                  )}
+                >
+                  {spacesState.spaces.filter((s: any) => s.id !== selectedEvent.sourceSpaceId).map((space: any) => (
+                    <SelectItem key={space.id} textValue={space.title}>
+                      <div className="flex items-center gap-2">
+                        <div className="w-1.5 h-1.5 rounded-full bg-primary/40" />
+                        <span className="text-xs">{space.title}</span>
+                      </div>
+                    </SelectItem>
+                  ))}
+                </Select>
+              </div>
+
+              <div className="flex justify-end pt-2 border-t border-divider mt-1">
+                <Button
+                  size="sm"
+                  variant="solid"
+                  className="font-bold text-[10px] h-7 px-3 shadow-sm bg-red-600 hover:bg-red-700 text-white"
+                  style={{ backgroundColor: '#ef4444', color: 'white' }}
+                  startContent={<Trash2 size={12} className="text-white" />}
+                  onClick={() => {
+                    const space = spacesState.spaces.find((s: any) => s.id === selectedEvent.sourceSpaceId);
+                    if (space) {
+                      const blocks = space.content?.blocks.filter((b: any) => b.id !== selectedEvent.id);
+                      spacesState.updateSpace(selectedEvent.sourceSpaceId, { content: { ...space.content, blocks } });
+                      handleToggleEventSelection(null);
+                    }
+                  }}
+                >
+                  Delete Event
+                </Button>
+              </div>
             </div>
           </motion.div>
         )}
@@ -1640,12 +2027,12 @@ export function CalendarApp({ spacesState, viewportsState }: CalendarAppProps) {
         <ModalContent>
           {(onClose) => (
             <>
-              <ModalHeader className="flex flex-col gap-1">Crea Nuovo Evento</ModalHeader>
+              <ModalHeader className="flex flex-col gap-1">Create New Event</ModalHeader>
               <ModalBody>
                 <div className="flex flex-col gap-4">
                   <Input
-                    label="Titolo"
-                    placeholder="Nome dell'evento"
+                    label="Title"
+                    placeholder="Event name"
                     variant="bordered"
                     value={newEvent.title}
                     onValueChange={(v) => setNewEvent(prev => ({ ...prev, title: v }))}
@@ -1653,22 +2040,22 @@ export function CalendarApp({ spacesState, viewportsState }: CalendarAppProps) {
                   <div className="flex gap-2">
                     <Input
                       type="datetime-local"
-                      label="Inizio"
+                      label="Start"
                       variant="bordered"
                       value={newEvent.startDate}
                       onValueChange={(v) => setNewEvent(prev => ({ ...prev, startDate: v }))}
                     />
                     <Input
                       type="datetime-local"
-                      label="Fine"
+                      label="End"
                       variant="bordered"
                       value={newEvent.endDate}
                       onValueChange={(v) => setNewEvent(prev => ({ ...prev, endDate: v }))}
                     />
                   </div>
                   <Select
-                    label="Destinazione"
-                    placeholder="Scegli uno spazio"
+                    label="Destination"
+                    placeholder="Choose a space"
                     variant="bordered"
                     selectedKeys={newEvent.spaceId ? [newEvent.spaceId] : []}
                     onSelectionChange={(keys: any) => setNewEvent(prev => ({ ...prev, spaceId: Array.from(keys)[0] as string }))}
@@ -1681,7 +2068,7 @@ export function CalendarApp({ spacesState, viewportsState }: CalendarAppProps) {
                   </Select>
                   <Textarea
                     label="Note"
-                    placeholder="Dettagli aggiuntivi..."
+                    placeholder="Additional details..."
                     variant="bordered"
                     value={newEvent.notes}
                     onValueChange={(v) => setNewEvent(prev => ({ ...prev, notes: v }))}
@@ -1689,14 +2076,14 @@ export function CalendarApp({ spacesState, viewportsState }: CalendarAppProps) {
                 </div>
               </ModalBody>
               <ModalFooter>
-                <Button variant="light" onPress={onClose}>Annulla</Button>
-                <Button color="primary" onPress={handleCreateEvent}>Salva Evento</Button>
+                <Button variant="light" onPress={onClose}>Cancel</Button>
+                <Button color="primary" onPress={handleCreateEvent}>Save Event</Button>
               </ModalFooter>
             </>
           )}
         </ModalContent>
       </Modal>
-    </div>
+    </div >
   );
 }
 
@@ -1742,7 +2129,7 @@ function CalendarDaySlot({ hour, day, onStartSelection, onUpdateSelection, onUpd
   );
 }
 
-function DraggableTimelineEvent({ event, top, height, onUpdate, onNavigate }: any) {
+function DraggableTimelineEvent({ event, top, height, onUpdate, onNavigate, onHoverEvent, isHovered, onSelect }: any) {
   const [{ isDragging }, drag] = useDrag({
     type: 'CALENDAR_EVENT',
     item: { id: event.id, spaceId: event.sourceSpaceId },
@@ -1773,18 +2160,21 @@ function DraggableTimelineEvent({ event, top, height, onUpdate, onNavigate }: an
   return (
     <div
       ref={setDragRef}
-      className={`absolute left-1 right-1 rounded bg-primary text-white p-2 text-xs shadow-md z-20 overflow-hidden cursor-grab active:cursor-grabbing group ${isDragging ? 'opacity-50' : ''}`}
+      className={`absolute left-1 right-1 rounded bg-primary text-white p-2 text-xs shadow-md z-20 overflow-hidden cursor-grab active:cursor-grabbing group calendar-event-item ${isDragging ? 'opacity-50' : ''} ${isHovered ? 'ring-2 ring-primary-300' : ''}`}
       style={{ top: `${top}px`, height: `${height}px` }}
+      onMouseEnter={() => onHoverEvent && onHoverEvent(event.id)}
+      onMouseLeave={() => onHoverEvent && onHoverEvent(null)}
       onClick={(e) => {
         e.stopPropagation();
-        if (onNavigate) onNavigate(event.sourceSpaceId, event.sourceSpaceTitle);
+        if (onSelect) onSelect(event.id, { x: e.clientX, y: e.clientY });
+        else if (onNavigate) onNavigate(event.sourceSpaceId, event.sourceSpaceTitle);
       }}
     >
       {/* Top Resizer Handle */}
       <div
         className="absolute top-0 left-0 right-0 h-2 cursor-ns-resize opacity-0 group-hover:opacity-100 bg-white/20 flex items-center justify-center transition-all z-30"
         onMouseDown={(e) => handleResizeTop(e, -30)}
-        title="Trascina o clicca per anticipare di 30 min"
+        title="Drag or click to advance by 30 min"
       >
         <div className="w-8 h-0.5 bg-white/60 rounded-full" />
       </div>
@@ -1799,7 +2189,7 @@ function DraggableTimelineEvent({ event, top, height, onUpdate, onNavigate }: an
       <div
         className="absolute bottom-0 left-0 right-0 h-2 cursor-ns-resize opacity-0 group-hover:opacity-100 bg-white/20 flex items-center justify-center transition-all z-30"
         onMouseDown={(e) => handleResizeBottom(e, 30)}
-        title="Trascina o clicca per posticipare di 30 min"
+        title="Drag or click to postpone by 30 min"
       >
         <div className="w-8 h-0.5 bg-white/60 rounded-full" />
       </div>

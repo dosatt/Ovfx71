@@ -57,7 +57,7 @@ export function SpaceTreeItem({ space, spacesState, onSpaceClick, level = 0 }: S
   const [changingIcon, setChangingIcon] = useState(false);
   const [tempIcon, setTempIcon] = useState(space.icon || '');
   const [tempColor, setTempColor] = useState(space.iconColor || '');
-  
+
   const ref = useRef<HTMLDivElement>(null);
   const buttonRef = useRef<HTMLButtonElement>(null);
 
@@ -67,10 +67,10 @@ export function SpaceTreeItem({ space, spacesState, onSpaceClick, level = 0 }: S
 
   const [{ isDragging }, drag] = useDrag(() => ({
     type: ITEM_TYPE_TO_WORKSPACE,
-    item: { 
-      id: space.id, 
+    item: {
+      id: space.id,
       parentId: space.parentId,
-      spaceId: space.id, 
+      spaceId: space.id,
       spaceData: space,
       isSpaceDrag: true
     },
@@ -205,10 +205,10 @@ export function SpaceTreeItem({ space, spacesState, onSpaceClick, level = 0 }: S
               if (!IconComponent) {
                 IconComponent = Icon;
               }
-              
+
               return IconComponent ? (
-                <IconComponent 
-                  size={16} 
+                <IconComponent
+                  size={16}
                   className="shrink-0"
                   style={{ color: space.iconColor || 'currentColor' }}
                 />
@@ -260,14 +260,14 @@ export function SpaceTreeItem({ space, spacesState, onSpaceClick, level = 0 }: S
         const menuHeight = 150;
         const windowWidth = window.innerWidth;
         const windowHeight = window.innerHeight;
-        
+
         const isOffRight = buttonRect.left + menuWidth > windowWidth;
         const isOffBottom = buttonRect.bottom + menuHeight > windowHeight;
-        
+
         return (
           <>
-            <div 
-              className="fixed inset-0 z-[999]" 
+            <div
+              className="fixed inset-0 z-[999]"
               onClick={() => setShowMenu(false)}
             />
             <div
@@ -321,7 +321,7 @@ export function SpaceTreeItem({ space, spacesState, onSpaceClick, level = 0 }: S
         <ModalContent>
           {(onClose) => (
             <>
-              <ModalHeader className="flex flex-col gap-1">Rinomina Space</ModalHeader>
+              <ModalHeader className="flex flex-col gap-1">Rename Space</ModalHeader>
               <ModalBody>
                 <Input
                   autoFocus
@@ -331,16 +331,16 @@ export function SpaceTreeItem({ space, spacesState, onSpaceClick, level = 0 }: S
                     if (e.key === 'Enter') handleRenameSubmit();
                     if (e.key === 'Escape') setRenaming(false);
                   }}
-                  placeholder="Nome dello space"
+                  placeholder="Space name"
                   variant="bordered"
                 />
               </ModalBody>
               <ModalFooter>
                 <Button color="danger" variant="light" onPress={onClose}>
-                  Annulla
+                  Cancel
                 </Button>
                 <Button color="primary" onPress={handleRenameSubmit}>
-                  Salva
+                  Save
                 </Button>
               </ModalFooter>
             </>
@@ -357,7 +357,7 @@ export function SpaceTreeItem({ space, spacesState, onSpaceClick, level = 0 }: S
                 <Button isIconOnly variant="light" size="sm" onPress={onClose}>
                   <ArrowLeft size={18} />
                 </Button>
-                Cambia Icona
+                Change Icon
               </ModalHeader>
               <ModalBody>
                 <IconPicker
@@ -369,7 +369,7 @@ export function SpaceTreeItem({ space, spacesState, onSpaceClick, level = 0 }: S
               </ModalBody>
               <ModalFooter>
                 <Button color="danger" variant="light" onPress={onClose}>
-                  Annulla
+                  Cancel
                 </Button>
                 <Button color="primary" onPress={handleConfirmIcon}>
                   OK
@@ -383,8 +383,8 @@ export function SpaceTreeItem({ space, spacesState, onSpaceClick, level = 0 }: S
       {/* Context menu */}
       {contextMenu && (
         <>
-          <div 
-            className="fixed inset-0 z-[999]" 
+          <div
+            className="fixed inset-0 z-[999]"
             onClick={() => setContextMenu(null)}
           />
           <div

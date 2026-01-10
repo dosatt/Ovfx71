@@ -51,25 +51,25 @@ export function RichTextEditor({
   const [previewSpaceId, setPreviewSpaceId] = useState<string | null>(null);
   const [previewPosition, setPreviewPosition] = useState<{ x: number, y: number } | null>(null);
 
-  // Converti storage → display
+  // Convert storage → display
   const { displayContent, links } = storageToDisplay(content);
 
-  // Funzione per navigare a uno space
+  // Function to navigate to a space
   const navigateToSpace = (spaceId: string) => {
     if (!viewportsState || !viewportsState.focusedViewportId || !viewportsState.findViewport) {
       return;
     }
-    
+
     const focusedViewport = viewportsState.findViewport(viewportsState.focusedViewportId);
-    
+
     if (!focusedViewport || !focusedViewport.activeTabId) {
       return;
     }
-    
+
     viewportsState.updateTab(focusedViewport.id, focusedViewport.activeTabId, { spaceId });
   };
 
-  // Funzione per renderizzare il contenuto con link colorati
+  // Function to render content with colored links
   const renderContentWithLinks = (): (string | JSX.Element)[] => {
     if (links.length === 0) {
       return [displayContent];
@@ -81,15 +81,15 @@ export function RichTextEditor({
     const sortedLinks = [...links].sort((a, b) => a.startIndex - b.startIndex);
 
     sortedLinks.forEach((link, idx) => {
-      // Testo prima del link
+      // Text before the link
       if (link.startIndex > lastIndex) {
         parts.push(displayContent.substring(lastIndex, link.startIndex));
       }
 
-      // Controlla se il link è rotto
+      // Check if the link is broken
       const isBroken = brokenLinks?.has(link.spaceId);
 
-      // Link stilizzato
+      // Styled link
       const linkText = displayContent.substring(link.startIndex, link.endIndex);
       parts.push(
         <span
@@ -114,19 +114,19 @@ export function RichTextEditor({
           onMouseEnter={(e) => {
             setHoveredBrokenLink(isBroken ? link.spaceId : null);
             if (e.ctrlKey || e.metaKey) {
-               setPreviewSpaceId(link.spaceId);
-               setPreviewPosition({ x: e.clientX, y: e.clientY });
+              setPreviewSpaceId(link.spaceId);
+              setPreviewPosition({ x: e.clientX, y: e.clientY });
             }
           }}
           onMouseMove={(e) => {
-             if (e.ctrlKey || e.metaKey) {
-                 if (previewSpaceId !== link.spaceId) {
-                     setPreviewSpaceId(link.spaceId);
-                 }
-                 setPreviewPosition({ x: e.clientX, y: e.clientY });
-             } else {
-                 setPreviewSpaceId(null);
-             }
+            if (e.ctrlKey || e.metaKey) {
+              if (previewSpaceId !== link.spaceId) {
+                setPreviewSpaceId(link.spaceId);
+              }
+              setPreviewPosition({ x: e.clientX, y: e.clientY });
+            } else {
+              setPreviewSpaceId(null);
+            }
           }}
           onMouseLeave={() => {
             setHoveredBrokenLink(null);
@@ -144,7 +144,7 @@ export function RichTextEditor({
       lastIndex = link.endIndex;
     });
 
-    // Testo dopo l'ultimo link
+    // Text after the last link
     if (lastIndex < displayContent.length) {
       parts.push(displayContent.substring(lastIndex));
     }
@@ -152,11 +152,11 @@ export function RichTextEditor({
     return parts;
   };
 
-  // Salva e ripristina la posizione del cursore
+  // Save and restore caret position
   const saveCaretPosition = () => {
     const selection = window.getSelection();
     if (!selection || selection.rangeCount === 0) return null;
-    
+
     const range = selection.getRangeAt(0);
     const preCaretRange = range.cloneRange();
     if (contentEditableRef.current) {
@@ -200,55 +200,55 @@ export function RichTextEditor({
     }
   };
 
-  // Gestisce l'input dell'utente
+  // Handle user input
   const handleInput = () => {
     if (isComposingRef.current || !contentEditableRef.current) return;
-    
+
     const caretPos = saveCaretPosition();
     const newText = contentEditableRef.current.innerText || '';
 
-    // Funzione helper per estrarre i link attuali dal DOM e rimapparli sul nuovo testo
+    // Helper function to extract current links from the DOM and remap them to the new text
     const getLinksFromDOM = (textToMatch: string) => {
-        if (!contentEditableRef.current) return [];
-        
-        const linkElements = contentEditableRef.current.querySelectorAll('span[data-link-id]');
-        const foundLinks: LinkInfo[] = [];
-        let lastSearchIndex = 0;
+      if (!contentEditableRef.current) return [];
 
-        linkElements.forEach((el) => {
-            const span = el as HTMLElement;
-            const id = span.getAttribute('data-link-id');
-            const title = span.getAttribute('data-link-text') || span.innerText;
-            
-            if (!id || !title) return;
+      const linkElements = contentEditableRef.current.querySelectorAll('span[data-link-id]');
+      const foundLinks: LinkInfo[] = [];
+      let lastSearchIndex = 0;
 
-            // Cerca il testo del link nel testo completo a partire dall'ultimo punto
-            const index = textToMatch.indexOf(title, lastSearchIndex);
-            
-            if (index !== -1) {
-                foundLinks.push({
-                    spaceId: id,
-                    title: title,
-                    startIndex: index,
-                    endIndex: index + title.length,
-                    storageStartIndex: 0, // Verrà ricalcolato da displayToStorage
-                    storageEndIndex: 0 // Verrà ricalcolato da displayToStorage
-                });
-                lastSearchIndex = index + title.length;
-            }
-        });
-        return foundLinks;
+      linkElements.forEach((el) => {
+        const span = el as HTMLElement;
+        const id = span.getAttribute('data-link-id');
+        const title = span.getAttribute('data-link-text') || span.innerText;
+
+        if (!id || !title) return;
+
+        // Search for link text in the complete text starting from the last point
+        const index = textToMatch.indexOf(title, lastSearchIndex);
+
+        if (index !== -1) {
+          foundLinks.push({
+            spaceId: id,
+            title: title,
+            startIndex: index,
+            endIndex: index + title.length,
+            storageStartIndex: 0, // Verrà ricalcolato da displayToStorage
+            storageEndIndex: 0 // Verrà ricalcolato da displayToStorage
+          });
+          lastSearchIndex = index + title.length;
+        }
+      });
+      return foundLinks;
     };
-    
-    // Controlla se l'utente ha appena digitato ">>"
+
+    // Check if user typed ">>"
     if (newText.endsWith('>>') && !displayContent.endsWith('>>')) {
-      // Salva la posizione del cursore prima di rimuovere ">>"
+      // Save caret position before removing ">>"
       const cursorPosition = caretPos! - 2; // -2 perché stiamo per rimuovere ">>"
-      
-      // Rimuovi ">>" dal contenuto
+
+      // Remove ">>" from content
       const contentWithoutTrigger = newText.slice(0, -2);
-      
-      // Trova link esistenti nel nuovo testo
+
+      // Find existing links in new text
       const newLinks = getLinksFromDOM(contentWithoutTrigger);
 
       const storageContent = displayToStorage(contentWithoutTrigger, newLinks);
@@ -259,42 +259,42 @@ export function RichTextEditor({
         // Use standard selection API to get accurate cursor position
         const selection = window.getSelection();
         if (selection && selection.rangeCount > 0) {
-            const range = selection.getRangeAt(0);
-            const rect = range.getBoundingClientRect();
-            
-            // Check if rect is valid (it might be 0,0,0,0 if cursor is in an empty line sometimes)
-            // If invalid, fallback to the element's bottom left or simple calculation
-            if (rect.width === 0 && rect.height === 0 && contentEditableRef.current) {
-                // Try to get position from the text node
-                const span = document.createElement('span');
-                span.appendChild(document.createTextNode('\u200b')); // Zero width space
-                range.insertNode(span);
-                const spanRect = span.getBoundingClientRect();
-                span.parentNode?.removeChild(span);
-                
-                onTriggerSpaceLink(
-                  {
-                    top: spanRect.bottom + 4,
-                    left: spanRect.left,
-                  },
-                  cursorPosition
-                );
-            } else {
-                onTriggerSpaceLink(
-                  {
-                    top: rect.bottom + 4,
-                    left: rect.left,
-                  },
-                  cursorPosition
-                );
-            }
+          const range = selection.getRangeAt(0);
+          const rect = range.getBoundingClientRect();
+
+          // Check if rect is valid (it might be 0,0,0,0 if cursor is in an empty line sometimes)
+          // If invalid, fallback to the element's bottom left or simple calculation
+          if (rect.width === 0 && rect.height === 0 && contentEditableRef.current) {
+            // Try to get position from the text node
+            const span = document.createElement('span');
+            span.appendChild(document.createTextNode('\u200b')); // Zero width space
+            range.insertNode(span);
+            const spanRect = span.getBoundingClientRect();
+            span.parentNode?.removeChild(span);
+
+            onTriggerSpaceLink(
+              {
+                top: spanRect.bottom + 4,
+                left: spanRect.left,
+              },
+              cursorPosition
+            );
+          } else {
+            onTriggerSpaceLink(
+              {
+                top: rect.bottom + 4,
+                left: rect.left,
+              },
+              cursorPosition
+            );
+          }
         }
       }
 
       return;
     }
 
-    // Controlla se l'utente ha appena digitato "+++"
+    // Check if user typed "+++"
     if (newText.endsWith('+++') && !displayContent.endsWith('+++')) {
       const cursorPosition = caretPos! - 3;
       const contentWithoutTrigger = newText.slice(0, -3);
@@ -305,55 +305,55 @@ export function RichTextEditor({
       if (onTriggerCalendar) {
         const selection = window.getSelection();
         if (selection && selection.rangeCount > 0) {
-            const range = selection.getRangeAt(0);
-            const rect = range.getBoundingClientRect();
-            
-            if (rect.width === 0 && rect.height === 0 && contentEditableRef.current) {
-                const span = document.createElement('span');
-                span.appendChild(document.createTextNode('\u200b'));
-                range.insertNode(span);
-                const spanRect = span.getBoundingClientRect();
-                span.parentNode?.removeChild(span);
-                
-                onTriggerCalendar(
-                  { top: spanRect.bottom + 4, left: spanRect.left },
-                  cursorPosition
-                );
-            } else {
-                onTriggerCalendar(
-                  { top: rect.bottom + 4, left: rect.left },
-                  cursorPosition
-                );
-            }
+          const range = selection.getRangeAt(0);
+          const rect = range.getBoundingClientRect();
+
+          if (rect.width === 0 && rect.height === 0 && contentEditableRef.current) {
+            const span = document.createElement('span');
+            span.appendChild(document.createTextNode('\u200b'));
+            range.insertNode(span);
+            const spanRect = span.getBoundingClientRect();
+            span.parentNode?.removeChild(span);
+
+            onTriggerCalendar(
+              { top: spanRect.bottom + 4, left: spanRect.left },
+              cursorPosition
+            );
+          } else {
+            onTriggerCalendar(
+              { top: rect.bottom + 4, left: rect.left },
+              cursorPosition
+            );
+          }
         }
       }
       return;
     }
-    
-    // Trova link esistenti nel nuovo testo normale
+
+    // Find existing links in normal text
     const newLinks = getLinksFromDOM(newText);
 
     const storageContent = displayToStorage(newText, newLinks);
     onChange(storageContent);
 
-    // Ripristina il cursore dopo il re-render
+    // Restore caret after re-render
     setTimeout(() => restoreCaretPosition(caretPos), 0);
   };
 
-  // Sincronizza il contenuto quando cambia dall'esterno
+  // Sync content when it changes from outside
   useEffect(() => {
     if (!contentEditableRef.current || isComposingRef.current) return;
-    
+
     const currentText = contentEditableRef.current.innerText || '';
     if (currentText !== displayContent) {
       const caretPos = saveCaretPosition();
-      
-      // Cancella il contenuto corrente
+
+      // Clear current content
       while (contentEditableRef.current.firstChild) {
         contentEditableRef.current.removeChild(contentEditableRef.current.firstChild);
       }
-      
-      // Renderizza il nuovo contenuto
+
+      // Render new content
       const parts = renderContentWithLinks();
       parts.forEach((part) => {
         if (typeof part === 'string') {
@@ -363,16 +363,16 @@ export function RichTextEditor({
           span.setAttribute('data-link-id', (part as JSX.Element).props['data-link-id']);
           span.setAttribute('data-link-text', (part as JSX.Element).props['data-link-text']);
           span.setAttribute('contenteditable', 'false');
-          
+
           const isBroken = brokenLinks?.has((part as JSX.Element).props['data-link-id']);
-          
+
           span.className = `font-semibold cursor-pointer select-none inline-flex items-center gap-1 hover:underline ${isBroken ? 'text-[#d32f2f] line-through' : 'text-[#0b6bcb]'}`;
-          
+
           const linkId = (part as JSX.Element).props['data-link-id'];
           const linkText = (part as JSX.Element).props['data-link-text'];
-          
+
           span.textContent = linkText;
-          
+
           span.onclick = (e) => {
             e.preventDefault();
             e.stopPropagation();
@@ -380,7 +380,7 @@ export function RichTextEditor({
               navigateToSpace(linkId);
             }
           };
-          
+
           span.oncontextmenu = (e) => {
             e.preventDefault();
             e.stopPropagation();
@@ -388,29 +388,29 @@ export function RichTextEditor({
               onLinkContextMenu(linkId, linkText, { x: e.clientX, y: e.clientY });
             }
           };
-          
+
           span.onmouseenter = (e) => {
-             setHoveredBrokenLink(isBroken ? linkId : null);
-             if (e.ctrlKey || e.metaKey) {
-                setPreviewSpaceId(linkId);
-                setPreviewPosition({ x: e.clientX, y: e.clientY });
-             }
+            setHoveredBrokenLink(isBroken ? linkId : null);
+            if (e.ctrlKey || e.metaKey) {
+              setPreviewSpaceId(linkId);
+              setPreviewPosition({ x: e.clientX, y: e.clientY });
+            }
           };
           span.onmousemove = (e) => {
-              if (e.ctrlKey || e.metaKey) {
-                  if (previewSpaceId !== linkId) {
-                      setPreviewSpaceId(linkId);
-                  }
-                  setPreviewPosition({ x: e.clientX, y: e.clientY });
-              } else {
-                  setPreviewSpaceId(null);
+            if (e.ctrlKey || e.metaKey) {
+              if (previewSpaceId !== linkId) {
+                setPreviewSpaceId(linkId);
               }
+              setPreviewPosition({ x: e.clientX, y: e.clientY });
+            } else {
+              setPreviewSpaceId(null);
+            }
           };
           span.onmouseleave = () => {
-             setHoveredBrokenLink(null);
-             setPreviewSpaceId(null);
+            setHoveredBrokenLink(null);
+            setPreviewSpaceId(null);
           };
-          
+
           if (isBroken) {
             const brokenIcon = document.createElement('span');
             brokenIcon.innerHTML = '⛔';
@@ -438,11 +438,11 @@ export function RichTextEditor({
             };
             span.appendChild(brokenIcon);
           }
-          
+
           contentEditableRef.current!.appendChild(span);
         }
       });
-      
+
       setTimeout(() => restoreCaretPosition(caretPos), 0);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -452,141 +452,141 @@ export function RichTextEditor({
     const isMac = navigator.platform.toUpperCase().indexOf('MAC') >= 0;
     const isCtrlOrCmd = isMac ? e.metaKey : e.ctrlKey;
 
-    // Gestione ArrowUp e ArrowDown per navigazione tra blocchi
+    // Handle ArrowUp and ArrowDown for block navigation
     if (e.key === 'ArrowUp' && onNavigateUp && contentEditableRef.current) {
       const selection = window.getSelection();
       if (selection && selection.rangeCount > 0) {
         const range = selection.getRangeAt(0);
-        // Crea un range dall'inizio del contentEditable fino al cursore
+        // Create a range from the beginning of contentEditable up to the caret
         const preCaretRange = range.cloneRange();
         preCaretRange.selectNodeContents(contentEditableRef.current);
         preCaretRange.setEnd(range.endContainer, range.endOffset);
         const caretOffset = preCaretRange.toString().length;
-        // Se la lunghezza del testo prima del cursore è 0, siamo all'inizio
+        // If text length before the caret is 0, we're at the beginning
         if (caretOffset === 0) {
           e.preventDefault();
           onNavigateUp();
-          return; // Non chiamare onKeyDown
+          return; // Don't call onKeyDown
         }
       }
     } else if (e.key === 'ArrowDown' && onNavigateDown && contentEditableRef.current) {
       const selection = window.getSelection();
       if (selection && selection.rangeCount > 0) {
         const range = selection.getRangeAt(0);
-        // Crea un range dall'inizio del contentEditable fino al cursore
+        // Create a range from the beginning of contentEditable up to the caret
         const preCaretRange = range.cloneRange();
         preCaretRange.selectNodeContents(contentEditableRef.current);
         preCaretRange.setEnd(range.endContainer, range.endOffset);
-        // Ottieni il testo totale del contentEditable
+        // Get total text from contentEditable
         const totalLength = contentEditableRef.current.innerText?.length || 0;
         const caretOffset = preCaretRange.toString().length;
-        // Se la lunghezza del testo prima del cursore è uguale alla lunghezza totale, siamo alla fine
+        // If text length before caret equals total length, we're at the end
         if (caretOffset === totalLength) {
           e.preventDefault();
           onNavigateDown();
-          return; // Non chiamare onKeyDown
+          return; // Don't call onKeyDown
         }
       }
     }
 
-    // Gestione Backspace/Delete per cancellare i link
+    // Handle Backspace/Delete to delete links
     if (e.key === 'Backspace' || e.key === 'Delete') {
       const selection = window.getSelection();
       if (selection && selection.rangeCount > 0 && contentEditableRef.current) {
         const range = selection.getRangeAt(0);
-        
-        // Se non c'è selezione (cursore singolo)
+
+        // If there is no selection (single caret)
         if (range.collapsed) {
           let node: Node | null = range.startContainer;
-          
-          // Naviga verso l'alto nell'albero DOM per trovare un link span
+
+          // Navigate up the DOM tree to find a link span
           while (node && node !== contentEditableRef.current) {
             if (node.nodeType === Node.ELEMENT_NODE) {
               const element = node as HTMLElement;
               if (element.hasAttribute('data-link-id')) {
                 e.preventDefault();
-                
-                // Salva l'ID del link da rimuovere
+
+                // Save the ID of the link to remove
                 const linkId = element.getAttribute('data-link-id');
-                
-                // Rimuovi il link dall'array dei link
+
+                // Remove the link from the links array
                 const newLinks = links.filter(link => link.spaceId !== linkId);
-                
-                // Ottieni il testo del link
+
+                // Get link text
                 const linkText = element.textContent || '';
-                
-                // Ricostruisci il contenuto senza il link
+
+                // Rebuild content without the link
                 let newDisplayContent = displayContent;
                 const linkIndex = displayContent.indexOf(linkText);
                 if (linkIndex !== -1) {
-                  // Rimuovi il testo del link
+                  // Remove link text
                   newDisplayContent = displayContent.substring(0, linkIndex) + displayContent.substring(linkIndex + linkText.length);
                 }
-                
-                // Converti display → storage con i link aggiornati
+
+                // Convert display → storage with updated links
                 const newStorageContent = displayToStorage(newDisplayContent, newLinks);
-                
-                // Salva la posizione del cursore
+
+                // Save caret position
                 const caretPos = linkIndex;
-                
+
                 // Aggiorna il contenuto
                 onChange(newStorageContent);
-                
-                // Ripristina il cursore dopo l'aggiornamento
+
+                // Restore caret after update
                 setTimeout(() => {
                   restoreCaretPosition(caretPos);
                 }, 0);
-                
+
                 return;
               }
             }
-            
-            // Se siamo all'interno di un text node, controlla il nodo successivo/precedente
+
+            // If inside a text node, check the next/previous sibling
             if (node.nodeType === Node.TEXT_NODE) {
               const nextNode = e.key === 'Backspace' ? node.previousSibling : node.nextSibling;
               if (nextNode && nextNode.nodeType === Node.ELEMENT_NODE) {
                 const element = nextNode as HTMLElement;
-                if (element.hasAttribute('data-link-id') && 
-                    ((e.key === 'Backspace' && range.startOffset === 0) || 
-                     (e.key === 'Delete' && range.startOffset === (node.textContent?.length || 0)))) {
+                if (element.hasAttribute('data-link-id') &&
+                  ((e.key === 'Backspace' && range.startOffset === 0) ||
+                    (e.key === 'Delete' && range.startOffset === (node.textContent?.length || 0)))) {
                   e.preventDefault();
-                  
+
                   const linkId = element.getAttribute('data-link-id');
                   const newLinks = links.filter(link => link.spaceId !== linkId);
                   const linkText = element.textContent || '';
-                  
+
                   let newDisplayContent = displayContent;
                   const linkIndex = displayContent.indexOf(linkText);
                   if (linkIndex !== -1) {
                     newDisplayContent = displayContent.substring(0, linkIndex) + displayContent.substring(linkIndex + linkText.length);
                   }
-                  
+
                   const newStorageContent = displayToStorage(newDisplayContent, newLinks);
                   const caretPos = e.key === 'Backspace' ? linkIndex : linkIndex;
-                  
+
                   onChange(newStorageContent);
-                  
+
                   setTimeout(() => {
                     restoreCaretPosition(caretPos);
                   }, 0);
-                  
+
                   return;
                 }
               }
             }
-            
+
             node = node.parentNode;
           }
         }
       }
     }
 
-    // Formattazione con scorciatoie
+    // Formatting with shortcuts
     if (isCtrlOrCmd) {
-      // Permetti Ctrl/Cmd+A per selezionare tutto
+      // Allow Ctrl/Cmd+A to select everything
       if (e.key === 'a' || e.key === 'A') {
-        // Non fare preventDefault, lascia che il browser gestisca la selezione
-        // Non fare return, chiama comunque onKeyDown
+        // Don't preventDefault, let the browser handle selection
+        // Don't return, still call onKeyDown
       } else if (e.key === 'b' || e.key === 'B') {
         e.preventDefault();
         document.execCommand('bold', false);
@@ -616,21 +616,21 @@ export function RichTextEditor({
 
   return (
     <>
-    <div
-      ref={contentEditableRef}
-      contentEditable
-      suppressContentEditableWarning
-      onInput={handleInput}
-      onCompositionStart={() => { isComposingRef.current = true; }}
-      onCompositionEnd={() => { 
-        isComposingRef.current = false;
-        handleInput();
-      }}
-      onKeyDown={handleKeyDownInternal}
-      onFocus={onFocus}
-      onBlur={onBlur}
-      data-placeholder={placeholder}
-      className={`
+      <div
+        ref={contentEditableRef}
+        contentEditable
+        suppressContentEditableWarning
+        onInput={handleInput}
+        onCompositionStart={() => { isComposingRef.current = true; }}
+        onCompositionEnd={() => {
+          isComposingRef.current = false;
+          handleInput();
+        }}
+        onKeyDown={handleKeyDownInternal}
+        onFocus={onFocus}
+        onBlur={onBlur}
+        data-placeholder={placeholder}
+        className={`
         min-h-[24px] py-[2px] px-0
         bg-transparent
         leading-[1.2] whitespace-pre-wrap break-words cursor-text
@@ -639,16 +639,16 @@ export function RichTextEditor({
         ${(!displayContent && placeholder && placeholder.trim() !== '') ? 'before:content-[attr(data-placeholder)] before:text-zinc-300 before:pointer-events-none before:absolute before:left-0 before:right-0 before:text-inherit' : ''}
         ${className}
       `}
-    />
-    
-    {previewSpaceId && previewPosition && (
+      />
+
+      {previewSpaceId && previewPosition && (
         <SpacePreview
           spaceId={previewSpaceId}
           spacesState={spacesState}
           position={previewPosition}
           onClose={() => setPreviewSpaceId(null)}
         />
-    )}
+      )}
     </>
   );
 }

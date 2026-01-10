@@ -39,19 +39,19 @@ interface TabItemProps {
   index: number;
 }
 
-function TabItem({ 
-  tab, 
-  viewport, 
-  isActive, 
-  tabSpace, 
-  showTitle, 
-  isOnlyWelcomeTab, 
-  IconComponent, 
-  iconColor, 
-  displayTitle, 
-  settings, 
-  viewportsState, 
-  onCloseTab, 
+function TabItem({
+  tab,
+  viewport,
+  isActive,
+  tabSpace,
+  showTitle,
+  isOnlyWelcomeTab,
+  IconComponent,
+  iconColor,
+  displayTitle,
+  settings,
+  viewportsState,
+  onCloseTab,
   onContextMenu,
   index
 }: TabItemProps) {
@@ -103,7 +103,7 @@ function TabItem({
 
   const getTabActiveStyle = () => {
     if (!isActive || !isViewportFocused) return {};
-    
+
     if (settings.backgroundType === 'gradient') {
       return {
         background: `linear-gradient(${settings.gradientAngle}deg, ${settings.gradientStart} 0%, ${settings.gradientEnd} 100%)`,
@@ -119,13 +119,13 @@ function TabItem({
   };
 
   return (
-    <div 
+    <div
       ref={ref}
       className={`flex-shrink-0 flex items-center h-full py-1 ${isDragging ? 'opacity-0' : 'opacity-100'}`}
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
     >
-      <Tooltip 
+      <Tooltip
         content={
           <div className="p-1 min-w-[160px]">
             <p className="text-tiny font-bold mb-2 border-b border-white/20 pb-1">{tab.title}</p>
@@ -139,10 +139,10 @@ function TabItem({
               </div>
             </div>
             <p className="text-[10px] text-default-400 mt-2 italic">
-              {tabSpace?.type ? `Spazio: ${tabSpace.type}` : 'Nuova Tab'}
+              {tabSpace?.type ? `Space: ${tabSpace.type}` : 'New Tab'}
             </p>
           </div>
-        } 
+        }
         size="sm"
         delay={400}
         closeDelay={0}
@@ -220,10 +220,10 @@ export function ViewportHeader({ viewport, space, spacesState, viewportsState, s
   const [renameValue, setRenameValue] = useState('');
   const [actionsMenuAnchor, setActionsMenuAnchor] = useState<HTMLElement | null>(null);
   const [hamburgerMenuAnchor, setHamburgerMenuAnchor] = useState<HTMLElement | null>(null);
-  
+
   const canClose = viewport.id !== 'root';
   const activeTab = viewport.tabs?.find(t => t && t.id === viewport.activeTabId);
-  
+
   const handleCloseTab = (tabId: string) => {
     if (viewport.tabs.length === 1) {
       // Se è l'ultima tab, chiudi l'intero viewport invece di sostituire con welcome
@@ -293,10 +293,10 @@ export function ViewportHeader({ viewport, space, spacesState, viewportsState, s
     >
       {/* Navigation - Replaced by Hamburger Menu */}
       <div className="flex gap-1 shrink-0">
-        <Button 
+        <Button
           isIconOnly
-          size="sm" 
-          variant="light" 
+          size="sm"
+          variant="light"
           onClick={(e) => setHamburgerMenuAnchor(e.currentTarget)}
           className="min-w-0 w-8 h-8 rounded-full"
         >
@@ -309,7 +309,7 @@ export function ViewportHeader({ viewport, space, spacesState, viewportsState, s
         (() => {
           const rect = hamburgerMenuAnchor.getBoundingClientRect();
           const menuWidth = 200;
-          
+
           return (
             <>
               <div
@@ -337,7 +337,7 @@ export function ViewportHeader({ viewport, space, spacesState, viewportsState, s
                     >
                       <Settings2 size={16} />
                       <span className="text-small">
-                        {space.metadata?.showProperties === true ? 'Nascondi Proprietà' : 'Mostra Proprietà'}
+                        {space.metadata?.showProperties === true ? 'Hide Properties' : 'Show Properties'}
                       </span>
                     </div>
                     <div className="my-1 h-[1px] bg-divider" />
@@ -354,7 +354,7 @@ export function ViewportHeader({ viewport, space, spacesState, viewportsState, s
                   className="p-2 rounded-md cursor-pointer flex items-center gap-2 hover:bg-default-100 transition-colors opacity-50"
                 >
                   <File size={16} />
-                  <span className="text-small">Altre opzioni...</span>
+                  <span className="text-small">Other options...</span>
                 </div>
               </div>
             </>
@@ -364,23 +364,23 @@ export function ViewportHeader({ viewport, space, spacesState, viewportsState, s
       )}
 
       {/* Tabs - Centrate */}
-      <div 
+      <div
         ref={dropTabArea}
         className={`flex-1 min-w-0 overflow-x-auto no-scrollbar flex gap-2 items-center justify-center h-full transition-colors rounded-lg ${isOverTabArea ? 'bg-primary/5' : ''}`}
       >
         {viewport.tabs?.map((tab, index) => {
           const isActive = tab.id === viewport.activeTabId;
           const tabSpace = tab.spaceId ? spacesState.spaces.find((s: Space) => s && s.id === tab.spaceId) : null;
-          
+
           // Logica di collasso: se ci sono molte tab, mostra solo l'icona per quelle non attive
           const totalTabs = viewport.tabs.length;
           const showTitle = isActive || totalTabs <= 3;
-          
+
           const isOnlyWelcomeTab = viewport.tabs.length === 1 && !tab.spaceId && !tab.appType;
-          
+
           let IconComponent: any = null;
           let iconColor = 'currentColor';
-          
+
           if (!tab.spaceId && !tab.appType) {
             IconComponent = DiamondPlus;
           } else if (tab.appType) {
@@ -401,7 +401,7 @@ export function ViewportHeader({ viewport, space, spacesState, viewportsState, s
               IconComponent = (LucideIcons as any)[tabSpace.icon];
               iconColor = tabSpace.iconColor || 'currentColor';
             }
-            
+
             // Fallback icons per tipo se l'icona non è risolta
             if (!IconComponent) {
               const defaultIcons: any = {
@@ -414,11 +414,11 @@ export function ViewportHeader({ viewport, space, spacesState, viewportsState, s
               iconColor = tabSpace.iconColor || 'currentColor';
             }
           }
-          
+
           const displayTitle = tabSpace?.title || tab.title;
-          
+
           return (
-            <TabItem 
+            <TabItem
               key={tab.id}
               tab={tab}
               viewport={viewport}
@@ -437,8 +437,8 @@ export function ViewportHeader({ viewport, space, spacesState, viewportsState, s
             />
           );
         })}
-        
-        <Tooltip content="Nuova Tab" size="sm">
+
+        <Tooltip content="New Tab" size="sm">
           <Button
             isIconOnly
             size="sm"
@@ -454,7 +454,7 @@ export function ViewportHeader({ viewport, space, spacesState, viewportsState, s
 
       {/* Actions */}
       <div className="flex gap-1 shrink-0">
-        <Tooltip content="Azioni viewport" size="sm">
+        <Tooltip content="Viewport actions" size="sm">
           <Button
             isIconOnly
             size="sm"
@@ -473,31 +473,31 @@ export function ViewportHeader({ viewport, space, spacesState, viewportsState, s
           const rect = actionsMenuAnchor.getBoundingClientRect();
           const menuWidth = 200;
           const menuHeight = space && onToggleMarkdown ? 250 : 200;
-          
+
           // Calcola la posizione ottimale
           let top = rect.bottom + 4;
           let left = rect.left;
-          
+
           // Se il menu esce dal bordo destro della finestra
           if (left + menuWidth > window.innerWidth) {
             left = window.innerWidth - menuWidth - 8;
           }
-          
+
           // Se il menu esce dal bordo sinistro
           if (left < 8) {
             left = 8;
           }
-          
+
           // Se il menu esce dal bordo inferiore
           if (top + menuHeight > window.innerHeight) {
             top = rect.top - menuHeight - 4;
           }
-          
+
           // Se anche così esce dal bordo superiore
           if (top < 8) {
             top = 8;
           }
-          
+
           return (
             <>
               <div
@@ -523,7 +523,7 @@ export function ViewportHeader({ viewport, space, spacesState, viewportsState, s
                     >
                       <Star size={16} fill={space.isFavorite ? 'currentColor' : 'none'} />
                       <span className="text-small">
-                        {space.isFavorite ? 'Rimuovi dai preferiti' : 'Aggiungi ai preferiti'}
+                        {space.isFavorite ? 'Remove from favorites' : 'Add to favorites'}
                       </span>
                     </div>
                     {onToggleMarkdown && (
@@ -536,7 +536,7 @@ export function ViewportHeader({ viewport, space, spacesState, viewportsState, s
                       >
                         <FileCode size={16} />
                         <span className="text-small">
-                          {showMarkdown ? 'Nascondi vista .md' : 'Mostra vista .md'}
+                          {showMarkdown ? 'Hide .md view' : 'Show .md view'}
                         </span>
                       </div>
                     )}
@@ -551,7 +551,7 @@ export function ViewportHeader({ viewport, space, spacesState, viewportsState, s
                   className="p-2 rounded-md cursor-pointer flex items-center gap-2 hover:bg-default-100 transition-colors"
                 >
                   <SplitSquareHorizontal size={16} />
-                  <span className="text-small">Dividi verticalmente</span>
+                  <span className="text-small">Split vertically</span>
                 </div>
                 <div
                   onClick={() => {
@@ -561,7 +561,7 @@ export function ViewportHeader({ viewport, space, spacesState, viewportsState, s
                   className="p-2 rounded-md cursor-pointer flex items-center gap-2 hover:bg-default-100 transition-colors"
                 >
                   <SplitSquareVertical size={16} />
-                  <span className="text-small">Dividi orizzontalmente</span>
+                  <span className="text-small">Split horizontally</span>
                 </div>
                 {canClose && (
                   <div
@@ -572,7 +572,7 @@ export function ViewportHeader({ viewport, space, spacesState, viewportsState, s
                     className="p-2 rounded-md cursor-pointer flex items-center gap-2 text-red-600 hover:bg-red-50 transition-colors"
                   >
                     <X size={16} className="text-red-600" />
-                    <span className="text-small text-red-600">Chiudi viewport</span>
+                    <span className="text-small text-red-600">Close viewport</span>
                   </div>
                 )}
               </div>
@@ -587,7 +587,7 @@ export function ViewportHeader({ viewport, space, spacesState, viewportsState, s
         <ModalContent>
           {(onClose) => (
             <>
-              <ModalHeader className="flex flex-col gap-1">Rinomina Tab</ModalHeader>
+              <ModalHeader className="flex flex-col gap-1">Rename Tab</ModalHeader>
               <ModalBody>
                 <Input
                   autoFocus
@@ -597,16 +597,16 @@ export function ViewportHeader({ viewport, space, spacesState, viewportsState, s
                     if (e.key === 'Enter') handleRenameSubmit();
                     if (e.key === 'Escape') setRenameTabId(null);
                   }}
-                  placeholder="Nome tab"
+                  placeholder="Tab name"
                   variant="bordered"
                 />
               </ModalBody>
               <ModalFooter>
                 <Button color="danger" variant="light" onPress={onClose}>
-                  Annulla
+                  Cancel
                 </Button>
                 <Button color="primary" onPress={handleRenameSubmit}>
-                  Salva
+                  Save
                 </Button>
               </ModalFooter>
             </>
@@ -631,7 +631,7 @@ export function ViewportHeader({ viewport, space, spacesState, viewportsState, s
             >
               <Edit2 size={14} />
               <span className="text-small">
-                Rinomina
+                Rename
               </span>
             </div>
             <div
@@ -639,7 +639,7 @@ export function ViewportHeader({ viewport, space, spacesState, viewportsState, s
               className="p-2 rounded-md cursor-pointer flex items-center gap-2 text-red-600 hover:bg-red-50 transition-colors"
             >
               <Trash2 size={14} className="text-red-600" />
-              <span className="text-small text-red-600">Elimina</span>
+              <span className="text-small text-red-600">Delete</span>
             </div>
           </div>
         </>

@@ -1,6 +1,6 @@
 import { useState } from 'react';
-import { TextElement } from '../../components/spaces/TextElement';
-import { Block } from '../../types';
+import { TextElement } from '../../../components/spaces/TextElement';
+import { Block } from '../../../types';
 import { DndProvider } from 'react-dnd';
 import { HTML5Backend } from 'react-dnd-html5-backend';
 

@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import ReactDOM from 'react-dom/client';
 import { HeroUIProvider } from '@heroui/react';
 import { LibraryAppSection } from './LibrarySite';
-import '../index.css';
+import '../../index.css';
 
 function LibraryRoot() {
     const [theme, setTheme] = useState<'light' | 'dark'>('dark');

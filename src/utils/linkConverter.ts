@@ -1,5 +1,5 @@
 /**
- * Utility per convertire i link tra formato storage e formato display
+ * Utility to convert links between storage and display formats
  * Storage format: [[space_id|Title]]
  * Display format: Title
  */
@@ -14,74 +14,74 @@ export interface LinkInfo {
 }
 
 /**
- * Estrae tutti i link dal contenuto in formato storage
- * Supporta sia [[spaceId|title]] che [[spaceId:title]]
+ * Extracts all links from content in storage format
+ * Supports both [[spaceId|title]] and [[spaceId:title]]
  */
 export function extractLinks(storageContent: string): LinkInfo[] {
-  // Pattern che supporta sia | che : come separatore
+  // Pattern that supports both | and : as separator
   const linkPattern = /\[\[([^\]|:]+)[|:]([^\]]+)\]\]/g;
   const links: LinkInfo[] = [];
   let match;
-  
+
   while ((match = linkPattern.exec(storageContent)) !== null) {
     links.push({
       spaceId: match[1],
       title: match[2],
-      startIndex: 0, // Verrà calcolato dopo
-      endIndex: 0,   // Verrà calcolato dopo
+      startIndex: 0, // Will be calculated later
+      endIndex: 0,   // Will be calculated later
       storageStartIndex: match.index,
       storageEndIndex: match.index + match[0].length,
     });
   }
-  
+
   return links;
 }
 
 /**
- * Converte dal formato storage al formato display
- * [[space_id|Title]] o [[space_id:Title]] -> Title
+ * Converts from storage format to display format
+ * [[space_id|Title]] or [[space_id:Title]] -> Title
  */
 export function storageToDisplay(storageContent: string): { displayContent: string; links: LinkInfo[] } {
   const links = extractLinks(storageContent);
   let displayContent = storageContent;
-  let offset = 0; // Offset dovuto alle sostituzioni
-  
+  let offset = 0; // Offset due to replacements
+
   const updatedLinks: LinkInfo[] = [];
-  
+
   links.forEach((link) => {
-    // Ricostruisci il testo originale esattamente come appare nello storage
-    // Usa substring per estrarre il testo originale dalla posizione storage
+    // Rebuild the original text exactly as it appears in storage
+    // Use substring to extract original text from storage position
     const originalStorageText = storageContent.substring(link.storageStartIndex, link.storageEndIndex);
     const displayText = link.title;
-    
-    // Calcola le posizioni nel display content
+
+    // Calculate positions in display content
     const displayStartIndex = link.storageStartIndex - offset;
     const displayEndIndex = displayStartIndex + displayText.length;
-    
-    // Sostituisci nel display content
-    displayContent = displayContent.substring(0, displayStartIndex) + 
-                     displayText + 
-                     displayContent.substring(link.storageEndIndex - offset);
-    
-    // Aggiorna l'offset per le prossime sostituzioni
+
+    // Replace in display content
+    displayContent = displayContent.substring(0, displayStartIndex) +
+      displayText +
+      displayContent.substring(link.storageEndIndex - offset);
+
+    // Update offset for next replacements
     offset += (originalStorageText.length - displayText.length);
-    
+
     updatedLinks.push({
       ...link,
       startIndex: displayStartIndex,
       endIndex: displayEndIndex,
     });
   });
-  
+
   return { displayContent, links: updatedLinks };
 }
 
 /**
- * Converte dal formato display al formato storage
- * Utilizza la mappa dei link esistenti per ricostruire il formato completo
+ * Converts from display format to storage format
+ * Uses existing link map to rebuild the full format
  */
 export function displayToStorage(
-  displayContent: string, 
+  displayContent: string,
   previousLinks: LinkInfo[]
 ): string {
   if (previousLinks.length === 0) {
@@ -90,43 +90,43 @@ export function displayToStorage(
 
   let storageContent = displayContent;
   let offset = 0;
-  
-  // Ordina i link per startIndex (dal primo all'ultimo)
+
+  // Sort links by startIndex (from first to last)
   const sortedLinks = [...previousLinks].sort((a, b) => a.startIndex - b.startIndex);
-  
+
   sortedLinks.forEach((link) => {
     const currentStartIndex = link.startIndex + offset;
-    
-    // Trova dove finisce il testo del link nel contenuto display attuale
-    // Prendi semplicemente la lunghezza del titolo originale
+
+    // Find where the link text ends in the current display content
+    // Just take the length of the original title
     const currentEndIndex = currentStartIndex + link.title.length;
-    
-    // Estrai il testo attuale in quella posizione
+
+    // Extract current text at that position
     const currentText = storageContent.substring(currentStartIndex, currentEndIndex);
-    
-    // Se il testo è vuoto o la posizione è fuori range, il link è stato rimosso
+
+    // If text is empty or position is out of range, link has been removed
     if (currentStartIndex >= storageContent.length || !currentText) {
       return;
     }
-    
-    // Ricostruisci il link con il titolo originale (o quello attuale se modificato)
+
+    // Rebuild link with original title (or current one if modified)
     const storageText = `[[${link.spaceId}|${currentText}]]`;
-    
-    // Sostituisci
-    storageContent = storageContent.substring(0, currentStartIndex) + 
-                     storageText + 
-                     storageContent.substring(currentEndIndex);
-    
-    // Aggiorna l'offset
+
+    // Replace
+    storageContent = storageContent.substring(0, currentStartIndex) +
+      storageText +
+      storageContent.substring(currentEndIndex);
+
+    // Update offset
     offset += (storageText.length - currentText.length);
   });
-  
+
   return storageContent;
 }
 
 /**
- * Aggiorna i link dopo una modifica del contenuto display
- * Cerca di mantenere i link sincronizzati con le modifiche dell'utente
+ * Update links after a display content change
+ * Tries to keep links synced with user changes
  */
 export function updateLinksAfterEdit(
   oldDisplayContent: string,
@@ -137,26 +137,26 @@ export function updateLinksAfterEdit(
     return [];
   }
 
-  // Calcola la differenza tra vecchio e nuovo contenuto
+  // Calculate difference between old and new content
   const oldLength = oldDisplayContent.length;
   const newLength = newDisplayContent.length;
   const diff = newLength - oldLength;
-  
-  // Trova dove è avvenuto il cambiamento
+
+  // Find where the change occurred
   let changeStart = 0;
-  while (changeStart < Math.min(oldLength, newLength) && 
-         oldDisplayContent[changeStart] === newDisplayContent[changeStart]) {
+  while (changeStart < Math.min(oldLength, newLength) &&
+    oldDisplayContent[changeStart] === newDisplayContent[changeStart]) {
     changeStart++;
   }
-  
+
   const updatedLinks: LinkInfo[] = [];
-  
+
   oldLinks.forEach((link) => {
-    // Se il link è prima del cambiamento, mantienilo invariato
+    // If link is before change, keep it unchanged
     if (link.endIndex <= changeStart) {
-      updatedLinks.push({...link});
+      updatedLinks.push({ ...link });
     }
-    // Se il link è dopo il cambiamento, shiftalo
+    // If link is after change, shift it
     else if (link.startIndex >= changeStart) {
       updatedLinks.push({
         ...link,
@@ -164,16 +164,16 @@ export function updateLinksAfterEdit(
         endIndex: link.endIndex + diff,
       });
     }
-    // Se il cambiamento è all'interno del link, il link potrebbe essere stato modificato o rimosso
+    // If change is within the link, it might have been modified or removed
     else {
-      // Prova a trovare il titolo del link nel nuovo contenuto vicino alla posizione originale
+      // Try to find the link title in the new content near the original position
       const searchStart = Math.max(0, link.startIndex - 20);
       const searchEnd = Math.min(newDisplayContent.length, link.endIndex + 20);
       const searchArea = newDisplayContent.substring(searchStart, searchEnd);
       const titleIndex = searchArea.indexOf(link.title);
-      
+
       if (titleIndex !== -1) {
-        // Trovato! Aggiorna la posizione
+        // Found! Update position
         const newStart = searchStart + titleIndex;
         updatedLinks.push({
           ...link,
@@ -181,9 +181,9 @@ export function updateLinksAfterEdit(
           endIndex: newStart + link.title.length,
         });
       }
-      // Altrimenti il link è stato rimosso, non aggiungerlo
+      // Otherwise link has been removed, don't add it
     }
   });
-  
+
   return updatedLinks;
 }

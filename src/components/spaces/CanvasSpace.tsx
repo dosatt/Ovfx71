@@ -2333,21 +2333,6 @@ export function CanvasSpace({
           height: lineMaxY - lineMinY
         };
 
-      case 'image':
-        return {
-          x: element.x,
-          y: element.y,
-          width: element.width || 0,
-          height: element.height || 0
-        };
-
-      case 'file':
-        return {
-          x: element.x,
-          y: element.y,
-          width: element.width || 200,
-          height: element.height || 200
-        };
 
       case 'group':
         // Calculate bounds based on all descendants

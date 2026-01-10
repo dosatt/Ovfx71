@@ -66,10 +66,10 @@ export function useSettings() {
     if (saved) {
       try {
         const parsed = JSON.parse(saved);
-        // Merge con i default per aggiungere eventuali nuove proprietà
+        // Merge with defaults to add any new properties
         return { ...DEFAULT_SETTINGS, ...parsed };
       } catch (e) {
-        console.error('Errore nel parsing delle impostazioni salvate:', e);
+        console.error('Error parsing saved settings:', e);
         return DEFAULT_SETTINGS;
       }
     }

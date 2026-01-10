@@ -10,7 +10,7 @@ interface IconPickerProps {
   onColorChange?: (color: string) => void;
 }
 
-// Lista delle icone più comuni e utili
+// List of most common and useful icons
 const popularIcons = [
   'FileText', 'Folder', 'Star', 'Heart', 'Home', 'Settings', 'User', 'Users',
   'Mail', 'MessageSquare', 'Phone', 'Calendar', 'Clock', 'Bell', 'Camera',
@@ -33,24 +33,24 @@ const popularIcons = [
 ];
 
 const colorPresets = [
-  { name: 'Verde', value: '#01BC2B' },
-  { name: 'Turchese', value: '#05BCC6' },
-  { name: 'Blu', value: '#0181BE' },
-  { name: 'Azzurro', value: '#039CF6' },
-  { name: 'Giallo', value: '#F8D501' },
-  { name: 'Arancio', value: '#FF9900' },
-  { name: 'Rosso', value: '#FF0100' },
-  { name: 'Viola', value: '#9D01FD' },
-  { name: 'Grigio scuro', value: '#474747' },
-  { name: 'Grigio medio', value: '#9B9B9B' },
-  { name: 'Bianco', value: '#FFFFFF' },
-  { name: 'Nero', value: '#000000' }
+  { name: 'Green', value: '#01BC2B' },
+  { name: 'Turquoise', value: '#05BCC6' },
+  { name: 'Blue', value: '#0181BE' },
+  { name: 'Light Blue', value: '#039CF6' },
+  { name: 'Yellow', value: '#F8D501' },
+  { name: 'Orange', value: '#FF9900' },
+  { name: 'Red', value: '#FF0100' },
+  { name: 'Purple', value: '#9D01FD' },
+  { name: 'Dark Gray', value: '#474747' },
+  { name: 'Medium Gray', value: '#9B9B9B' },
+  { name: 'White', value: '#FFFFFF' },
+  { name: 'Black', value: '#000000' }
 ];
 
 export function IconPicker({ currentIcon, currentColor, onIconChange, onColorChange }: IconPickerProps) {
   const [search, setSearch] = useState('');
 
-  const filteredIcons = popularIcons.filter(name => 
+  const filteredIcons = popularIcons.filter(name =>
     name.toLowerCase().includes(search.toLowerCase())
   );
 
@@ -67,7 +67,7 @@ export function IconPicker({ currentIcon, currentColor, onIconChange, onColorCha
   return (
     <div className="w-full">
       <Input
-        placeholder="Cerca icona..."
+        placeholder="Search icons..."
         value={search}
         onValueChange={setSearch}
         size="sm"
@@ -78,7 +78,7 @@ export function IconPicker({ currentIcon, currentColor, onIconChange, onColorCha
           {filteredIcons.map((iconName) => {
             const IconComponent = (LucideIcons as any)[iconName];
             if (!IconComponent) return null;
-            
+
             return (
               <div
                 key={iconName}
@@ -96,15 +96,15 @@ export function IconPicker({ currentIcon, currentColor, onIconChange, onColorCha
         </div>
         {filteredIcons.length === 0 && (
           <p className="text-center text-tiny text-default-400 py-4">
-            Nessuna icona trovata
+            No icons found
           </p>
         )}
       </ScrollShadow>
-      
+
       {onColorChange && (
         <>
           <p className="text-small text-default-500 mb-2 mt-3">
-            Colore
+            Color
           </p>
           <div className="grid grid-cols-6 gap-2">
             {colorPresets.map((color) => (
@@ -119,12 +119,12 @@ export function IconPicker({ currentIcon, currentColor, onIconChange, onColorCha
                 title={color.name}
               >
                 {currentColor === color.value && (
-                  <Check 
-                    size={16} 
-                    style={{ 
+                  <Check
+                    size={16}
+                    style={{
                       color: color.value === '#FFFFFF' ? '#000' : '#fff',
                       filter: 'drop-shadow(0 1px 2px rgba(0,0,0,0.3))'
-                    }} 
+                    }}
                   />
                 )}
               </div>

@@ -37,7 +37,7 @@ export function DraggableSpaceItem({ space, spacesState, onSpaceClick, level = 0
   const [showMenu, setShowMenu] = useState(false);
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number } | null>(null);
   const [dropIndicator, setDropIndicator] = useState<'before' | 'after' | 'inside' | null>(null);
-  
+
   const ref = useRef<HTMLDivElement>(null);
   const buttonRef = useRef<HTMLButtonElement>(null);
 
@@ -47,7 +47,7 @@ export function DraggableSpaceItem({ space, spacesState, onSpaceClick, level = 0
 
   const [{ isDragging }, drag] = useDrag(() => ({
     type: isFavorite ? 'FAVORITE_ITEM' : ITEM_TYPE_TO_WORKSPACE,
-    item: { 
+    item: {
       id: space.id,
       parentId: space.parentId,
       spaceId: space.id,
@@ -64,19 +64,19 @@ export function DraggableSpaceItem({ space, spacesState, onSpaceClick, level = 0
     accept: isFavorite ? ['FAVORITE_ITEM'] : [ITEM_TYPE, ITEM_TYPE_TO_WORKSPACE],
     hover: (item: any, monitor) => {
       if (!ref.current || item.id === space.id) return;
-      
+
       const hoverBoundingRect = ref.current.getBoundingClientRect();
       const clientOffset = monitor.getClientOffset();
-      
+
       if (!clientOffset) return;
-      
+
       const hoverClientY = clientOffset.y - hoverBoundingRect.top;
       const hoverHeight = hoverBoundingRect.bottom - hoverBoundingRect.top;
       const hoverClientX = clientOffset.x - hoverBoundingRect.left;
-      
-      // Nei favoriti: solo riordino con UN SOLO snap point tra elementi
+
+      // In favorites: only reordering with ONE snap point between elements
       if (isFavorite && item.isFavoriteItem) {
-        // Ogni elemento gestisce solo la linea "before" (sopra)
+        // Each element handles only the "before" line (above)
         if (hoverClientY < hoverHeight * 0.5) {
           setDropIndicator('before');
         } else {
@@ -84,10 +84,10 @@ export function DraggableSpaceItem({ space, spacesState, onSpaceClick, level = 0
         }
         return;
       }
-      
-      // Negli spaces: supporta riordino e nesting con zone più ampie
+
+      // In spaces: supports reordering and nesting with wider zones
       if (!isFavorite && !item.isFavoriteItem) {
-        // Evita di nestare un elemento in se stesso o nei propri figli
+        // Avoid nesting an element into itself or its children
         const isDescendant = (parentId: string | undefined): boolean => {
           if (!parentId) return false;
           if (parentId === item.id) return true;
@@ -95,18 +95,18 @@ export function DraggableSpaceItem({ space, spacesState, onSpaceClick, level = 0
           if (!parent) return false;
           return isDescendant(parent.parentId);
         };
-        
+
         if (isDescendant(space.id)) {
           setDropIndicator(null);
           return;
         }
-        
-        // Zone più ampie e chiare per il riordino
+
+        // Wider and clearer zones for reordering
         // Top 25%: always before
         if (hoverClientY < hoverHeight * 0.25) {
           setDropIndicator('before');
         }
-        // Middle 50%: inside se abbastanza a destra, altrimenti niente
+        // Middle 50%: inside if far enough to the right, otherwise nothing
         else if (hoverClientY >= hoverHeight * 0.25 && hoverClientY <= hoverHeight * 0.75) {
           const leftThreshold = 30;
           if (hoverClientX > leftThreshold) {
@@ -115,7 +115,7 @@ export function DraggableSpaceItem({ space, spacesState, onSpaceClick, level = 0
             setDropIndicator(null);
           }
         }
-        // Bottom 25%: niente (il prossimo elemento gestirà il before)
+        // Bottom 25%: nothing (the next element will handle before)
         else {
           setDropIndicator(null);
         }
@@ -123,22 +123,22 @@ export function DraggableSpaceItem({ space, spacesState, onSpaceClick, level = 0
     },
     drop: (item: any, monitor) => {
       if (item.id === space.id || !dropIndicator) return;
-      
+
       if (isFavorite && item.isFavoriteItem) {
-        // Riordino nei favoriti
+        // Reordering in favorites
         if (dropIndicator === 'before' || dropIndicator === 'after') {
           spacesState.reorderFavorites(item.id, space.id, dropIndicator);
         }
       } else if (!isFavorite && !item.isFavoriteItem) {
         if (dropIndicator === 'inside') {
-          // Nesting: sposta come figlio
+          // Nesting: move as a child
           spacesState.moveSpace(item.id, space.id);
         } else if (dropIndicator === 'before' || dropIndicator === 'after') {
-          // Riordino: sposta before/after allo stesso livello
+          // Reordering: move before/after to the same level
           spacesState.reorderSpaces(item.id, space.id, dropIndicator);
         }
       }
-      
+
       setDropIndicator(null);
     },
     collect: (monitor) => ({
@@ -158,7 +158,7 @@ export function DraggableSpaceItem({ space, spacesState, onSpaceClick, level = 0
       <div className="relative">
         {/* Drop indicator before */}
         {isOver && dropIndicator === 'before' && (
-          <div 
+          <div
             className="absolute top-[-1px] right-0 h-[2px] bg-primary z-10 pointer-events-none"
             style={{ left: `${level * 16 + 8}px` }}
           />
@@ -174,7 +174,7 @@ export function DraggableSpaceItem({ space, spacesState, onSpaceClick, level = 0
           `}
           style={{ paddingLeft: `${isFavorite ? 4 : level * 12 + 4}px` }}
         >
-          {/* Chevron o spazio vuoto */}
+          {/* Chevron or empty space */}
           {!isFavorite && hasChildren ? (
             <Button
               isIconOnly
@@ -205,10 +205,10 @@ export function DraggableSpaceItem({ space, spacesState, onSpaceClick, level = 0
               if (!IconComponent) {
                 IconComponent = Icon;
               }
-              
+
               return IconComponent ? (
-                <IconComponent 
-                  size={16} 
+                <IconComponent
+                  size={16}
                   className="shrink-0"
                   style={{ color: space.iconColor || 'currentColor' }}
                 />
@@ -240,7 +240,7 @@ export function DraggableSpaceItem({ space, spacesState, onSpaceClick, level = 0
 
         {/* Drop indicator after */}
         {isOver && dropIndicator === 'after' && (
-          <div 
+          <div
             className="absolute bottom-[-1px] right-0 h-[2px] bg-primary z-10 pointer-events-none"
             style={{ left: `${level * 16 + 8}px` }}
           />

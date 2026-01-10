@@ -1,4 +1,4 @@
-import { CalendarElement, CalendarElementData } from '../../components/spaces/CalendarElement';
+import { CalendarElement, CalendarElementData } from '../../../components/spaces/CalendarElement';
 import { Card } from '@heroui/react';
 
 const mockUpdate = (data: any) => console.log('Update Calendar:', data);

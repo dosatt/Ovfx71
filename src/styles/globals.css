@@ -29,8 +29,8 @@ body {
 
 #root {
   width: 100%;
-  height: 100vh;
-  overflow: hidden;
+  min-height: 100vh;
+  overflow: visible;
 }
 
 /* Custom scrollbar */
@@ -67,8 +67,10 @@ body {
 }
 
 .no-scrollbar {
-  -ms-overflow-style: none;  /* IE and Edge */
-  scrollbar-width: none;  /* Firefox */
+  -ms-overflow-style: none;
+  /* IE and Edge */
+  scrollbar-width: none;
+  /* Firefox */
 }
 
 /* Custom range slider styling */
@@ -145,6 +147,7 @@ input[type="range"].slider::-webkit-slider-runnable-track {
   left: -1px;
   border-radius: 1px 0 0 0;
 }
+
 .technical-border::after {
   bottom: -1px;
   right: -1px;
@@ -194,6 +197,7 @@ input[type="range"].slider::-webkit-slider-runnable-track {
     height: 0;
     opacity: 0.8;
   }
+
   100% {
     width: 60px;
     height: 60px;

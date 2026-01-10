@@ -18,15 +18,15 @@ interface UseHistoryReturn<T> {
 
 const MAX_HISTORY_SIZE = 50;
 
-// Funzione per mostrare tooltip temporaneo
+// Function to show temporary tooltip
 const showTooltip = (message: string) => {
-  // Rimuovi tooltip esistenti
+  // Remove existing tooltips
   const existing = document.getElementById('history-tooltip');
   if (existing) {
     existing.remove();
   }
 
-  // Crea nuovo tooltip
+  // Create new tooltip
   const tooltip = document.createElement('div');
   tooltip.id = 'history-tooltip';
   tooltip.textContent = message;
@@ -47,7 +47,7 @@ const showTooltip = (message: string) => {
     animation: fadeInOut 1.5s ease-in-out;
   `;
 
-  // Aggiungi animazione CSS
+  // Add CSS animation
   if (!document.getElementById('history-tooltip-style')) {
     const style = document.createElement('style');
     style.id = 'history-tooltip-style';
@@ -64,7 +64,7 @@ const showTooltip = (message: string) => {
 
   document.body.appendChild(tooltip);
 
-  // Rimuovi dopo l'animazione
+  // Remove after animation
   setTimeout(() => {
     tooltip.remove();
   }, 1500);
@@ -79,11 +79,11 @@ export function useHistory<T>(initialState: T): UseHistoryReturn<T> {
 
   const setState = useCallback((newState: T | ((prev: T) => T), addToHistory: boolean = true) => {
     setHistory((current) => {
-      const nextState = typeof newState === 'function' 
+      const nextState = typeof newState === 'function'
         ? (newState as (prev: T) => T)(current.present)
         : newState;
 
-      // Se non vogliamo aggiungere alla history (es. per aggiornamenti interni)
+      // If we don't want to add to history (e.g. for internal updates)
       if (!addToHistory) {
         return {
           ...current,
@@ -91,10 +91,10 @@ export function useHistory<T>(initialState: T): UseHistoryReturn<T> {
         };
       }
 
-      // Aggiungi lo stato corrente al passato
+      // Add current state to past
       const newPast = [...current.past, current.present];
-      
-      // Limita la dimensione della history
+
+      // Limit history size
       if (newPast.length > MAX_HISTORY_SIZE) {
         newPast.shift();
       }
@@ -102,7 +102,7 @@ export function useHistory<T>(initialState: T): UseHistoryReturn<T> {
       return {
         past: newPast,
         present: nextState,
-        future: [], // Cancella il futuro quando si fa una nuova azione
+        future: [], // Clear future when a new action is performed
       };
     });
   }, []);
@@ -110,14 +110,14 @@ export function useHistory<T>(initialState: T): UseHistoryReturn<T> {
   const undo = useCallback(() => {
     setHistory((current) => {
       if (current.past.length === 0) {
-        showTooltip('Nessuna azione da annullare');
+        showTooltip('Nothing to undo');
         return current;
       }
 
       const previous = current.past[current.past.length - 1];
       const newPast = current.past.slice(0, current.past.length - 1);
 
-      showTooltip('Annullato');
+      showTooltip('Undone');
 
       return {
         past: newPast,
@@ -130,14 +130,14 @@ export function useHistory<T>(initialState: T): UseHistoryReturn<T> {
   const redo = useCallback(() => {
     setHistory((current) => {
       if (current.future.length === 0) {
-        showTooltip('Nessuna azione da ripetere');
+        showTooltip('Nothing to redo');
         return current;
       }
 
       const next = current.future[0];
       const newFuture = current.future.slice(1);
 
-      showTooltip('Ripristinato');
+      showTooltip('Redone');
 
       return {
         past: [...current.past, current.present],
@@ -155,7 +155,7 @@ export function useHistory<T>(initialState: T): UseHistoryReturn<T> {
     }));
   }, []);
 
-  // Gestione keyboard shortcuts
+  // Keyboard shortcuts handling
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       const isMac = navigator.platform.toUpperCase().indexOf('MAC') >= 0;
@@ -169,8 +169,8 @@ export function useHistory<T>(initialState: T): UseHistoryReturn<T> {
           undo();
         }
       }
-      
-      // Alternative: Ctrl/Cmd + Y per redo
+
+      // Alternative: Ctrl/Cmd + Y for redo
       if (isCtrlOrCmd && e.key === 'y') {
         e.preventDefault();
         redo();

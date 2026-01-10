@@ -38,7 +38,7 @@ interface SidebarProps {
 }
 
 const apps = [
-  { type: 'calendar' as AppType, title: 'Calendario', icon: Calendar, color: '#FF5F56' },
+  { type: 'calendar' as AppType, title: 'Calendar', icon: Calendar, color: '#FF5F56' },
   { type: 'browser' as AppType, title: 'Browser', icon: Globe, color: '#27C93F' },
   { type: 'chat' as AppType, title: 'Chat', icon: MessageSquare, color: '#007AFF' },
   { type: 'mail' as AppType, title: 'Mail', icon: Mail, color: '#FFBD2E' }
@@ -57,7 +57,7 @@ export function Sidebar({ open, onToggle, spacesState, viewportsState, settings,
   const favorites = spacesState.getFavorites().filter((s: Space) => !s.metadata?.isHidden);
   const rootSpaces = spacesState.getChildren().filter((s: Space) => !s.metadata?.isHidden);
 
-  // Funzione ricorsiva per filtrare gli spaces
+  // Recursive function to filter spaces
   const filterSpaces = (spaces: Space[], query: string): Space[] => {
     const baseSpaces = spaces.filter(s => !s.metadata?.isHidden);
     if (!query) return baseSpaces;
@@ -288,7 +288,7 @@ export function Sidebar({ open, onToggle, spacesState, viewportsState, settings,
         <div className="px-4 pb-2">
           <Input
             ref={searchInputRef}
-            placeholder="Cerca spaces..."
+            placeholder="Search spaces..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             startContent={<Search size={16} className="text-default-400" />}
@@ -328,7 +328,7 @@ export function Sidebar({ open, onToggle, spacesState, viewportsState, settings,
                 <div
                   className="flex items-center justify-between py-1 px-2 rounded-lg"
                 >
-                  <span className="text-[10px] font-black uppercase tracking-wider text-default-400">Preferiti</span>
+                  <span className="text-[10px] font-black uppercase tracking-wider text-default-400">Favorites</span>
                 </div>
                 <div className="flex flex-col gap-0.5 mt-0.5">
                   {favorites.map((space: Space) => (
@@ -368,7 +368,7 @@ export function Sidebar({ open, onToggle, spacesState, viewportsState, settings,
 
             {/* Utility Section - HIGH DENSITY */}
             <div className="px-4 py-2 mt-auto border-t border-divider">
-              <span className="text-xs font-semibold text-default-500 uppercase px-2 py-1 block">Utility</span>
+              <span className="text-xs font-semibold text-default-500 uppercase px-2 py-1 block">Utilities</span>
               <div className="flex gap-1 mt-2 justify-between px-2 flex-wrap">
                 <Button isIconOnly size="sm" variant="light" onPress={() => handleUtilityClick('clock', 'Clock')}>
                   <Clock size={18} />
@@ -379,7 +379,7 @@ export function Sidebar({ open, onToggle, spacesState, viewportsState, settings,
                 <Button isIconOnly size="sm" variant="light" onPress={() => handleUtilityClick('notifications', 'Notifications')}>
                   <Bell size={18} />
                 </Button>
-                <Button isIconOnly size="sm" variant="light" onPress={() => handleAppClick('settings', 'Impostazioni')} aria-label="Impostazioni">
+                <Button isIconOnly size="sm" variant="light" onPress={() => handleAppClick('settings', 'Settings')} aria-label="Settings">
                   <SettingsIcon size={18} />
                 </Button>
                 <Button isIconOnly size="sm" variant="light" color="danger" onPress={() => handleUtilityClick('trash', 'Trash')}>
@@ -395,7 +395,7 @@ export function Sidebar({ open, onToggle, spacesState, viewportsState, settings,
           // Search Results View
           <ScrollShadow className="flex-1 overflow-auto px-2 py-2">
             <span className="text-xs font-semibold text-default-500 uppercase px-2 py-1 block">
-              Risultati ({filteredFavorites.length + filteredSpaces.length})
+              Results ({filteredFavorites.length + filteredSpaces.length})
             </span>
             <div className="mt-2 flex flex-col gap-1">
               {filteredFavorites.map(space => {

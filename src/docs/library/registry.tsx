@@ -1,11 +1,11 @@
 import React from 'react';
-import { Button } from '../components/ui/button';
-import { Input } from '../components/ui/input';
-import { Badge } from '../components/ui/badge';
-import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from '../components/ui/card';
-import { Tabs, TabsList, TabsTrigger, TabsContent } from '../components/ui/tabs';
-import { Accordion, AccordionItem, AccordionTrigger, AccordionContent } from '../components/ui/accordion';
-import { Switch } from '../components/ui/switch';
+import { Button } from '../../components/ui/button';
+import { Input } from '../../components/ui/input';
+import { Badge } from '../../components/ui/badge';
+import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from '../../components/ui/card';
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '../../components/ui/tabs';
+import { Accordion, AccordionItem, AccordionTrigger, AccordionContent } from '../../components/ui/accordion';
+import { Switch } from '../../components/ui/switch';
 import { Mail, Loader2, Plus } from 'lucide-react';
 import { TextElementExamples } from './examples/TextElementExamples';
 import { CalendarExamples } from './examples/CalendarExamples';
