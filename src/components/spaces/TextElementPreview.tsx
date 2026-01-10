@@ -13,7 +13,8 @@ import {
   Image as ImageIcon,
   File as FileIcon,
   Link2,
-  Minus
+  Minus,
+  Calendar
 } from 'lucide-react';
 import { TextElementType } from '../../types';
 
@@ -42,6 +43,7 @@ const blockTypeIcons: Record<string, any> = {
   spaceEmbed: Link2,
   blockEmbed: Link2,
   divider: Minus,
+  calendar: Calendar,
 };
 
 const blockTypeLabels: Record<string, string> = {
@@ -62,6 +64,7 @@ const blockTypeLabels: Record<string, string> = {
   spaceEmbed: 'Space Embed',
   blockEmbed: 'Block Embed',
   divider: 'Divider',
+  calendar: 'Calendar Event',
 };
 
 export function TextElementPreview({ type, content = '', sourceSpaceName, count }: TextElementPreviewProps) {

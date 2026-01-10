@@ -286,15 +286,47 @@ export function SpaceEmbed({ space, onNavigate, compact = false, spacesState }: 
           const y1 = el.y;
           const x2 = el.x + (el.width || 0);
           const y2 = el.y + (el.height || 0);
+          
+          // Determinazione del percorso (d) per supporto frecce elettriche/curvate
+          let pathData = `M ${x1},${y1} L ${x2},${y2}`;
+          
+          if (el.arrowType === 'curved') {
+            const midX = (x1 + x2) / 2;
+            const midY = (y1 + y2) / 2;
+            const dx = x2 - x1;
+            const dy = y2 - y1;
+            const dist = Math.sqrt(dx * dx + dy * dy);
+            const normX = dx / dist;
+            const normY = dy / dist;
+            const perpX = -normY;
+            const perpY = normX;
+            const offset = (el.curvature || 0) * (dist / 2);
+            const cpX = midX + perpX * offset;
+            const cpY = midY + perpY * offset;
+            pathData = `M ${x1},${y1} Q ${cpX},${cpY} ${x2},${y2}`;
+          } else if (el.arrowType === 'electrical' && el.waypoints && el.waypoints.length > 0) {
+            pathData = `M ${x1},${y1}`;
+            el.waypoints.forEach((p: any) => {
+              pathData += ` L ${p.x},${p.y}`;
+            });
+            pathData += ` L ${x2},${y2}`;
+          }
+
           minX = Math.min(minX, x1, x2);
           minY = Math.min(minY, y1, y2);
           maxX = Math.max(maxX, x1, x2);
           maxY = Math.max(maxY, y1, y2);
-        } else if (el.type === 'rectangle' || el.type === 'spaceEmbed') {
+        } else if (el.type === 'rectangle' || el.type === 'spaceEmbed' || el.type === 'blockEmbed' || el.type === 'image' || el.type === 'file') {
+          const rw = el.width || 100;
+          const rh = el.height || 100;
           minX = Math.min(minX, el.x);
           minY = Math.min(minY, el.y);
-          maxX = Math.max(maxX, el.x + (el.width || 0));
-          maxY = Math.max(maxY, el.y + (el.height || 0));
+          maxX = Math.max(maxX, el.x + rw);
+          maxY = Math.max(maxY, el.y + rh);
+        } else if (el.type === 'group') {
+          // Simplification for group: we would need recursive bounds, but let's at least check its own x,y
+          minX = Math.min(minX, el.x);
+          minY = Math.min(minY, el.y);
         } else {
           // Fallback generico
           minX = Math.min(minX, el.x);
@@ -378,19 +410,68 @@ export function SpaceEmbed({ space, onNavigate, compact = false, spacesState }: 
                 const y1 = el.y;
                 const x2 = el.x + (el.width || 0);
                 const y2 = el.y + (el.height || 0);
+                
+                // Determinazione del percorso (d) per supporto frecce elettriche/curvate
+                let pathData = `M ${x1},${y1} L ${x2},${y2}`;
+                
+                if (el.arrowType === 'curved') {
+                  const midX = (x1 + x2) / 2;
+                  const midY = (y1 + y2) / 2;
+                  const dx = x2 - x1;
+                  const dy = y2 - y1;
+                  const dist = Math.sqrt(dx * dx + dy * dy);
+                  const normX = dx / dist;
+                  const normY = dy / dist;
+                  const perpX = -normY;
+                  const perpY = normX;
+                  const offset = (el.curvature || 0) * (dist / 2);
+                  const cpX = midX + perpX * offset;
+                  const cpY = midY + perpY * offset;
+                  pathData = `M ${x1},${y1} Q ${cpX},${cpY} ${x2},${y2}`;
+                } else if (el.arrowType === 'electrical' && el.waypoints && el.waypoints.length > 0) {
+                  pathData = `M ${x1},${y1}`;
+                  el.waypoints.forEach((p: any) => {
+                    pathData += ` L ${p.x},${p.y}`;
+                  });
+                  pathData += ` L ${x2},${y2}`;
+                }
+
                 return (
                   <g key={index}>
-                    <line
-                      x1={x1}
-                      y1={y1}
-                      x2={x2}
-                      y2={y2}
+                    <path
+                      d={pathData}
+                      fill="none"
                       stroke={el.color || '#000'}
                       strokeWidth={el.strokeWidth || 2}
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
                     />
                     {el.type === 'arrow' && (() => {
-                      const angle = Math.atan2(y2 - y1, x2 - x1);
-                      const arrowSize = 10;
+                      // Calcolo angolo finale per la punta della freccia
+                      let angle = 0;
+                      let lastX = x1, lastY = y1;
+                      
+                      if (el.arrowType === 'electrical' && el.waypoints && el.waypoints.length > 0) {
+                        const lastPoint = el.waypoints[el.waypoints.length - 1];
+                        lastX = lastPoint.x;
+                        lastY = lastPoint.y;
+                      } else if (el.arrowType === 'curved') {
+                        const midX = (x1 + x2) / 2;
+                        const midY = (y1 + y2) / 2;
+                        const dx = x2 - x1;
+                        const dy = y2 - y1;
+                        const dist = Math.sqrt(dx * dx + dy * dy);
+                        const perpX = -(dy / dist);
+                        const perpY = (dx / dist);
+                        const offset = (el.curvature || 0) * (dist / 2);
+                        const cpX = midX + perpX * offset;
+                        const cpY = midY + perpY * offset;
+                        lastX = cpX;
+                        lastY = cpY;
+                      }
+                      
+                      angle = Math.atan2(y2 - lastY, x2 - lastX);
+                      const arrowSize = 8;
                       return (
                         <polygon
                           points={`${x2},${y2} ${x2 - arrowSize * Math.cos(angle - Math.PI / 6)},${y2 - arrowSize * Math.sin(angle - Math.PI / 6)} ${x2 - arrowSize * Math.cos(angle + Math.PI / 6)},${y2 - arrowSize * Math.sin(angle + Math.PI / 6)}`}
@@ -401,19 +482,92 @@ export function SpaceEmbed({ space, onNavigate, compact = false, spacesState }: 
                   </g>
                 );
               }
-              if (el.type === 'spaceEmbed') {
+              if (el.type === 'spaceEmbed' || el.type === 'blockEmbed') {
                 return (
-                  <rect
-                    key={index}
-                    x={el.x}
-                    y={el.y}
-                    width={el.width || 200}
-                    height={el.height || 150}
-                    fill="#f0f0f0"
-                    stroke="#999"
-                    strokeWidth={1}
-                    rx={4}
-                  />
+                  <g key={index}>
+                    <rect
+                      x={el.x}
+                      y={el.y}
+                      width={el.width || 200}
+                      height={el.height || 150}
+                      fill="#f8f9fa"
+                      stroke="#dee2e6"
+                      strokeWidth={1}
+                      rx={4}
+                    />
+                    <text
+                      x={el.x + 10}
+                      y={el.y + 20}
+                      fontSize="10"
+                      fill="#999"
+                      fontFamily="sans-serif"
+                    >
+                      {el.type === 'spaceEmbed' ? '📄 Pagina' : '🔗 Blocco'}
+                    </text>
+                  </g>
+                );
+              }
+              if (el.type === 'image') {
+                return (
+                  <g key={index}>
+                    <rect
+                      x={el.x}
+                      y={el.y}
+                      width={el.width || 100}
+                      height={el.height || 100}
+                      fill="#e9ecef"
+                      stroke="#ced4da"
+                      strokeWidth={1}
+                      rx={4}
+                    />
+                    {el.imageUrl ? (
+                      <image
+                        href={el.imageUrl}
+                        x={el.x + 2}
+                        y={el.y + 2}
+                        width={(el.width || 100) - 4}
+                        height={(el.height || 100) - 4}
+                        preserveAspectRatio="xMidYMid slice"
+                      />
+                    ) : (
+                      <text
+                        x={el.x + (el.width || 100) / 2}
+                        y={el.y + (el.height || 100) / 2}
+                        fontSize="10"
+                        fill="#999"
+                        textAnchor="middle"
+                        dominantBaseline="middle"
+                        fontFamily="sans-serif"
+                      >
+                        🖼️ Immagine
+                      </text>
+                    )}
+                  </g>
+                );
+              }
+              if (el.type === 'file') {
+                return (
+                  <g key={index}>
+                    <rect
+                      x={el.x}
+                      y={el.y}
+                      width={el.width || 120}
+                      height={el.height || 40}
+                      fill="#fff"
+                      stroke="#ced4da"
+                      strokeWidth={1}
+                      rx={4}
+                    />
+                    <text
+                      x={el.x + 8}
+                      y={el.y + 24}
+                      fontSize="10"
+                      fill="#6c757d"
+                      fontFamily="sans-serif"
+                    >
+                      📄 {el.fileName || 'File'}
+                    </text>
+                  </g>
                 );
               }
               return null;

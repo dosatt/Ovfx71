@@ -35,12 +35,21 @@ import {
   ChevronDown,
   ChevronRight,
   Link as LinkIcon,
-  Link2Off
+  Link2Off,
+  MoreVertical,
+  LayoutGrid,
+  Grid,
+  Star,
+  Search,
+  Library,
+  List
 } from "lucide-react";
 import { Block, BlockType } from "../../types";
 import { SpaceEmbed } from './SpaceEmbed';
 import { BlockEmbed } from './BlockEmbed';
-import { FileElement } from './FileElement';
+import { FileElement, ItemTypes as FileItemTypes } from './FileElement';
+import { CalendarElement } from './CalendarElement';
+import { CalendarAutocomplete } from './CalendarAutocomplete';
 import { SpaceLinkAutocomplete } from './SpaceLinkAutocomplete';
 import { RichTextEditor } from './RichTextEditor';
 import { useCrossViewportDrag } from '../../hooks/useCrossViewportDrag';
@@ -118,7 +127,7 @@ function RenderBlockEmbed({ blockId, sourceSpaceId, spacesState, viewportsState 
     );
   }
   
-  const embeddedBlock = sourceSpace.content.blocks.find((b: Block) => b.id === blockId);
+  const embeddedBlock = sourceSpace.content.blocks.find((b: Block) => b && b.id === blockId);
   
   if (!embeddedBlock) {
     return (
@@ -258,6 +267,7 @@ interface TextElementProps {
   dragCount?: number;
   blocks?: Block[];
   settings?: Settings;
+  onUpdateSettings?: (updates: Partial<Settings>) => void;
   selectedBlockIds?: string[];
   onToggleSelection?: (blockId: string, isShift: boolean) => void;
   onSelectAll?: () => void;
@@ -296,6 +306,7 @@ export function TextElement({
   dragCount = 1,
   blocks: parentBlocks,
   settings,
+  onUpdateSettings,
   selectedBlockIds = [],
   onToggleSelection,
   onSelectAll,
@@ -318,6 +329,7 @@ export function TextElement({
 
   // Stati per l'autocomplete dei link
   const [showSpaceLinkAutocomplete, setShowSpaceLinkAutocomplete] = useState(false);
+  const [showCalendarAutocomplete, setShowCalendarAutocomplete] = useState(false);
   const [spaceLinkPosition, setSpaceLinkPosition] = useState<{ top: number; left: number }>({ top: 0, left: 0 });
   const [linkTriggerIndex, setLinkTriggerIndex] = useState<number>(-1);
   const [autocompleteMode, setAutocompleteMode] = useState<'inline' | 'pageLink' | 'spacePreview' | null>(null);
@@ -369,7 +381,7 @@ export function TextElement({
   
   // Find the first header (H1-H4) in the entire page content
   const firstHeaderInPage = space?.content?.blocks?.find((b: any) => 
-    ['heading1', 'heading2', 'heading3', 'heading4'].includes(b.type)
+    b && ['heading1', 'heading2', 'heading3', 'heading4'].includes(b.type)
   );
   const isTargetHeader = firstHeaderInPage?.id === block.id;
   const isTitleSynced = space?.metadata?.syncTitleWithH1 !== false;
@@ -416,6 +428,13 @@ export function TextElement({
       isDragging: monitor.isDragging(),
     }),
     end: (item, monitor) => {
+      const dropResult: any = monitor.getDropResult();
+      // If the block was dropped into a collection view (which returns handled: true)
+      // we remove it from the page to complete the "move" operation
+      if (dropResult?.handled && onDelete) {
+        onDelete(block.id);
+      }
+      
       if (monitor.didDrop()) {
         setJustMoved(true);
         setTimeout(() => setJustMoved(false), 700);
@@ -426,40 +445,92 @@ export function TextElement({
   const { dragMode, showTooltip } = useCrossViewportDrag(isDragging);
 
   const [{ isOver, canDrop }, drop] = useDrop({
-    accept: ITEM_TYPE_TEXT_ELEMENT,
+    accept: [ITEM_TYPE_TEXT_ELEMENT, FileItemTypes.FILE, FileItemTypes.EXTERNAL_ELEMENT],
     hover: (item: any, monitor) => {
       if (!ref.current) return;
       
-      if (item.sourceSpaceId !== currentSpaceId) {
-        setDropLinePosition(null);
-        return;
-      }
+      const itemType = monitor.getItemType();
 
-      const dragIndex = item.index;
-      const hoverIndex = index;
+      if (itemType === ITEM_TYPE_TEXT_ELEMENT) {
+        if (item.sourceSpaceId !== currentSpaceId) {
+          setDropLinePosition(null);
+          return;
+        }
 
-      if (dragIndex === hoverIndex) {
-        setDropLinePosition(null);
-        return;
-      }
-
-      if (dragIndex < hoverIndex) {
-        setDropLinePosition("bottom");
-      } else {
-        setDropLinePosition("top");
-      }
-    },
-    drop: (item: any) => {
-      if (item.sourceSpaceId === currentSpaceId && (!item.dragMode || item.dragMode === 'link' || item.dragMode === 'move')) {
         const dragIndex = item.index;
         const hoverIndex = index;
-        const count = item.count || 1;
 
-        if (dragIndex !== hoverIndex) {
-          onMove(dragIndex, hoverIndex, count);
+        if (dragIndex === hoverIndex) {
+          setDropLinePosition(null);
+          return;
+        }
+
+        if (dragIndex < hoverIndex) {
+          setDropLinePosition("bottom");
+        } else {
+          setDropLinePosition("top");
+        }
+      } else {
+        // External file or file from collection
+        setDropLinePosition("bottom");
+      }
+    },
+    drop: (item: any, monitor) => {
+      const itemType = monitor.getItemType();
+
+      if (itemType === ITEM_TYPE_TEXT_ELEMENT) {
+        if (item.sourceSpaceId === currentSpaceId && (!item.dragMode || item.dragMode === 'link' || item.dragMode === 'move')) {
+          const dragIndex = item.index;
+          const hoverIndex = index;
+          const count = item.count || 1;
+
+          if (dragIndex !== hoverIndex) {
+            onMove(dragIndex, hoverIndex, count);
+          }
+        }
+      } else {
+        // Handle external drop (FILE or EXTERNAL_ELEMENT)
+        // Convert to a new block
+        const handler = createNextBlock || onCreateNextBlock;
+        if (handler) {
+          let fileData = item.fileData || item.data;
+          if (fileData) {
+            const isImage = fileData.fileType?.startsWith('image/') || fileData.type?.startsWith('image/');
+            const blockType = isImage ? 'image' : 'file';
+            
+            const metadata = isImage ? {} : {
+              fileName: fileData.fileName || fileData.name || 'File',
+              fileSize: fileData.fileSize || fileData.size || 0,
+              fileType: fileData.fileType || fileData.type || 'application/octet-stream',
+              filePreview: fileData.filePreview || fileData.preview,
+              isFolder: fileData.isFolder || false,
+              files: fileData.children || fileData.files || []
+            };
+
+            const content = isImage ? (fileData.filePreview || fileData.preview || '') : (fileData.fileName || fileData.name || 'File');
+
+            // Pass the data for the NEW block and also update the CURRENT block if it's just a blank line
+            const isCurrentBlockEmpty = !block.content || block.content.trim() === '';
+            
+            if (isCurrentBlockEmpty) {
+              // Replace current block
+              onUpdate(block.id, { 
+                type: blockType, 
+                content, 
+                metadata: { ...block.metadata, ...metadata } 
+              });
+            } else {
+              // Insert AFTER
+              handler(block.id, blockType, { 
+                content,
+                metadata 
+              });
+            }
+          }
         }
       }
       setDropLinePosition(null);
+      return { pulledOut: true, handled: true };
     },
     collect: (monitor) => ({
       isOver: monitor.isOver({ shallow: true }),
@@ -632,6 +703,21 @@ export function TextElement({
       // 7. Space Link shortcut (>>) - This is now handled inline by RichTextEditor
       // Removed block-level shortcut to avoid automatic conversion to block embed
 
+      // 8. Calendar shortcut (+++)
+      if (newContent.startsWith('+++')) {
+          setLinkTriggerIndex(0);
+          if (contentRef.current) {
+              const rect = contentRef.current.getBoundingClientRect();
+              setSpaceLinkPosition({
+                  top: rect.bottom + 4,
+                  left: rect.left
+              });
+          }
+          setShowCalendarAutocomplete(true);
+          onUpdate(block.id, { content: '' });
+          return;
+      }
+
       // 6. Numbered Checkbox List
       // Custom shortcut style: 1[[
       const shortcutCheckboxMatch = newContent.match(/^(\d+)\[\[\s/);
@@ -735,6 +821,54 @@ export function TextElement({
         // Restore focus to editor
         shouldFocusRef.current = true;
     }
+  };
+
+  const handleEventSelected = (event: any) => {
+    // Inserisci un link all'evento (usando il suo ID blocco)
+    const currentContent = block.content || '';
+    const insertIndex = linkTriggerIndex;
+    
+    const linkText = `[[${event.id}|${event.metadata?.title || event.content || 'Evento'}]]`;
+    const newContent = currentContent.slice(0, insertIndex) + linkText + currentContent.slice(insertIndex);
+    onUpdate(block.id, { content: newContent });
+    
+    setShowCalendarAutocomplete(false);
+    setLinkTriggerIndex(-1);
+    shouldFocusRef.current = true;
+  };
+
+  const handleCreateNewEvent = () => {
+    setShowCalendarAutocomplete(false);
+    
+    if (currentSpaceId) {
+       const newEventId = `block_${Date.now()}`;
+       const newEvent = {
+          id: newEventId,
+          type: 'calendar',
+          content: 'Nuovo Evento',
+          metadata: {
+             startDate: new Date().toISOString(),
+             endDate: new Date(Date.now() + 3600000).toISOString(),
+             title: 'Nuovo Evento',
+             displayMode: 'card'
+          }
+       };
+       
+       const space = spacesState.getSpace(currentSpaceId);
+       if (space) {
+          const updatedBlocks = [...(space.content?.blocks || []), newEvent];
+          spacesState.updateSpace(currentSpaceId, {
+             content: { ...space.content, blocks: updatedBlocks }
+          });
+          
+          const linkText = `[[${newEventId}|Nuovo Evento]]`;
+          const currentContent = block.content || '';
+          const newContent = currentContent.slice(0, linkTriggerIndex) + linkText + currentContent.slice(linkTriggerIndex);
+          onUpdate(block.id, { content: newContent });
+       }
+    }
+    setLinkTriggerIndex(-1);
+    shouldFocusRef.current = true;
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -1087,6 +1221,11 @@ export function TextElement({
               setAutocompleteMode('inline');
           }
       }}
+      onTriggerCalendar={(position, triggerIndex) => {
+          setSpaceLinkPosition(position);
+          setLinkTriggerIndex(triggerIndex);
+          setShowCalendarAutocomplete(true);
+      }}
       onLinkContextMenu={(linkId, linkText, position) => {
           setSelectedLinkId(linkId);
           setSelectedLinkText(linkText);
@@ -1226,6 +1365,29 @@ export function TextElement({
                     <span className="text-[10px] leading-tight text-center text-red-600 w-full truncate">Delete</span>
                   </DropdownMenuItem>
                 </div>
+
+                {block.type === 'file' && (
+                  <>
+                    <DropdownMenuSeparator className="my-2" />
+                    <DropdownMenuSub>
+                      <DropdownMenuSubTrigger className="flex items-center p-2 cursor-pointer focus:bg-default-100 rounded-md outline-none">
+                        <span className="text-sm text-default-700">Options</span>
+                      </DropdownMenuSubTrigger>
+                      <DropdownMenuSubContent className="p-2 w-48">
+                        <DropdownMenuLabel className="text-xs text-default-400 font-bold uppercase tracking-wider mb-1 px-2">Layout</DropdownMenuLabel>
+                        <DropdownMenuItem onClick={() => onUpdate(block.id, { metadata: { ...block.metadata, layout: 'compact' } })} className="flex items-center gap-2 p-2 rounded-md cursor-pointer hover:bg-default-100 text-sm">
+                          <List className="w-4 h-4" /> Compact View
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => onUpdate(block.id, { metadata: { ...block.metadata, layout: 'preview' } })} className="flex items-center gap-2 p-2 rounded-md cursor-pointer hover:bg-default-100 text-sm">
+                          <LayoutGrid className="w-4 h-4" /> Preview
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => onUpdate(block.id, { metadata: { ...block.metadata, layout: 'collection' } })} className="flex items-center gap-2 p-2 rounded-md cursor-pointer hover:bg-default-100 text-sm">
+                          <Library className="w-4 h-4" /> Collection View
+                        </DropdownMenuItem>
+                      </DropdownMenuSubContent>
+                    </DropdownMenuSub>
+                  </>
+                )}
 
                 {(effectiveBlock.type === 'numberedList' || effectiveBlock.type === 'checkboxNumberedList') && (
                   <>
@@ -1577,18 +1739,40 @@ export function TextElement({
               variant="flat"
             />
           </div>
+        ) : effectiveBlock.type === 'calendar' ? (
+           <div className="w-full">
+              <CalendarElement 
+                className="w-full"
+                data={{
+                  startDate: block.metadata?.startDate || new Date().toISOString(),
+                  endDate: block.metadata?.endDate || new Date(Date.now() + 3600000).toISOString(),
+                  recurrence: block.metadata?.recurrence || 'none',
+                  notes: block.metadata?.notes,
+                  completed: block.metadata?.completed,
+                  attachments: block.metadata?.attachments,
+                  displayMode: block.metadata?.displayMode || 'card'
+                }}
+                onUpdate={(updates) => onUpdate(block.id, { metadata: { ...block.metadata, ...updates } })}
+                spacesState={spacesState}
+                isReadOnly={false}
+              />
+           </div>
         ) : effectiveBlock.type === 'file' ? (
-          <FileElement
-            layout={block.metadata?.fileLayout || 'square'}
-            fileName={block.metadata?.fileName || (block.content || 'New File')}
-            fileSize={block.metadata?.fileSize || 0}
-            fileType={block.metadata?.fileType || 'application/octet-stream'}
-            filePreview={block.metadata?.filePreview}
-            files={block.metadata?.files}
-            searchQuery={block.metadata?.searchQuery}
-            onUpdate={(updates) => onUpdate(block.id, { metadata: { ...block.metadata, ...updates } })}
-            onDelete={() => onDelete(block.id)}
-          />
+          <div className={`w-full flex ${block.metadata?.layout === 'preview' ? 'justify-center' : 'justify-start'}`}>
+            <FileElement
+              layout={block.metadata?.layout || 'compact'}
+              fileName={block.metadata?.fileName || (block.content || 'New File')}
+              fileSize={block.metadata?.fileSize || 0}
+              fileType={block.metadata?.fileType || 'application/octet-stream'}
+              filePreview={block.metadata?.filePreview}
+              files={block.metadata?.files}
+              searchQuery={block.metadata?.searchQuery}
+              onUpdate={(updates) => onUpdate(block.id, { metadata: { ...block.metadata, ...updates } })}
+              onDelete={() => onDelete(block.id)}
+              settings={settings}
+              onUpdateSettings={onUpdateSettings}
+            />
+          </div>
         ) : effectiveBlock.type === 'spaceEmbed' ? (
           <RenderSpaceEmbed 
             spaceId={block.spaceId} 
@@ -1624,6 +1808,19 @@ export function TextElement({
           currentSpaceId={currentSpaceId}
           selectedIndex={autocompleteSelectedIndex}
           onSelectedIndexChange={setAutocompleteSelectedIndex}
+        />
+      )}
+
+      {showCalendarAutocomplete && (
+        <CalendarAutocomplete
+          spaces={spacesState.spaces}
+          onSelect={handleEventSelected}
+          onCreateNew={handleCreateNewEvent}
+          onClose={() => {
+            setShowCalendarAutocomplete(false);
+            setLinkTriggerIndex(-1);
+          }}
+          position={spaceLinkPosition}
         />
       )}
 

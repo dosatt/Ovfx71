@@ -47,6 +47,7 @@ interface ListGroupProps {
   onEditEnd?: (blockId: string) => void;
   listNumbers?: (number | string | undefined)[];
   settings?: Settings;
+  onUpdateSettings?: (updates: Partial<Settings>) => void;
   selectedBlockIds?: string[];
   onToggleSelection?: (blockId: string, isShift: boolean) => void;
   onSelectAll?: () => void;
@@ -54,9 +55,10 @@ interface ListGroupProps {
 }
 
 export function ListGroup(props: ListGroupProps) {
-  const { blocks, startIndex, currentSpaceId, currentSpaceName, listNumbers, onConvertBlock, onConvertBlocks, selectedBlockIds = [], onToggleSelection, onSelectAll, onSelectGroup } = props;
+  const { blocks, startIndex, currentSpaceId, currentSpaceName, listNumbers, onConvertBlock, onConvertBlocks, selectedBlockIds = [], onToggleSelection, onSelectAll, onSelectGroup, onUpdateSettings } = props;
   const [menuOpen, setMenuOpen] = useState(false);
   const [previewType, setPreviewType] = useState<BlockType | null>(null);
+  const [dragHovered, setDragHovered] = useState(false);
 
   // Drag logic for the group
   const [{ isDragging }, drag, preview] = useDrag({
@@ -105,6 +107,14 @@ export function ListGroup(props: ListGroupProps) {
     });
   };
 
+  const onSelectAllInGroup = () => {
+    blocks.forEach(block => {
+      if (!selectedBlockIds.includes(block.id)) {
+        onToggleSelection && onToggleSelection(block.id, true);
+      }
+    });
+  };
+
   return (
     <div ref={preview} className={`w-full relative group/list-group ${isDragging ? 'opacity-50' : ''}`}>
        
@@ -116,6 +126,7 @@ export function ListGroup(props: ListGroupProps) {
              <TextElement 
                key={block.id}
                {...props}
+               onUpdateSettings={onUpdateSettings}
                config={blockTypeConfig[effectiveType] || blockTypeConfig['text']}
                block={{ ...block, type: effectiveType }}
                index={startIndex + i}
@@ -148,7 +159,7 @@ export function ListGroup(props: ListGroupProps) {
                 }
               }}
             >
-               <div className={`w-[3px] h-full rounded-full transition-colors pointer-events-none ${blocks.some(b => selectedBlockIds.includes(b.id)) ? 'bg-blue-500' : 'bg-[#b8b8b8] hover:bg-black'}`} />
+               <div className={`w-[3px] h-full rounded-full transition-colors pointer-events-none ${blocks.some(b => selectedBlockIds.includes(b.id)) ? 'bg-blue-500' : 'bg-[#e5e5e5] hover:bg-black'}`} />
 
                <DropdownMenu open={menuOpen} onOpenChange={(open) => {
                  setMenuOpen(open);

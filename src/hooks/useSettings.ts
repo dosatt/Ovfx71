@@ -27,6 +27,7 @@ export interface Settings {
   showMargins: boolean;
   paddingColor: string;
   marginColor: string;
+  defaultCollectionLayout: 'grid' | 'list' | 'detail' | 'columns';
 }
 
 const DEFAULT_SETTINGS: Settings = {
@@ -55,7 +56,8 @@ const DEFAULT_SETTINGS: Settings = {
   showPadding: false,
   showMargins: false,
   paddingColor: '#3b82f6', // blue-500
-  marginColor: '#f97316'  // orange-500
+  marginColor: '#f97316',  // orange-500
+  defaultCollectionLayout: 'grid'
 };
 
 export function useSettings() {

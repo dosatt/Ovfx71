@@ -102,7 +102,12 @@ export function ViewportContent({
         {activeTab?.appType && (
           <>
             {activeTab.appType === 'browser' && <BrowserApp />}
-            {activeTab.appType === 'calendar' && <CalendarApp />}
+            {activeTab.appType === 'calendar' && (
+              <CalendarApp 
+                spacesState={spacesState} 
+                viewportsState={viewportsState} 
+              />
+            )}
             {activeTab.appType === 'mail' && <MailApp />}
             {activeTab.appType === 'chat' && <ChatApp />}
             {activeTab.appType === 'draw' && <DrawApp />}
@@ -135,6 +140,7 @@ export function ViewportContent({
                     brokenLinks={brokenLinks}
                     brokenLinksVersion={brokenLinksVersion}
                     settings={settings}
+                    onUpdateSettings={onUpdateSettings}
                   />
                 )}
                 {space.type === 'canvas' && (
@@ -142,13 +148,20 @@ export function ViewportContent({
                     space={space} 
                     spacesState={spacesState} 
                     isActive={isFocused}
+                    settings={settings}
+                    onUpdateSettings={onUpdateSettings}
                   />
                 )}
                 {space.type === 'database' && (
                   <DatabaseSpace space={space} spacesState={spacesState} />
                 )}
                 {space.type === 'dashboard' && (
-                  <DashboardSpace space={space} spacesState={spacesState} />
+                  <DashboardSpace 
+                    space={space} 
+                    spacesState={spacesState} 
+                    settings={settings}
+                    onUpdateSettings={onUpdateSettings}
+                  />
                 )}
               </>
             )}

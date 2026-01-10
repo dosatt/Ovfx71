@@ -37,9 +37,20 @@ interface PageEditorProps {
   brokenLinks?: Set<string>;
   brokenLinksVersion?: number;
   settings?: Settings;
+  onUpdateSettings?: (updates: Partial<Settings>) => void;
 }
 
-export function PageEditor({ space, spacesState, viewportsState, viewportId, tabId, brokenLinks, brokenLinksVersion, settings }: PageEditorProps) {
+export function PageEditor({ 
+  space, 
+  spacesState, 
+  viewportsState, 
+  viewportId, 
+  tabId, 
+  brokenLinks, 
+  brokenLinksVersion, 
+  settings,
+  onUpdateSettings
+}: PageEditorProps) {
   const [selectedBlockIds, setSelectedBlockIds] = useState<string[]>([]);
   const [menuAnchor, setMenuAnchor] = useState<{ anchor: HTMLElement; afterBlockId?: string } | null>(null);
   const [collapsedHeaders, setCollapsedHeaders] = useState<Set<string>>(new Set());
@@ -88,7 +99,7 @@ export function PageEditor({ space, spacesState, viewportsState, viewportId, tab
     const isTitleSynced = space.metadata?.syncTitleWithH1 !== false;
     if (isTitleSynced) {
       const firstHeader = newBlocks.find((b: any) => 
-        ['heading1', 'heading2', 'heading3', 'heading4'].includes(b.type)
+        b && ['heading1', 'heading2', 'heading3', 'heading4'].includes(b.type)
       );
       if (firstHeader && firstHeader.content !== space.title) {
         spacesState.updateSpace(space.id, { title: firstHeader.content });
@@ -109,10 +120,12 @@ export function PageEditor({ space, spacesState, viewportsState, viewportId, tab
     };
 
     if (afterBlockId) {
-      const index = blocks.findIndex(b => b.id === afterBlockId);
+      const index = blocks.findIndex(b => b && b.id === afterBlockId);
       const newBlocks = [...blocks];
-      newBlocks.splice(index + 1, 0, newBlock);
-      updateContent(newBlocks);
+      if (index !== -1) {
+        newBlocks.splice(index + 1, 0, newBlock);
+        updateContent(newBlocks);
+      }
     } else {
       updateContent([...blocks, newBlock]);
     }
@@ -126,7 +139,8 @@ export function PageEditor({ space, spacesState, viewportsState, viewportId, tab
       content: '',
     };
     
-    const index = blocks.findIndex(b => b.id === blockId);
+    const index = blocks.findIndex(b => b && b.id === blockId);
+    if (index === -1) return;
     const newBlocks = [...blocks];
     newBlocks.splice(index, 0, newBlock);
     updateContent(newBlocks);
@@ -149,8 +163,9 @@ export function PageEditor({ space, spacesState, viewportsState, viewportId, tab
     }, 50);
   };
 
-  const createNextBlock = (blockId: string, blockType: BlockType, currentBlockUpdates?: Partial<Block>) => {
-    const index = blocks.findIndex(b => b.id === blockId);
+  const createNextBlock = (blockId: string, blockType: BlockType, newBlockUpdates?: Partial<Block>, currentBlockUpdates?: Partial<Block>) => {
+    const index = blocks.findIndex(b => b && b.id === blockId);
+    if (index === -1) return;
     
     // Logic to inherit indent
     let indent = 0;
@@ -168,7 +183,8 @@ export function PageEditor({ space, spacesState, viewportsState, viewportId, tab
       type: blockType,
       content: '',
       checked: blockType === 'checkbox' ? false : undefined,
-      indent: indent > 0 ? indent : undefined
+      indent: indent > 0 ? indent : undefined,
+      ...newBlockUpdates
     };
     
     let newBlocks = [...blocks];
@@ -312,11 +328,11 @@ export function PageEditor({ space, spacesState, viewportsState, viewportId, tab
   };
 
   const updateBlock = (id: string, updates: Partial<Block>) => {
-    const oldBlock = blocks.find(b => b.id === id);
+    const oldBlock = blocks.find(b => b && b.id === id);
     if (!oldBlock) return;
 
     const newBlock = { ...oldBlock, ...updates };
-    const newBlocks = blocks.map(b => b.id === id ? newBlock : b);
+    const newBlocks = blocks.map(b => b && b.id === id ? newBlock : b);
     updateContent(newBlocks);
     
     // Track history for content or type changes
@@ -332,7 +348,7 @@ export function PageEditor({ space, spacesState, viewportsState, viewportId, tab
         undo: () => {
           const currentBlocks = (spacesState.getSpace(space.id)?.content as PageContent)?.blocks || [];
           // Restore the entire old block state
-          const restoredBlocks = currentBlocks.map(b => b.id === id ? oldBlock : b);
+          const restoredBlocks = currentBlocks.map(b => b && b.id === id ? oldBlock : b);
           spacesState.updateSpace(space.id, {
             content: { ...content, blocks: restoredBlocks }
           });
@@ -340,7 +356,7 @@ export function PageEditor({ space, spacesState, viewportsState, viewportId, tab
         redo: () => {
           const currentBlocks = (spacesState.getSpace(space.id)?.content as PageContent)?.blocks || [];
           // Apply the new block state
-          const updatedBlocks = currentBlocks.map(b => b.id === id ? newBlock : b);
+          const updatedBlocks = currentBlocks.map(b => b && b.id === id ? newBlock : b);
           spacesState.updateSpace(space.id, {
             content: { ...content, blocks: updatedBlocks }
           });
@@ -350,9 +366,10 @@ export function PageEditor({ space, spacesState, viewportsState, viewportId, tab
   };
 
   const deleteBlock = (id: string) => {
-    const deletedBlock = blocks.find(b => b.id === id);
-    const deletedIndex = blocks.findIndex(b => b.id === id);
-    const newBlocks = blocks.filter(b => b.id !== id);
+    const deletedBlock = blocks.find(b => b && b.id === id);
+    const deletedIndex = blocks.findIndex(b => b && b.id === id);
+    if (deletedIndex === -1) return;
+    const newBlocks = blocks.filter(b => b && b.id !== id);
     updateContent(newBlocks);
     
     if (deletedBlock) {
@@ -369,7 +386,7 @@ export function PageEditor({ space, spacesState, viewportsState, viewportId, tab
         },
         redo: () => {
           const currentBlocks = (spacesState.getSpace(space.id)?.content as PageContent)?.blocks || [];
-          const filteredBlocks = currentBlocks.filter(b => b.id !== id);
+          const filteredBlocks = currentBlocks.filter(b => b && b.id !== id);
           spacesState.updateSpace(space.id, {
             content: { ...content, blocks: filteredBlocks }
           });
@@ -385,7 +402,7 @@ export function PageEditor({ space, spacesState, viewportsState, viewportId, tab
   const convertBlocks = (ids: string[], newType: BlockType) => {
     // Filter out blocks that don't need conversion
     const targetIds = new Set(ids);
-    const blocksToConvert = blocks.filter(b => targetIds.has(b.id) && b.type !== newType);
+    const blocksToConvert = blocks.filter(b => b && targetIds.has(b.id) && b.type !== newType);
     
     if (blocksToConvert.length === 0) return;
     
@@ -449,11 +466,11 @@ export function PageEditor({ space, spacesState, viewportsState, viewportId, tab
     const newBlocks = [...blocks];
     
     // Filtra gli ID validi presenti in questo space
-    const validIds = blockIds.filter(id => blocks.some(b => b.id === id));
+    const validIds = blockIds.filter(id => blocks.some(b => b && b.id === id));
     if (validIds.length === 0) return;
 
     // Salva i blocchi da spostare nell'ordine di selezione (pickup order)
-    const blocksToMove = validIds.map(id => blocks.find(b => b.id === id)!).filter(Boolean);
+    const blocksToMove = validIds.map(id => blocks.find(b => b && b.id === id)!).filter(Boolean);
     
     // Trova l'indice del blocco target prima della rimozione
     const targetBlock = blocks[hoverIndex];
@@ -627,7 +644,7 @@ export function PageEditor({ space, spacesState, viewportsState, viewportId, tab
     const blockId = blockElement.getAttribute('data-block-id');
     if (!blockId) return;
     
-    const block = blocks.find(b => b.id === blockId);
+    const block = blocks.find(b => b && b.id === blockId);
     if (!block) return;
     
     // Applica lo stile markdown
@@ -976,6 +993,7 @@ export function PageEditor({ space, spacesState, viewportsState, viewportId, tab
                brokenLinksVersion={brokenLinksVersion}
                listNumbers={groupListNumbers}
                settings={settings}
+               onUpdateSettings={onUpdateSettings}
                selectedBlockIds={selectedBlockIds}
                onToggleSelection={onToggleSelection}
              />
@@ -1028,6 +1046,7 @@ export function PageEditor({ space, spacesState, viewportsState, viewportId, tab
           listNumber={listNumber}
           dragCount={dragCount}
           settings={settings}
+          onUpdateSettings={onUpdateSettings}
           selectedBlockIds={selectedBlockIds}
           onToggleSelection={onToggleSelection}
         />

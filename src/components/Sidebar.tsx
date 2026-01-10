@@ -54,18 +54,19 @@ export function Sidebar({ open, onToggle, spacesState, viewportsState, settings,
   const searchInputRef = useRef<HTMLInputElement>(null);
   const sidebarRef = useRef<HTMLDivElement>(null);
   
-  const favorites = spacesState.getFavorites();
-  const rootSpaces = spacesState.getChildren();
+  const favorites = spacesState.getFavorites().filter((s: Space) => !s.metadata?.isHidden);
+  const rootSpaces = spacesState.getChildren().filter((s: Space) => !s.metadata?.isHidden);
 
   // Funzione ricorsiva per filtrare gli spaces
   const filterSpaces = (spaces: Space[], query: string): Space[] => {
-    if (!query) return spaces;
+    const baseSpaces = spaces.filter(s => !s.metadata?.isHidden);
+    if (!query) return baseSpaces;
     
     const lowerQuery = query.toLowerCase();
     const filtered: Space[] = [];
     
-    for (const space of spaces) {
-      const children = spacesState.getChildren(space.id);
+    for (const space of baseSpaces) {
+      const children = spacesState.getChildren(space.id).filter((s: Space) => !s.metadata?.isHidden);
       const filteredChildren = filterSpaces(children, query);
       
       if (space.title.toLowerCase().includes(lowerQuery) || filteredChildren.length > 0) {
@@ -303,9 +304,9 @@ export function Sidebar({ open, onToggle, spacesState, viewportsState, settings,
 
         {!searchQuery ? (
           <>
-            {/* Apps Grid */}
-            <div className="px-4 pb-2">
-              <div className="flex gap-2 justify-center px-3">
+            {/* Apps Grid - HIGH DENSITY */}
+            <div className="px-4 pb-1">
+              <div className="flex gap-1 justify-center px-2">
                 {apps.map((app) => (
                   <Button
                     key={app.type}
@@ -313,57 +314,46 @@ export function Sidebar({ open, onToggle, spacesState, viewportsState, settings,
                     size="sm"
                     variant="light"
                     onPress={() => handleAppClick(app.type, app.title)}
-                    className="text-default-500 hover:text-default-900"
+                    className="text-default-500 hover:text-default-900 h-8 w-8 min-w-8"
                   >
-                    <app.icon size={18} />
+                    <app.icon size={16} />
                   </Button>
                 ))}
               </div>
             </div>
 
-            {/* Favorites */}
+            {/* Favorites - ALWAYS VISIBLE - HIGH DENSITY */}
             {favorites.length > 0 && (
-              <div className="px-2 py-2">
+              <div className="px-2 py-1">
                 <div
-                  className="flex items-center justify-between cursor-pointer py-1 px-2 rounded-lg hover:bg-default-100 transition-colors"
-                  onClick={() => setFavoritesExpanded(!favoritesExpanded)}
+                  className="flex items-center justify-between py-1 px-2 rounded-lg"
                 >
-                  <span className="text-xs font-semibold text-default-500 uppercase">Preferiti</span>
-                  <ChevronDown
-                    size={14}
-                    className={`text-default-500 transition-transform ${favoritesExpanded ? 'rotate-0' : '-rotate-90'}`}
-                  />
+                  <span className="text-[10px] font-black uppercase tracking-wider text-default-400">Preferiti</span>
                 </div>
-                {favoritesExpanded && (
-                  <div className="flex flex-col gap-1 mt-2">
-                    {favorites.map((space: Space) => (
-                      <DraggableSpaceItem
-                        key={space.id}
-                        space={space}
-                        spacesState={spacesState}
-                        onSpaceClick={handleSpaceClick}
-                        isFavorite={true}
-                      />
-                    ))}
-                  </div>
-                )}
+                <div className="flex flex-col gap-0.5 mt-0.5">
+                  {favorites.map((space: Space) => (
+                    <DraggableSpaceItem
+                      key={space.id}
+                      space={space}
+                      spacesState={spacesState}
+                      onSpaceClick={handleSpaceClick}
+                      isFavorite={true}
+                    />
+                  ))}
+                </div>
               </div>
             )}
 
-            {/* File Browser */}
-            <ScrollShadow className="flex-1 overflow-auto px-2 py-2">
+            {/* File Browser - HIGH DENSITY */}
+            <ScrollShadow className="flex-1 overflow-auto px-2 py-1">
               <div
-                className="flex items-center justify-between cursor-pointer py-1 px-2 rounded-lg hover:bg-default-100 transition-colors"
+                className="cursor-pointer"
                 onClick={() => setSpacesExpanded(!spacesExpanded)}
               >
-                <span className="text-xs font-semibold text-default-500 uppercase">Spaces</span>
-                <ChevronDown
-                  size={14}
-                  className={`text-default-500 transition-transform ${spacesExpanded ? 'rotate-0' : '-rotate-90'}`}
-                />
+                <span className="text-xs font-semibold text-default-500 uppercase px-2 py-1 block">Spaces</span>
               </div>
               {spacesExpanded && (
-                <div className="mt-2">
+                <div className="mt-0.5 flex flex-col gap-0.5 px-2">
                   {filteredSpaces.map(space => (
                     <DraggableSpaceItem
                       key={space.id}
@@ -376,7 +366,7 @@ export function Sidebar({ open, onToggle, spacesState, viewportsState, settings,
               )}
             </ScrollShadow>
 
-            {/* Utility Section */}
+            {/* Utility Section - HIGH DENSITY */}
             <div className="px-4 py-2 mt-auto border-t border-divider">
               <span className="text-xs font-semibold text-default-500 uppercase px-2 py-1 block">Utility</span>
               <div className="flex gap-1 mt-2 justify-between px-2 flex-wrap">

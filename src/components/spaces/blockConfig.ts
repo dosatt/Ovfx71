@@ -17,7 +17,8 @@ import {
   Globe,
   Sigma,
   Table,
-  ListTodo
+  ListTodo,
+  Calendar
 } from 'lucide-react';
 import { BlockType } from '../../types';
 
@@ -45,11 +46,13 @@ export const blockTypeConfig: Record<BlockType, { icon: any; label: string; plac
   blockEmbed: { icon: Link2, label: 'Block Embed', placeholder: 'Embed a block' },
   elementEmbed: { icon: Link2, label: 'Element Embed', placeholder: 'Embed an element' },
   video: { icon: FileIcon, label: 'Video', placeholder: 'Insert video' },
-  audio: { icon: FileIcon, label: 'Audio', placeholder: 'Insert audio' }
+  audio: { icon: FileIcon, label: 'Audio', placeholder: 'Insert audio' },
+  calendar: { icon: Calendar, label: 'Calendar Event', placeholder: 'New Event' }
 };
 
 export const orderedBlockTypes: BlockType[] = [
   'text',
+  'calendar',
   'heading1',
   'heading2',
   'heading3',

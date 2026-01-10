@@ -15,6 +15,7 @@ interface RichTextEditorProps {
   textareaRef?: React.RefObject<HTMLTextAreaElement>;
   contentEditableRef?: React.RefObject<HTMLDivElement>;
   onTriggerSpaceLink?: (position: { top: number; left: number }, triggerIndex: number) => void;
+  onTriggerCalendar?: (position: { top: number; left: number }, triggerIndex: number) => void;
   onLinkContextMenu?: (linkId: string, linkText: string, position: { x: number; y: number }) => void;
   brokenLinks?: Set<string>;
   brokenLinksVersion?: number;
@@ -36,6 +37,7 @@ export function RichTextEditor({
   textareaRef: externalRef,
   contentEditableRef: externalContentEditableRef,
   onTriggerSpaceLink,
+  onTriggerCalendar,
   onLinkContextMenu,
   brokenLinks,
   brokenLinksVersion,
@@ -289,6 +291,42 @@ export function RichTextEditor({
         }
       }
 
+      return;
+    }
+
+    // Controlla se l'utente ha appena digitato "+++"
+    if (newText.endsWith('+++') && !displayContent.endsWith('+++')) {
+      const cursorPosition = caretPos! - 3;
+      const contentWithoutTrigger = newText.slice(0, -3);
+      const newLinks = getLinksFromDOM(contentWithoutTrigger);
+      const storageContent = displayToStorage(contentWithoutTrigger, newLinks);
+      onChange(storageContent);
+
+      if (onTriggerCalendar) {
+        const selection = window.getSelection();
+        if (selection && selection.rangeCount > 0) {
+            const range = selection.getRangeAt(0);
+            const rect = range.getBoundingClientRect();
+            
+            if (rect.width === 0 && rect.height === 0 && contentEditableRef.current) {
+                const span = document.createElement('span');
+                span.appendChild(document.createTextNode('\u200b'));
+                range.insertNode(span);
+                const spanRect = span.getBoundingClientRect();
+                span.parentNode?.removeChild(span);
+                
+                onTriggerCalendar(
+                  { top: spanRect.bottom + 4, left: spanRect.left },
+                  cursorPosition
+                );
+            } else {
+                onTriggerCalendar(
+                  { top: rect.bottom + 4, left: rect.left },
+                  cursorPosition
+                );
+            }
+        }
+      }
       return;
     }
     

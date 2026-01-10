@@ -222,7 +222,7 @@ export function ViewportHeader({ viewport, space, spacesState, viewportsState, s
   const [hamburgerMenuAnchor, setHamburgerMenuAnchor] = useState<HTMLElement | null>(null);
   
   const canClose = viewport.id !== 'root';
-  const activeTab = viewport.tabs?.find(t => t.id === viewport.activeTabId);
+  const activeTab = viewport.tabs?.find(t => t && t.id === viewport.activeTabId);
   
   const handleCloseTab = (tabId: string) => {
     if (viewport.tabs.length === 1) {
@@ -370,7 +370,7 @@ export function ViewportHeader({ viewport, space, spacesState, viewportsState, s
       >
         {viewport.tabs?.map((tab, index) => {
           const isActive = tab.id === viewport.activeTabId;
-          const tabSpace = tab.spaceId ? spacesState.spaces.find((s: Space) => s.id === tab.spaceId) : null;
+          const tabSpace = tab.spaceId ? spacesState.spaces.find((s: Space) => s && s.id === tab.spaceId) : null;
           
           // Logica di collasso: se ci sono molte tab, mostra solo l'icona per quelle non attive
           const totalTabs = viewport.tabs.length;

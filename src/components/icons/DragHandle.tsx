@@ -16,7 +16,7 @@ export function DragHandle({ height = '100%', isHovered = false }: DragHandlePro
       <div
         className={`
           w-[3px] rounded-full transition-colors duration-200
-          ${isHovered ? 'bg-primary' : 'bg-default-400'}
+          ${isHovered ? 'bg-primary' : 'bg-[#e5e5e5]'}
         `}
         style={{ height: effectiveHeight }}
       />

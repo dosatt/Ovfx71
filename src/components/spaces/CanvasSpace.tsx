@@ -128,11 +128,20 @@ interface CanvasSpaceProps {
   spacesState: any;
   onNavigateToSpace?: (spaceId: string) => void;
   isActive?: boolean;
+  settings?: Settings;
+  onUpdateSettings?: (updates: Partial<Settings>) => void;
 }
 
 const ACCEPT_TYPES = [ITEM_TYPE_TO_WORKSPACE, ITEM_TYPE_TEXT_ELEMENT, NativeTypes.FILE];
 
-export function CanvasSpace({ space, spacesState, onNavigateToSpace, isActive = true }: CanvasSpaceProps) {
+export function CanvasSpace({ 
+  space, 
+  spacesState, 
+  onNavigateToSpace, 
+  isActive = true,
+  settings,
+  onUpdateSettings
+}: CanvasSpaceProps) {
   const svgRef = useRef<SVGSVGElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [tool, setTool] = useState<Tool>('select');
@@ -375,13 +384,16 @@ export function CanvasSpace({ space, spacesState, onNavigateToSpace, isActive = 
             }
           }
         } else {
+          const isFile = item.blockType === 'file';
+          const isCalendar = item.blockType === 'calendar';
+          
           newElement = {
             id: `el_${Date.now()}`,
             type: 'blockEmbed',
-            x: svgX - (item.blockType === 'file' ? 100 : 200),
-            y: svgY - (item.blockType === 'file' ? 100 : 50),
-            width: item.blockType === 'file' ? 200 : 400,
-            height: item.blockType === 'file' ? 200 : 100,
+            x: svgX - (isFile ? 100 : isCalendar ? 150 : 200),
+            y: svgY - (isFile ? 100 : isCalendar ? 75 : 50),
+            width: isFile ? 200 : isCalendar ? 300 : 400,
+            height: isFile ? 200 : isCalendar ? 150 : 100,
             color: '#1976d2',
             strokeWidth: 2,
             blockId: item.blockId || item.id,
@@ -3491,13 +3503,15 @@ export function CanvasSpace({ space, spacesState, onNavigateToSpace, isActive = 
               >
                 <div style={{ pointerEvents: 'auto' }}>
                   <FileElement
-                    layout={element.fileMetadata?.fileLayout || 'square'}
+                    layout={element.fileMetadata?.layout || 'bookmark'}
                     fileName={element.fileMetadata?.fileName || 'New File'}
                     fileSize={element.fileMetadata?.fileSize || 0}
                     fileType={element.fileMetadata?.fileType || 'application/octet-stream'}
                     filePreview={element.fileMetadata?.filePreview}
                     files={element.fileMetadata?.files}
                     isReadOnly={!isActive}
+                    settings={settings}
+                    onUpdateSettings={onUpdateSettings}
                     onUpdate={(updates) => {
                       const newElements = elements.map(el => 
                         el.id === element.id ? { ...el, fileMetadata: { ...el.fileMetadata, ...updates } } : el
@@ -3761,6 +3775,8 @@ export function CanvasSpace({ space, spacesState, onNavigateToSpace, isActive = 
             opacity={opacity}
             strokeDasharray={strokeDasharray}
             spacesState={spacesState}
+            settings={settings}
+            onUpdateSettings={onUpdateSettings}
           />
         );
       default:
