@@ -91,14 +91,29 @@ export function PageEditor({
   };
 
   const updateContent = (newBlocks: Block[]) => {
+    // Ensure there's always at least one trailing text element
+    const lastBlock = newBlocks[newBlocks.length - 1];
+    const needsTrailingElement = !lastBlock || lastBlock.type !== 'text' || lastBlock.content !== '';
+
+    let blocksToSave = newBlocks;
+    if (needsTrailingElement) {
+      // Add a trailing text element if needed
+      const trailingBlock: Block = {
+        id: `block_${Date.now()}_trailing`,
+        type: 'text',
+        content: '',
+      };
+      blocksToSave = [...newBlocks, trailingBlock];
+    }
+
     spacesState.updateSpace(space.id, {
-      content: { ...content, blocks: newBlocks }
+      content: { ...content, blocks: blocksToSave }
     });
 
     // Check if the title needs to be synced with a new "first header"
     const isTitleSynced = space.metadata?.syncTitleWithH1 !== false;
     if (isTitleSynced) {
-      const firstHeader = newBlocks.find((b: any) =>
+      const firstHeader = blocksToSave.find((b: any) =>
         b && ['heading1', 'heading2', 'heading3', 'heading4'].includes(b.type)
       );
       if (firstHeader && firstHeader.content !== space.title) {

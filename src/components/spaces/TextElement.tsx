@@ -1334,6 +1334,14 @@ export function TextElement({
                     </DropdownMenuItem>
 
                     <DropdownMenuItem
+                      onClick={() => onAddAfter && onAddAfter(block.id)}
+                      className="flex flex-col items-center justify-center w-20 h-16 p-1 cursor-pointer focus:bg-default-100 rounded-md outline-none mx-auto"
+                    >
+                      <Plus className="h-6 w-6 mb-1 text-default-500" />
+                      <span className="text-[10px] leading-tight text-center text-default-500 w-full truncate">Add After</span>
+                    </DropdownMenuItem>
+
+                    <DropdownMenuItem
                       onClick={handleCopy}
                       className="flex flex-col items-center justify-center w-20 h-16 p-1 cursor-pointer focus:bg-default-100 rounded-md outline-none mx-auto"
                     >
@@ -1359,7 +1367,7 @@ export function TextElement({
 
                     <DropdownMenuItem
                       onClick={() => onDelete(block.id)}
-                      className="flex flex-col items-center justify-center w-20 h-16 p-1 cursor-pointer focus:bg-red-50 rounded-md outline-none group/delete col-span-2 mx-auto"
+                      className="flex flex-col items-center justify-center w-20 h-16 p-1 cursor-pointer focus:bg-red-50 rounded-md outline-none group/delete mx-auto"
                     >
                       <Trash2 className="h-6 w-6 mb-1 text-red-600" />
                       <span className="text-[10px] leading-tight text-center text-red-600 w-full truncate">Delete</span>
@@ -1606,7 +1614,7 @@ export function TextElement({
                   {/* Custom Placeholder and Insert Button */}
                   {!block.content && (isFocused || isDropdownOpen) && (
                     <div className={`absolute top-0 left-0 w-full h-full pointer-events-none flex items-baseline pb-1 select-none px-0 ${block.align === 'center' ? 'justify-center' : block.align === 'right' ? 'justify-end' : 'justify-start'}`}>
-                      <span className="text-default-400 opacity-50 font-normal leading-[1.2]">{activeConfig.placeholder || "Type something"}</span>
+                      <span className="text-default-400 opacity-50 font-normal leading-[1.2]">{index === 0 ? 'Title' : (activeConfig.placeholder || "Type something")}</span>
                       <div className="pointer-events-auto flex items-baseline ml-2">
                         <span className="text-default-300 mr-2 font-normal">or</span>
                         <DropdownMenu onOpenChange={setIsDropdownOpen}>

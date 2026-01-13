@@ -503,6 +503,8 @@ const CalendarDayCell = memo(({
             onUpdate={(id, updates) => onUpdateEvent(id, event.id, event.sourceSpaceId, updates)}
             onNavigate={onNavigate}
             onDragEnd={onDragLeave}
+            onHoverEvent={() => { }}
+            isHovered={false}
           />
         ))}
       </div>
@@ -927,6 +929,7 @@ export function CalendarApp({ spacesState, viewportsState }: CalendarAppProps) {
 
   const popoverRef = useRef<HTMLDivElement>(null);
   const editPopoverRef = useRef<HTMLDivElement>(null);
+  const pendingScrollRef = useRef<{ scrollTop: number; mouseY: number; timeAtMouse: number } | null>(null);
 
   // Calculate dynamic hour height based on viewport and zoom
   const baseHourHeight = useMemo(() => {
@@ -935,7 +938,7 @@ export function CalendarApp({ spacesState, viewportsState }: CalendarAppProps) {
     return availableHeight / 24; // fit 24 hours in viewport
   }, [viewportHeight]);
 
-  const hourHeight = baseHourHeight * zoomLevel;
+  const hourHeight = Math.floor(baseHourHeight * zoomLevel);
 
   // Track viewport height
   useEffect(() => {
@@ -954,7 +957,21 @@ export function CalendarApp({ spacesState, viewportsState }: CalendarAppProps) {
     return () => {
       resizeObserver.disconnect();
     };
-  }, [containerRef, view]);
+  }, [view, containerRef]); // Removed baseHourHeight, zoomLevel, handleZoom from here
+
+  // Apply pending scroll adjustment after zoom level changes and DOM updates
+  useLayoutEffect(() => {
+    if (!pendingScrollRef.current || !containerRef) return;
+
+    const { mouseY, timeAtMouse } = pendingScrollRef.current;
+    const HEADER_HEIGHT = 40;
+    const currentHourHeight = Math.floor(baseHourHeight * zoomLevel);
+    const newAbsoluteY = (timeAtMouse * currentHourHeight) + HEADER_HEIGHT;
+    const newScrollTop = newAbsoluteY - mouseY;
+
+    containerRef.scrollTop = Math.max(0, newScrollTop);
+    pendingScrollRef.current = null;
+  }, [zoomLevel, baseHourHeight, containerRef]);
 
   // Zoom handlers
   const MIN_ZOOM = 1.0;
@@ -976,8 +993,46 @@ export function CalendarApp({ spacesState, viewportsState }: CalendarAppProps) {
     const handleWheel = (e: WheelEvent) => {
       if (e.ctrlKey || e.altKey) {
         e.preventDefault();
+
+        const container = containerRef;
+        if (!container) return;
+
+        // Get container bounds
+        const rect = container.getBoundingClientRect();
+
+        // Mouse position relative to the scrollable content area
+        const mouseY = e.clientY - rect.top;
+
+        // Current scroll position
+        const scrollTop = container.scrollTop;
+
+        // Absolute Y position in the content (accounting for scroll)
+        const absoluteY = scrollTop + mouseY;
+
+        // Current hour height
+        const currentHourHeight = baseHourHeight * zoomLevel;
+
+        // Which "time" (in hours) is at the mouse position
+        // Note: We need to account for the 40px header in Day/Week views
+        const HEADER_HEIGHT = 40;
+        const timeAtMouse = (absoluteY - HEADER_HEIGHT) / currentHourHeight;
+
+        // Calculate new zoom level
         const delta = e.deltaY > 0 ? -ZOOM_STEP : ZOOM_STEP;
-        handleZoom(delta);
+        const newZoom = Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, zoomLevel + delta));
+
+        // Only proceed if zoom actually changed
+        if (newZoom === zoomLevel) return;
+
+        // Store scroll adjustment info for useEffect
+        pendingScrollRef.current = {
+          scrollTop,
+          mouseY,
+          timeAtMouse
+        };
+
+        // Update zoom level (triggers useEffect)
+        setZoomLevel(newZoom);
       }
     };
 
@@ -1000,7 +1055,7 @@ export function CalendarApp({ spacesState, viewportsState }: CalendarAppProps) {
       window.removeEventListener('wheel', handleWheel);
       window.removeEventListener('keydown', handleKeyboard);
     };
-  }, [view, handleZoom]);
+  }, [view, containerRef, baseHourHeight, zoomLevel, handleZoom]);
 
 
   // Bulletproof popover repositioning
@@ -1580,20 +1635,22 @@ export function CalendarApp({ spacesState, viewportsState }: CalendarAppProps) {
         onMouseUp={(e) => isSelecting && handleEndSelectionStable(e)}
         onMouseLeave={() => isSelecting && handleEndSelectionStable()}
       >
-        <div className="w-[60px] shrink-0 border-r border-divider bg-default-50/50">
-          <div className="h-[40px]" />
+        <div className="w-[60px] shrink-0 border-r border-divider bg-default-50/50 relative">
+          <div className="h-[40px] sticky top-0 bg-default-50/50 z-20 border-b border-divider" />
           {hours.map(hour => (
-            <div key={hour} style={{ height: `${hourHeight}px` }} className="px-2 flex items-center border-t border-divider text-[10px] text-default-400">
-              {`${hour}:00`}
+            <div key={hour} style={{ height: `${hourHeight}px` }} className="px-1 relative border-t border-divider text-[10px] text-default-400">
+              <span className="absolute -top-[7px] left-1/2 -translate-x-1/2 bg-default-50 px-1 rounded-sm">
+                {`${hour}:00`}
+              </span>
             </div>
           ))}
         </div>
 
-        <div className="flex-1 relative flex flex-col">
-          <div className="h-[40px] flex items-center justify-center border-b border-divider sticky top-0 bg-white z-10 font-bold">
+        <div className="flex-1 relative flex flex-col shrink-0">
+          <div className="h-[40px] flex items-center justify-center border-b border-divider sticky top-0 bg-white z-10 font-bold shrink-0">
             {format(currentDate, 'EEEE d MMMM', { locale: enUS })}
           </div>
-          <div className="relative flex-1">
+          <div className="relative shrink-0 overflow-hidden" style={{ height: hourHeight * 24 }}>
             {hours.map(hour => (
               <CalendarDaySlot
                 key={hour}
@@ -1617,30 +1674,29 @@ export function CalendarApp({ spacesState, viewportsState }: CalendarAppProps) {
               />
             )}
 
-            {dayEvents.map((event, idx) => {
-              const startHour = event.start.getHours();
-              const startMin = event.start.getMinutes();
-              const top = (startHour * hourHeight + startMin * (hourHeight / 60));
-              const duration = event.end ? (event.end.getTime() - event.start.getTime()) / (1000 * 60) : 60;
-
-
-              return (
-                <DraggableTimelineEvent
-                  key={event.id || idx}
-                  event={event}
-                  top={top}
-                  height={Math.max(24, duration * (hourHeight / 60))}
-                  onUpdate={(id, updates) => handleUpdateEvent(id, id, event.sourceSpaceId, updates)}
-                  onHoverEvent={(id) => {
-                    if (!dragGhostItem && !isSelecting) {
-                      setHoveredEventId(id);
-                    }
-                  }}
-                  isHovered={hoveredEventId === event.id}
-                  onSelect={handleToggleEventSelection}
-                />
-              );
-            })}
+            {calculateTimelineLayout(allEvents.filter(e => {
+              const start = new Date(e.start);
+              const end = e.end ? new Date(e.end) : addMinutes(start, 60);
+              return isWithinInterval(currentDate, { start: startOfDay(start), end: endOfDay(end) });
+            }), hourHeight, currentDate).map((item, idx) => (
+              <DraggableTimelineEvent
+                key={item.id || idx}
+                event={item}
+                top={item.layout.top}
+                height={item.layout.height}
+                left={item.layout.left}
+                width={item.layout.width}
+                onUpdate={(id: string, updates: any) => handleUpdateEvent(id, id, item.sourceSpaceId, updates)}
+                onHoverEvent={(id: string | null) => {
+                  if (!dragGhostItem && !isSelecting) {
+                    setHoveredEventId(id);
+                  }
+                }}
+                isHovered={hoveredEventId === item.id}
+                onSelect={handleToggleEventSelection}
+                hourHeight={hourHeight}
+              />
+            ))}
           </div>
         </div>
       </div>
@@ -1788,11 +1844,13 @@ export function CalendarApp({ spacesState, viewportsState }: CalendarAppProps) {
         onMouseUp={(e) => isSelecting && handleEndSelectionStable(e)}
         onMouseLeave={() => isSelecting && handleEndSelectionStable()}
       >
-        <div className="w-[60px] shrink-0 border-r border-divider bg-default-50/50">
-          <div className="h-[40px]" />
+        <div className="w-[60px] shrink-0 border-r border-divider bg-default-50/50 relative">
+          <div className="h-[40px] sticky top-0 bg-default-50/50 z-20 border-b border-divider" />
           {hours.map(hour => (
-            <div key={hour} style={{ height: `${hourHeight}px` }} className="px-2 flex items-center border-t border-divider text-[10px] text-default-400">
-              {`${hour}:00`}
+            <div key={hour} style={{ height: `${hourHeight}px` }} className="px-1 relative border-t border-divider text-[10px] text-default-400">
+              <span className="absolute -top-[7px] left-1/2 -translate-x-1/2 bg-default-50 px-1 rounded-sm">
+                {`${hour}:00`}
+              </span>
             </div>
           ))}
         </div>
@@ -1802,15 +1860,15 @@ export function CalendarApp({ spacesState, viewportsState }: CalendarAppProps) {
           const dayEvents = allEvents.filter(event => isSameDay(event.start, day));
 
           return (
-            <div key={i} className="flex-1 border-r border-divider min-w-[120px] relative flex flex-col">
+            <div key={i} className="flex-1 border-r border-divider min-w-[120px] relative flex flex-col shrink-0">
               <div className={`
-                h-[40px] flex flex-col items-center justify-center border-b border-divider sticky top-0 bg-white z-10
+                h-[40px] flex flex-col items-center justify-center border-b border-divider sticky top-0 bg-white z-10 shrink-0
                 ${isToday ? 'bg-primary/5 text-primary' : ''}
               `}>
                 <span className="text-[10px] uppercase font-bold text-default-400">{daysOfWeekShort[i]}</span>
                 <span className={`text-sm ${isToday ? 'font-bold' : ''}`}>{format(day, 'd')}</span>
               </div>
-              <div className="relative flex-1">
+              <div className="relative shrink-0 overflow-hidden" style={{ height: hourHeight * 24 }}>
                 {hours.map(hour => (
                   <CalendarDaySlot
                     key={hour}
@@ -1834,35 +1892,30 @@ export function CalendarApp({ spacesState, viewportsState }: CalendarAppProps) {
                   />
                 )}
 
-                {dayEvents.map((event) => {
-                  const startHour = event.start.getHours();
-                  const startMin = event.start.getMinutes();
-                  const top = (startHour * hourHeight + startMin * (hourHeight / 60));
-                  const duration = event.end ? (event.end.getTime() - event.start.getTime()) / (1000 * 60) : 60;
-
-
-                  return (
-                    <DraggableTimelineEvent
-                      key={event.id}
-                      event={event}
-                      top={top}
-                      height={Math.max(24, duration * (hourHeight / 60))}
-                      onUpdate={(id: string, updates: any) => handleUpdateEvent(id, id, event.sourceSpaceId, updates)}
-                      onNavigate={(sid: string, title: string) => {
-                        if (viewportsState) {
-                          viewportsState.replaceCurrentTab(viewportsState.focusedViewportId, sid, undefined, title);
-                        }
-                      }}
-                      onHoverEvent={(id) => {
-                        if (!dragGhostItem && !isSelecting) {
-                          setHoveredEventId(id);
-                        }
-                      }}
-                      isHovered={hoveredEventId === event.id}
-                      onSelect={handleToggleEventSelection}
-                    />
-                  );
-                })}
+                {calculateTimelineLayout(dayEvents, hourHeight, day).map((item) => (
+                  <DraggableTimelineEvent
+                    key={item.id}
+                    event={item}
+                    top={item.layout.top}
+                    height={item.layout.height}
+                    left={item.layout.left}
+                    width={item.layout.width}
+                    onUpdate={(id: string, updates: any) => handleUpdateEvent(id, id, item.sourceSpaceId, updates)}
+                    onNavigate={(sid: string, title: string) => {
+                      if (viewportsState) {
+                        viewportsState.replaceCurrentTab(viewportsState.focusedViewportId, sid, undefined, title);
+                      }
+                    }}
+                    onHoverEvent={(id: string | null) => {
+                      if (!dragGhostItem && !isSelecting) {
+                        setHoveredEventId(id);
+                      }
+                    }}
+                    isHovered={hoveredEventId === item.id}
+                    onSelect={handleToggleEventSelection}
+                    hourHeight={hourHeight}
+                  />
+                ))}
               </div>
             </div>
           );
@@ -1876,6 +1929,12 @@ export function CalendarApp({ spacesState, viewportsState }: CalendarAppProps) {
       <style>{`
         .is-dragging-event .calendar-event-item {
           pointer-events: none !important;
+        }
+        body.is-dragging-event-global {
+          cursor: grabbing !important;
+        }
+        body.is-dragging-event-global * {
+          cursor: grabbing !important;
         }
       `}</style>
       {/* Header */}
@@ -2172,7 +2231,7 @@ export function CalendarApp({ spacesState, viewportsState }: CalendarAppProps) {
                     onSelectionChange={(keys: any) => setNewEvent(prev => ({ ...prev, spaceId: Array.from(keys)[0] as string }))}
                   >
                     {spacesState.spaces.filter((s: any) => s.type === 'page').map((space: any) => (
-                      <SelectItem key={space.id} value={space.id}>
+                      <SelectItem key={space.id}>
                         {space.title}
                       </SelectItem>
                     ))}
@@ -2203,37 +2262,38 @@ function CalendarDaySlot({ hour, day, onStartSelection, onUpdateSelection, onUpd
 
   const [{ isOver, draggedItem }, drop] = useDrop({
     accept: 'CALENDAR_EVENT',
+    canDrop: () => true,
     hover: (item: any, monitor) => {
       const clientOffset = monitor.getClientOffset();
-      if (!clientOffset) return;
+      if (!clientOffset || !slotRef.current) return;
 
-      const hoverBoundingRect = document.elementFromPoint(clientOffset.x, clientOffset.y)?.getBoundingClientRect();
-      if (!hoverBoundingRect) return;
-
+      const hoverBoundingRect = slotRef.current.getBoundingClientRect();
       const hoverClientY = clientOffset.y - hoverBoundingRect.top;
       const minuteHeight = hourHeight / 60;
-      const hoverMinute = Math.floor(hoverClientY / minuteHeight);
+
+      // Adjust hover minute by the grab offset to keep the event top aligned with snap
+      const grabOffset = item.grabOffset || 0;
+      const hoverMinuteWithOffset = Math.floor((hoverClientY - grabOffset) / minuteHeight);
 
       // Snap to 15-minute intervals
-      const snappedMinute = Math.floor(hoverMinute / 15) * 15;
+      const snappedMinute = Math.floor(hoverMinuteWithOffset / 15) * 15;
       setDropPosition(snappedMinute);
     },
     drop: (item: any, monitor) => {
       const event = allEvents.find((e: any) => e.id === item.id);
-      if (!event) return;
+      if (!event || !slotRef.current) return;
 
       const clientOffset = monitor.getClientOffset();
       let minute = 0;
 
       if (clientOffset) {
-        const hoverBoundingRect = document.elementFromPoint(clientOffset.x, clientOffset.y)?.getBoundingClientRect();
-        if (hoverBoundingRect) {
-          const hoverClientY = clientOffset.y - hoverBoundingRect.top;
-          const minuteHeight = hourHeight / 60;
-          const hoverMinute = Math.floor(hoverClientY / minuteHeight);
-          // Snap to 15-minute intervals
-          minute = Math.floor(hoverMinute / 15) * 15;
-        }
+        const hoverBoundingRect = slotRef.current.getBoundingClientRect();
+        const hoverClientY = clientOffset.y - hoverBoundingRect.top;
+        const minuteHeight = hourHeight / 60;
+        const grabOffset = item.grabOffset || 0;
+        const hoverMinuteWithOffset = Math.floor((hoverClientY - grabOffset) / minuteHeight);
+        // Snap to 15-minute intervals
+        minute = Math.floor(hoverMinuteWithOffset / 15) * 15;
       }
 
       const durationMs = (event.end ? event.end.getTime() : event.start.getTime() + 3600000) - event.start.getTime();
@@ -2254,8 +2314,11 @@ function CalendarDaySlot({ hour, day, onStartSelection, onUpdateSelection, onUpd
     })
   });
 
+  const slotRef = useRef<HTMLDivElement>(null);
+
   const setDropRef = useCallback((node: HTMLDivElement | null) => {
     drop(node);
+    (slotRef as any).current = node;
   }, [drop]);
 
   return (
@@ -2305,22 +2368,145 @@ function CalendarDaySlot({ hour, day, onStartSelection, onUpdateSelection, onUpd
   );
 }
 
-function DraggableTimelineEvent({ event, top, height, onUpdate, onNavigate, onHoverEvent, isHovered, onSelect }: any) {
+
+function calculateTimelineLayout(events: any[], hourHeight: number, referenceDate: Date) {
+  if (events.length === 0) return [];
+
+  const dayStart = startOfDay(referenceDate);
+  const dayEnd = endOfDay(referenceDate);
+
+  // Filter and normalize events for this day
+  const dayEvents = events.map(event => {
+    const eStart = new Date(event.start);
+    const eEnd = event.end ? new Date(event.end) : addMinutes(eStart, 60);
+
+    // Clamp to day boundaries
+    const start = new Date(Math.max(eStart.getTime(), dayStart.getTime()));
+    const end = new Date(Math.min(eEnd.getTime(), dayEnd.getTime()));
+
+    const top = differenceInMinutes(start, dayStart) * (hourHeight / 60);
+    const duration = differenceInMinutes(end, start);
+
+    return {
+      ...event,
+      effectiveStart: start,
+      effectiveEnd: end,
+      layoutTop: top,
+      layoutHeight: Math.max(20, duration * (hourHeight / 60))
+    };
+  }).filter(e => e.layoutHeight > 0);
+
+  // Sort by start time
+  const sortedEvents = [...dayEvents].sort((a, b) => a.effectiveStart.getTime() - b.effectiveStart.getTime());
+
+  // Group into clusters of overlapping events
+  const clusters: any[][] = [];
+  let currentCluster: any[] = [];
+  let clusterEnd: number = 0;
+
+  sortedEvents.forEach(event => {
+    const eventEnd = event.effectiveEnd.getTime();
+    if (currentCluster.length > 0 && event.effectiveStart.getTime() >= clusterEnd) {
+      clusters.push(currentCluster);
+      currentCluster = [event];
+      clusterEnd = eventEnd;
+    } else {
+      currentCluster.push(event);
+      clusterEnd = Math.max(clusterEnd, eventEnd);
+    }
+  });
+  if (currentCluster.length > 0) clusters.push(currentCluster);
+
+  // For each cluster, assign columns
+  const result: any[] = [];
+  clusters.forEach(cluster => {
+    const eventColMap = new Map();
+    const columns: any[][] = [];
+    cluster.forEach(event => {
+      let assigned = false;
+      for (let i = 0; i < columns.length; i++) {
+        const lastInCol = columns[i][columns[i].length - 1];
+        const lastEnd = lastInCol.effectiveEnd.getTime();
+        if (event.effectiveStart.getTime() >= lastEnd) {
+          columns[i].push(event);
+          eventColMap.set(event.id, i);
+          assigned = true;
+          break;
+        }
+      }
+      if (!assigned) {
+        columns.push([event]);
+        eventColMap.set(event.id, columns.length - 1);
+      }
+    });
+
+    const totalCols = columns.length;
+    cluster.forEach(event => {
+      const colIndex = eventColMap.get(event.id) || 0;
+
+      result.push({
+        ...event,
+        layout: {
+          top: event.layoutTop,
+          height: event.layoutHeight,
+          left: (colIndex / totalCols) * 100,
+          width: 100 / totalCols
+        }
+      });
+    });
+  });
+
+  return result;
+}
+
+function DraggableTimelineEvent({ event, top, height, left = 0, width = 100, onUpdate, onNavigate, onHoverEvent, isHovered, onSelect, hourHeight }: any) {
+  const dragOccurredRef = useRef(false);
+  const mouseMovedRef = useRef(false);
+
   const [{ isDragging }, drag, preview] = useDrag({
     type: 'CALENDAR_EVENT',
-    item: {
-      id: event.id,
-      blockId: event.id,
-      spaceId: event.sourceSpaceId,
-      type: 'CALENDAR_EVENT',
-      title: event.metadata?.title || 'Untitled',
-      content: event.metadata?.notes,
-      start: event.start,
-      end: event.end,
-      sourceSpaceTitle: event.sourceSpaceTitle
+    item: (monitor) => {
+      const initialOffset = monitor.getInitialClientOffset();
+      const initialSourceOffset = monitor.getInitialSourceClientOffset();
+      let grabOffset = 0;
+      if (initialOffset && initialSourceOffset) {
+        grabOffset = initialOffset.y - initialSourceOffset.y;
+      }
+
+      return {
+        id: event.id,
+        blockId: event.id,
+        spaceId: event.sourceSpaceId,
+        type: 'CALENDAR_EVENT',
+        title: event.metadata?.title || 'Untitled',
+        content: event.metadata?.notes,
+        start: event.start,
+        end: event.end,
+        sourceSpaceTitle: event.sourceSpaceTitle,
+        grabOffset
+      };
+    },
+    end: () => {
+      // Cleanup happens in useEffect
     },
     collect: (monitor) => ({ isDragging: !!monitor.isDragging() })
   });
+
+  useEffect(() => {
+    if (isDragging) {
+      document.body.classList.add('is-dragging-event-global');
+      dragOccurredRef.current = true;
+    } else {
+      document.body.classList.remove('is-dragging-event-global');
+      // Reset drag flag after a short delay to allow the onClick to check it
+      setTimeout(() => {
+        dragOccurredRef.current = false;
+      }, 150);
+    }
+    return () => {
+      document.body.classList.remove('is-dragging-event-global');
+    };
+  }, [isDragging]);
 
   // Suppress native drag preview
   useEffect(() => {
@@ -2338,7 +2524,7 @@ function DraggableTimelineEvent({ event, top, height, onUpdate, onNavigate, onHo
       const deltaY = moveEvent.clientY - startY;
       // Convert pixels to minutes based on hourHeight
       // Assuming 60px per hour as base, adjust if needed
-      const minutesPerPixel = 60 / 60; // 1 minute per pixel at base zoom
+      const minutesPerPixel = 60 / hourHeight;
       const deltaMinutes = Math.round(deltaY * minutesPerPixel);
 
       // Snap to 15-minute intervals
@@ -2375,12 +2561,38 @@ function DraggableTimelineEvent({ event, top, height, onUpdate, onNavigate, onHo
   return (
     <div
       ref={setDragRef}
-      className={`absolute left-1 right-1 rounded bg-primary text-white p-2 text-xs shadow-md z-20 overflow-hidden cursor-grab active:cursor-grabbing group calendar-event-item ${isDragging ? 'opacity-50' : ''} ${isHovered ? 'ring-2 ring-primary-300' : ''}`}
-      style={{ top: `${top}px`, height: `${height}px` }}
+      className={`absolute rounded bg-primary text-white p-2 text-xs shadow-md overflow-hidden cursor-grab active:cursor-grabbing group calendar-event-item ${isDragging ? 'opacity-50 is-dragging-now' : ''} ${isHovered ? 'ring-2 ring-primary-300' : ''}`}
+      style={{
+        top: `${top}px`,
+        height: `${height}px`,
+        left: `calc(${left}% + 2px)`,
+        width: `calc(${width}% - 4px)`,
+        zIndex: 1
+      }}
+      onMouseDown={(e) => {
+        // Track that mouse was pressed on this event
+        mouseMovedRef.current = false;
+
+        const handleMouseMove = () => {
+          mouseMovedRef.current = true;
+        };
+
+        const handleMouseUp = () => {
+          window.removeEventListener('mousemove', handleMouseMove);
+          window.removeEventListener('mouseup', handleMouseUp);
+        };
+
+        window.addEventListener('mousemove', handleMouseMove);
+        window.addEventListener('mouseup', handleMouseUp);
+      }}
       onMouseEnter={() => onHoverEvent && onHoverEvent(event.id)}
       onMouseLeave={() => onHoverEvent && onHoverEvent(null)}
       onClick={(e) => {
         e.stopPropagation();
+        // Don't open modal if we just finished dragging OR if mouse moved during mousedown
+        if (dragOccurredRef.current || mouseMovedRef.current) {
+          return;
+        }
         if (onSelect) onSelect(event.id, { x: e.clientX, y: e.clientY });
         else if (onNavigate) onNavigate(event.sourceSpaceId, event.sourceSpaceTitle);
       }}
