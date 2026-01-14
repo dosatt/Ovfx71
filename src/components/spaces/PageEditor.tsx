@@ -815,8 +815,23 @@ export function PageEditor({
 
     switch (dragMode) {
       case 'link':
+        // If it's a calendar event, create a linked calendar block (still type 'calendar')
+        if (fullBlock.type === 'calendar') {
+          resultBlock = {
+            id: `block_${Date.now()}_${Math.random()}`,
+            type: 'calendar',
+            content: fullBlock.content,
+            metadata: {
+              ...fullBlock.metadata,
+              // Store source info to maintain link behavior logic elsewhere if needed, 
+              // but visually it acts as a native calendar block.
+              linkedEventId: fullBlock.id,
+              sourceSpaceId: sourceSpaceId
+            }
+          };
+        }
         // Se è uno dei tipi speciali, crea blockEmbed
-        if (alwaysEmbedTypes.includes(fullBlock.type)) {
+        else if (alwaysEmbedTypes.includes(fullBlock.type)) {
           resultBlock = {
             id: `block_${Date.now()}_${Math.random()}`,
             type: 'blockEmbed',
@@ -825,7 +840,7 @@ export function PageEditor({
             sourceSpaceId: sourceSpaceId,
           };
         } else {
-          // Altrimenti crea blockEmbed comunque (l'elemento viene collegato)
+          // Altrimenti crea blockEmbed
           resultBlock = {
             id: `block_${Date.now()}_${Math.random()}`,
             type: 'blockEmbed',
@@ -848,8 +863,9 @@ export function PageEditor({
         // Per 'move': se sono nello stesso space, non fare nulla (gestito da drag interno)
         // Se sono in space diversi:
         if (sourceSpaceId !== space.id) {
-          // Gli embed/link/image/file/code/divider diventano blockEmbed
-          if (alwaysEmbedTypes.includes(fullBlock.type)) {
+          // Gli embed/link/image/file/code/divider diventano blockEmbed 
+          // (ECCETTO calendar che ora è nativo ovunque)
+          if (alwaysEmbedTypes.includes(fullBlock.type) && fullBlock.type !== 'calendar') {
             resultBlock = {
               id: `block_${Date.now()}_${Math.random()}`,
               type: 'blockEmbed',

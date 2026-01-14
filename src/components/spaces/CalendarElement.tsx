@@ -13,6 +13,7 @@ import {
   Paperclip,
   X
 } from 'lucide-react';
+import * as LucideIcons from 'lucide-react';
 import {
   Popover,
   PopoverTrigger,
@@ -40,6 +41,8 @@ export interface CalendarElementData {
   completed?: boolean;
   attachments?: { id: string; type: string; title: string }[];
   displayMode?: 'inline' | 'card';
+  linkedEventId?: string;
+  sourceSpaceId?: string;
 }
 
 interface CalendarElementProps {
@@ -185,7 +188,12 @@ export function CalendarElement({
           </div>
         </div>
 
-        <div className="flex items-center opacity-0 group-hover:opacity-100 transition-opacity">
+        <div className="flex items-center opacity-0 group-hover:opacity-100 transition-opacity gap-1">
+          {data.linkedEventId && (
+            <div className="flex items-center justify-center w-6 h-6 text-primary" title="Linked Event">
+              <LucideIcons.Link size={14} />
+            </div>
+          )}
           <Popover placement="bottom-end">
             <PopoverTrigger>
               <Button isIconOnly size="sm" variant="light" className="text-default-400">

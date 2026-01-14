@@ -48,14 +48,15 @@ import {
   FileText,
   ExternalLink
 } from 'lucide-react';
-import { useDrag, useDrop } from 'react-dnd';
+import { useDrag, useDrop, useDragLayer } from 'react-dnd';
 import { getEmptyImage } from 'react-dnd-html5-backend';
 
 const daysOfWeek = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 const daysOfWeekShort = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
 const months = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
 
-type CalendarView = 'month' | 'week' | 'day' | 'year' | 'timeline';
+type CalendarView = 'month' | 'week' | 'day' | 'year' | 'timeline' | 'ndays';
+
 
 interface CalendarAppProps {
   spacesState: any;
@@ -400,6 +401,7 @@ interface CalendarDayCellProps {
   renderEvents?: boolean;
   onDragEnter?: (date: Date, item: any) => void;
   onDragLeave?: () => void;
+  isAnyDragging?: boolean;
 }
 
 const CalendarDayCell = memo(({
@@ -415,7 +417,8 @@ const CalendarDayCell = memo(({
   allEvents,
   renderEvents = true,
   onDragEnter,
-  onDragLeave
+  onDragLeave,
+  isAnyDragging
 }: CalendarDayCellProps) => {
   const [{ isOver, draggedItem }, drop] = useDrop(() => ({
     accept: 'CALENDAR_EVENT',
@@ -456,7 +459,7 @@ const CalendarDayCell = memo(({
         ${isToday ? 'bg-primary/5' : ''}
       `}
       onMouseDown={(e) => {
-        if (e.button !== 0) return;
+        if (e.button !== 0 || isAnyDragging) return;
         // Don't start cell selection if we're clicking an event or resizing
         if ((e.target as HTMLElement).closest('.calendar-event-item')) return;
 
@@ -465,6 +468,7 @@ const CalendarDayCell = memo(({
         onStartSelection(dragDate);
       }}
       onMouseEnter={() => {
+        if (isAnyDragging) return;
         const dragDate = new Date(day);
         dragDate.setHours(10, 0, 0, 0);
         onUpdateSelection(dragDate);
@@ -515,9 +519,7 @@ const CalendarDayCell = memo(({
 interface MonthWeekRowProps {
   weekStart: Date;
   events: any[];
-  allEvents: any[]; // Used for drop logic in CalendarDayCell
-  // We need the full list or the specific event for the ghost, because the ghost might be in a week where the event isn't originally.
-  // To avoid breaking memoization with 'allEvents', we can pass just the resizing event if it exists.
+  allEvents: any[];
   resizingEvent?: any;
   currentMonth: Date;
   selectionRange: { start: Date; end: Date } | null;
@@ -537,6 +539,7 @@ interface MonthWeekRowProps {
   onDragLeave: () => void;
   hoveredEventId: string | null;
   onHoverEvent: (id: string | null) => void;
+  isAnyDragging?: boolean;
 }
 
 
@@ -662,7 +665,8 @@ const MonthWeekRow = memo(({
   onDragEnter,
   onDragLeave,
   hoveredEventId,
-  onHoverEvent
+  onHoverEvent,
+  isAnyDragging
 }: MonthWeekRowProps) => {
   const weekEnd = endOfWeek(weekStart, { weekStartsOn: 1 });
   const days = useMemo(() => eachDayOfInterval({ start: weekStart, end: weekEnd }), [weekStart, weekEnd]);
@@ -815,6 +819,7 @@ const MonthWeekRow = memo(({
                 allEvents={allEvents}
                 onDragEnter={onDragEnter}
                 onDragLeave={onDragLeave}
+                isAnyDragging={isAnyDragging}
               />
             </div>
           );
@@ -889,8 +894,53 @@ const MonthWeekRow = memo(({
 });
 
 export function CalendarApp({ spacesState, viewportsState }: CalendarAppProps) {
-  const [currentDate, setCurrentDate] = useState(new Date());
-  const [view, setView] = useState<CalendarView>('month');
+  const [currentDate, setCurrentDate] = useState(() => {
+    if (typeof localStorage !== 'undefined') {
+      const saved = localStorage.getItem('calendar_current_date');
+      if (saved) {
+        const date = new Date(saved);
+        if (!isNaN(date.getTime())) {
+          return date;
+        }
+      }
+    }
+    return new Date();
+  });
+
+  useEffect(() => {
+    if (typeof localStorage !== 'undefined') {
+      localStorage.setItem('calendar_current_date', currentDate.toISOString());
+    }
+  }, [currentDate]);
+  const [view, setView] = useState<CalendarView>(() => {
+    if (typeof localStorage !== 'undefined') {
+      const saved = localStorage.getItem('calendar_current_view');
+      if (saved && ['month', 'week', 'day', 'year', 'timeline'].includes(saved)) {
+        return saved as CalendarView;
+      }
+    }
+    return 'month';
+  });
+
+  const [nDays, setNDays] = useState<number>(() => {
+    if (typeof localStorage !== 'undefined') {
+      const saved = localStorage.getItem('calendar_n_days');
+      if (saved) return parseInt(saved, 10);
+    }
+    return 3;
+  });
+
+  useEffect(() => {
+    if (typeof localStorage !== 'undefined') {
+      localStorage.setItem('calendar_n_days', nDays.toString());
+    }
+  }, [nDays]);
+
+  useEffect(() => {
+    if (typeof localStorage !== 'undefined') {
+      localStorage.setItem('calendar_current_view', view);
+    }
+  }, [view]);
   const { isOpen, onOpen, onOpenChange, onClose } = useDisclosure();
   const [containerRef, setContainerRef] = useState<HTMLDivElement | null>(null);
 
@@ -929,7 +979,13 @@ export function CalendarApp({ spacesState, viewportsState }: CalendarAppProps) {
 
   const popoverRef = useRef<HTMLDivElement>(null);
   const editPopoverRef = useRef<HTMLDivElement>(null);
-  const pendingScrollRef = useRef<{ scrollTop: number; mouseY: number; timeAtMouse: number } | null>(null);
+  const pendingScrollRef = useRef<{
+    scrollTop: number;
+    mouseY: number;
+    timeAtMouse: number;
+    scrollLeftAdjustment?: number;
+    trigger?: 'left' | 'right';
+  } | null>(null);
 
   // Calculate dynamic hour height based on viewport and zoom
   const baseHourHeight = useMemo(() => {
@@ -939,6 +995,10 @@ export function CalendarApp({ spacesState, viewportsState }: CalendarAppProps) {
   }, [viewportHeight]);
 
   const hourHeight = Math.floor(baseHourHeight * zoomLevel);
+
+  const { isAnyDraggingGlobal } = useDragLayer(monitor => ({
+    isAnyDraggingGlobal: monitor.isDragging() && monitor.getItemType() === 'CALENDAR_EVENT'
+  }));
 
   // Track viewport height
   useEffect(() => {
@@ -957,21 +1017,132 @@ export function CalendarApp({ spacesState, viewportsState }: CalendarAppProps) {
     return () => {
       resizeObserver.disconnect();
     };
-  }, [view, containerRef]); // Removed baseHourHeight, zoomLevel, handleZoom from here
+  }, [view, containerRef]);
 
-  // Apply pending scroll adjustment after zoom level changes and DOM updates
+  // Horizontal Scroll Logic
+  // Scroll horizontal logic with native scroll + virtualization
+  const headerRef = useRef<HTMLDivElement>(null);
+  const skipScrollEvent = useRef(false);
+
+  // Sync header scroll with body scroll
+  const handleScroll = useCallback((e: React.UIEvent<HTMLDivElement>) => {
+    if (!containerRef || !headerRef.current) return;
+    if (skipScrollEvent.current) return;
+
+    // Prevent date shifts during drag OR if a shift is already pending
+    if (isAnyDraggingGlobal || pendingScrollRef.current) {
+      // Still sync header scroll though
+      if (headerRef.current.scrollLeft !== e.currentTarget.scrollLeft) {
+        headerRef.current.scrollLeft = e.currentTarget.scrollLeft;
+      }
+      return;
+    }
+
+    // Sync header X scroll
+    if (headerRef.current.scrollLeft !== e.currentTarget.scrollLeft) {
+      headerRef.current.scrollLeft = e.currentTarget.scrollLeft;
+    }
+
+    // Infinite scroll logic
+    // Only for week/ndays view
+    if (view !== 'week' && view !== 'ndays') return;
+
+    const container = e.currentTarget;
+    const scrollLeft = container.scrollLeft;
+    const clientWidth = container.clientWidth;
+    const scrollWidth = container.scrollWidth;
+
+    const n = view === 'week' ? 7 : nDays;
+
+    // We can calculate colWidth dynamically
+    const colWidth = clientWidth / n;
+
+    // Threshold to load more: 3 columns approx
+    const threshold = colWidth * 3;
+
+    // We shift by 7 days at a time to keep it stable
+    const SHIFT_DAYS = 7;
+
+    if (scrollLeft < threshold) {
+      const pxToShift = SHIFT_DAYS * colWidth;
+
+      pendingScrollRef.current = {
+        scrollTop: container.scrollTop,
+        mouseY: 0,
+        timeAtMouse: 0,
+        scrollLeftAdjustment: pxToShift, // Positive means we added content to left, so we need to scroll right
+        trigger: 'left'
+      };
+
+      setCurrentDate(prev => subDays(prev, SHIFT_DAYS));
+    } else if (scrollWidth - (scrollLeft + clientWidth) < threshold) {
+      const pxToShift = SHIFT_DAYS * colWidth;
+
+      pendingScrollRef.current = {
+        scrollTop: container.scrollTop,
+        mouseY: 0,
+        timeAtMouse: 0,
+        scrollLeftAdjustment: -pxToShift, // Negative means we removed content from left (shifted window right), so we scroll left
+        trigger: 'right'
+      };
+
+      setCurrentDate(prev => addDays(prev, SHIFT_DAYS));
+    }
+
+  }, [view, nDays, containerRef]);
+
+  // Handle pending scroll adjustments (Vertical Zoom OR Horizontal Infinite Shift)
   useLayoutEffect(() => {
     if (!pendingScrollRef.current || !containerRef) return;
 
-    const { mouseY, timeAtMouse } = pendingScrollRef.current;
-    const HEADER_HEIGHT = 40;
-    const currentHourHeight = Math.floor(baseHourHeight * zoomLevel);
-    const newAbsoluteY = (timeAtMouse * currentHourHeight) + HEADER_HEIGHT;
-    const newScrollTop = newAbsoluteY - mouseY;
+    // Handle Horizontal Shift
+    if (pendingScrollRef.current.scrollLeftAdjustment !== undefined && pendingScrollRef.current.scrollLeftAdjustment !== 0) {
+      const adj = pendingScrollRef.current.scrollLeftAdjustment;
+      containerRef.scrollLeft += adj;
 
-    containerRef.scrollTop = Math.max(0, newScrollTop);
+      // Restore vertical scroll position which browser usually resets when content changes
+      if (pendingScrollRef.current.scrollTop !== undefined) {
+        containerRef.scrollTop = pendingScrollRef.current.scrollTop;
+      }
+
+      // Also sync header immediately
+      if (headerRef.current) {
+        headerRef.current.scrollLeft = containerRef.scrollLeft;
+      }
+
+      pendingScrollRef.current = null;
+      return;
+    }
+
+    // Handle Vertical Zoom (from previous code)
+    if (pendingScrollRef.current.timeAtMouse) {
+      const { mouseY, timeAtMouse } = pendingScrollRef.current;
+      const HEADER_HEIGHT = 40;
+      const currentHourHeight = Math.floor(baseHourHeight * zoomLevel);
+      const newAbsoluteY = (timeAtMouse * currentHourHeight) + HEADER_HEIGHT;
+      const newScrollTop = newAbsoluteY - mouseY;
+      containerRef.scrollTop = Math.max(0, newScrollTop);
+    }
+
     pendingScrollRef.current = null;
-  }, [zoomLevel, baseHourHeight, containerRef]);
+  }, [zoomLevel, baseHourHeight, currentDate]);
+
+  // Initialize scroll position when view changes to Center the buffer
+  useLayoutEffect(() => {
+    if ((view === 'week' || view === 'ndays') && containerRef && containerRef.clientWidth) {
+      // Use clientWidth to calculate column width
+      const n = view === 'week' ? 7 : nDays;
+      const colWidth = containerRef.clientWidth / n;
+      const BUFFER = 10;
+
+      const initialScroll = BUFFER * colWidth;
+      containerRef.scrollLeft = initialScroll;
+
+      if (headerRef.current) {
+        headerRef.current.scrollLeft = initialScroll;
+      }
+    }
+  }, [view, nDays, containerRef]);
 
   // Zoom handlers
   const MIN_ZOOM = 1.0;
@@ -1226,6 +1397,7 @@ export function CalendarApp({ spacesState, viewportsState }: CalendarAppProps) {
       if (view === 'month') nextDate = subMonths(prev, 1);
       else if (view === 'week') nextDate = subWeeks(prev, 1);
       else if (view === 'day') nextDate = subDays(prev, 1);
+      else if (view === 'ndays') nextDate = subDays(prev, nDays);
       else if (view === 'year') nextDate = new Date(prev.getFullYear() - 1, prev.getMonth(), 1);
       else if (view === 'timeline') nextDate = subDays(prev, 14);
 
@@ -1248,6 +1420,7 @@ export function CalendarApp({ spacesState, viewportsState }: CalendarAppProps) {
       if (view === 'month') nextDate = addMonths(prev, 1);
       else if (view === 'week') nextDate = addWeeks(prev, 1);
       else if (view === 'day') nextDate = addDays(prev, 1);
+      else if (view === 'ndays') nextDate = addDays(prev, nDays);
       else if (view === 'year') nextDate = new Date(prev.getFullYear() + 1, prev.getMonth(), 1);
       else if (view === 'timeline') nextDate = addDays(prev, 14);
 
@@ -1455,9 +1628,22 @@ export function CalendarApp({ spacesState, viewportsState }: CalendarAppProps) {
     const start = range.start < range.end ? range.start : range.end;
     const end = range.start < range.end ? range.end : range.start;
 
+    // "Drag-only" creation: If start === end, it's a click. Cancel creation.
+    if (start.getTime() === end.getTime()) {
+      setIsSelecting(false);
+      setSelectionRange(null);
+      return;
+    }
+
     // For week/day view, ensure at least 30min duration if it's the same time
+    // Note: This logic below likely won't be reached for 0-duration clicks now, 
+    // but useful if we ever allow short drags that default to something.
     let finalEnd = end;
     if ((view === 'week' || view === 'day') && start.getTime() === end.getTime()) {
+      // double check logic: if we return above, this is unreachable for strict equality.
+      // However, if we want to allow "very short drags" that are technically clicks?
+      // user said "only be created via dragging". 
+      // A click usually results in identical start/end.
       finalEnd = new Date(start.getTime() + 30 * 60 * 1000);
     } else if (view === 'month' && isSameDay(start, end)) {
       // For month view, default to 1h on that day
@@ -1503,6 +1689,49 @@ export function CalendarApp({ spacesState, viewportsState }: CalendarAppProps) {
     });
   }, []);
 
+  // Handle global Escape key to cancel selection
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        if (isSelecting) {
+          setIsSelecting(false);
+          setSelectionRange(null);
+        }
+        if (popoverAnchor) {
+          setPopoverAnchor(null);
+        }
+        if (selectedEventId) {
+          setSelectedEventId(null);
+          setEditPopoverAnchor(null);
+        }
+        if (activeResize) {
+          setActiveResize(null);
+        }
+      }
+    };
+
+    // Handle global mouseup to ensure selection ends even if outside calendar
+    const handleGlobalMouseUp = (e: MouseEvent) => {
+      if (isSelecting) {
+        handleEndSelectionStable(e);
+      }
+      // Also ensure dragging state is cleared if react-dnd misses it
+      if (document.body.classList.contains('is-dragging-event-global')) {
+        // This is handled by isDragging state in DraggableTimelineEvent, 
+        // but if the component unmounts or something, we might want to be safe.
+        // However, we can't easily set isDragging from here without context.
+        // But we CAN ensure our UI is clean.
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    window.addEventListener('mouseup', handleGlobalMouseUp);
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+      window.removeEventListener('mouseup', handleGlobalMouseUp);
+    };
+  }, [isSelecting, popoverAnchor, handleEndSelectionStable]);
+
   const handleToggleEventSelection = useCallback((id: string | null, anchor?: { x: number, y: number }) => {
     setSelectedEventId(id);
     if (anchor) setEditPopoverAnchor(anchor);
@@ -1528,6 +1757,10 @@ export function CalendarApp({ spacesState, viewportsState }: CalendarAppProps) {
       return `${format(start, 'd MMM')} - ${format(end, 'd MMM yyyy')}`;
     }
     if (view === 'day') return format(currentDate, 'd MMMM yyyy', { locale: enUS });
+    if (view === 'ndays') {
+      const end = addDays(currentDate, nDays - 1);
+      return `${format(currentDate, 'd MMM')} - ${format(end, 'd MMM yyyy')}`;
+    }
     if (view === 'year') return `${currentDate.getFullYear()}`;
     if (view === 'timeline') return `Timeline - ${format(currentDate, 'MMMM yyyy', { locale: enUS })}`;
     return '';
@@ -1607,10 +1840,11 @@ export function CalendarApp({ spacesState, viewportsState }: CalendarAppProps) {
                   onDragLeave={handleDragLeave}
                   hoveredEventId={hoveredEventId}
                   onHoverEvent={(id) => {
-                    if (!dragGhostItem && !isSelecting) {
+                    if (!isAnyDraggingGlobal && !isSelecting) {
                       setHoveredEventId(id);
                     }
                   }}
+                  isAnyDragging={isAnyDraggingGlobal}
                 />
               </div>
             );
@@ -1661,6 +1895,7 @@ export function CalendarApp({ spacesState, viewportsState }: CalendarAppProps) {
                 onUpdateEvent={handleUpdateEvent}
                 allEvents={allEvents}
                 hourHeight={hourHeight}
+                isAnyDragging={isAnyDraggingGlobal}
               />
             ))}
 
@@ -1742,13 +1977,13 @@ export function CalendarApp({ spacesState, viewportsState }: CalendarAppProps) {
                           ${isSelected ? 'bg-primary/30 text-primary-900 ring-2 ring-primary z-10' : ''}
                         `}
                         onMouseDown={(e) => {
-                          if (e.button !== 0) return;
+                          if (e.button !== 0 || isAnyDraggingGlobal) return;
                           const d = new Date(day);
                           d.setHours(9, 0, 0, 0);
                           handleStartSelection(d);
                         }}
                         onMouseEnter={() => {
-                          if (!isSelecting) return;
+                          if (!isSelecting || isAnyDraggingGlobal) return;
                           const d = new Date(day);
                           d.setHours(10, 0, 0, 0);
                           handleUpdateSelection(d);
@@ -1800,13 +2035,13 @@ export function CalendarApp({ spacesState, viewportsState }: CalendarAppProps) {
                 ${isSelected ? 'bg-primary/10 border-primary ring-2 ring-primary/30 z-10' : ''}
               `}
               onMouseDown={(e) => {
-                if (e.button !== 0) return;
+                if (e.button !== 0 || isAnyDraggingGlobal) return;
                 const d = new Date(day);
                 d.setHours(9, 0, 0, 0);
                 handleStartSelection(d);
               }}
               onMouseEnter={() => {
-                if (!isSelecting) return;
+                if (!isSelecting || isAnyDraggingGlobal) return;
                 const d = new Date(day);
                 d.setHours(10, 0, 0, 0);
                 handleUpdateSelection(d);
@@ -1832,106 +2067,152 @@ export function CalendarApp({ spacesState, viewportsState }: CalendarAppProps) {
     );
   };
 
-  const renderWeekView = () => {
-    const weekStart = startOfWeek(currentDate, { weekStartsOn: 1 });
-    const weekDays = Array.from({ length: 7 }, (_, i) => addDays(weekStart, i));
+  const renderHorizontalGrid = (n: number) => {
+    const BUFFER = 20;
+    // Render: [-BUFFER ... -1, 0, 1 ... n-1, n ... n+BUFFER-1]
+    const totalDays = n + (BUFFER * 2);
+    const startOffset = -BUFFER;
+
+    // Stable day generation
+    const daysBuffer = Array.from({ length: totalDays }, (_, i) => addDays(startOfDay(currentDate), i + startOffset));
     const hours = Array.from({ length: 24 }, (_, i) => i);
 
+    // We want the columns to be `viewportWidth / n` wide.
+    // So the total width of the inner container must be `(totalDays / n) * 100%`.
+    const containerWidthPct = (totalDays / n) * 100;
+
     return (
-      <div
-        ref={setContainerRef}
-        className="flex h-full overflow-auto select-none"
-        onMouseUp={(e) => isSelecting && handleEndSelectionStable(e)}
-        onMouseLeave={() => isSelecting && handleEndSelectionStable()}
-      >
-        <div className="w-[60px] shrink-0 border-r border-divider bg-default-50/50 relative">
-          <div className="h-[40px] sticky top-0 bg-default-50/50 z-20 border-b border-divider" />
-          {hours.map(hour => (
-            <div key={hour} style={{ height: `${hourHeight}px` }} className="px-1 relative border-t border-divider text-[10px] text-default-400">
-              <span className="absolute -top-[7px] left-1/2 -translate-x-1/2 bg-default-50 px-1 rounded-sm">
-                {`${hour}:00`}
-              </span>
+      <div className="flex flex-col h-full bg-white">
+        {/* Header Row */}
+        <div className="flex border-b border-divider shrink-0 bg-white z-20 relative">
+          <div className="w-[60px] shrink-0 border-r border-divider bg-default-50/50" />
+          <div className="flex-1 overflow-hidden relative bg-white" ref={headerRef}>
+            <div className="flex h-full" style={{ width: `${containerWidthPct}%` }}>
+              {daysBuffer.map((day, i) => {
+                const isToday = isSameDay(day, new Date());
+                return (
+                  <div key={day.getTime()} className="flex-1 h-[40px] flex flex-col items-center justify-center border-r border-divider min-w-0">
+                    <span className="text-[10px] uppercase font-bold text-default-400">{format(day, 'EEE', { locale: enUS })}</span>
+                    <span className={`text-sm ${isToday ? 'font-bold text-primary' : ''}`}>{format(day, 'd')}</span>
+                  </div>
+                );
+              })}
             </div>
-          ))}
+          </div>
         </div>
 
-        {weekDays.map((day, i) => {
-          const isToday = isSameDay(day, new Date());
-          const dayEvents = allEvents.filter(event => isSameDay(event.start, day));
+        {/* Body Row */}
+        <div
+          ref={setContainerRef}
+          className="flex-1 overflow-auto relative no-scrollbar overscroll-x-none overscroll-none"
+          onScroll={handleScroll}
+        >
+          <div className="flex min-h-full">
+            {/* Sidebar (Sticky) */}
+            <div className="w-[60px] shrink-0 sticky left-0 z-30 bg-default-50/50 border-r border-divider pointer-events-none">
+              {hours.map(hour => (
+                <div key={hour} style={{ height: `${hourHeight}px` }} className="px-1 relative border-t border-divider text-[10px] text-default-400">
+                  <span className="absolute -top-[7px] left-1/2 -translate-x-1/2 bg-default-50 px-1 rounded-sm">
+                    {`${hour}:00`}
+                  </span>
+                </div>
+              ))}
+            </div>
 
-          return (
-            <div key={i} className="flex-1 border-r border-divider min-w-[120px] relative flex flex-col shrink-0">
-              <div className={`
-                h-[40px] flex flex-col items-center justify-center border-b border-divider sticky top-0 bg-white z-10 shrink-0
-                ${isToday ? 'bg-primary/5 text-primary' : ''}
-              `}>
-                <span className="text-[10px] uppercase font-bold text-default-400">{daysOfWeekShort[i]}</span>
-                <span className={`text-sm ${isToday ? 'font-bold' : ''}`}>{format(day, 'd')}</span>
-              </div>
-              <div className="relative shrink-0 overflow-hidden" style={{ height: hourHeight * 24 }}>
-                {hours.map(hour => (
-                  <CalendarDaySlot
-                    key={hour}
-                    hour={hour}
-                    day={day}
-                    onStartSelection={handleStartSelection}
-                    onUpdateSelection={handleUpdateSelection}
-                    onUpdateEvent={handleUpdateEvent}
-                    allEvents={allEvents}
-                    hourHeight={hourHeight}
-                  />
-                ))}
+            {/* Columns */}
+            <div className="flex-1 relative">
+              <div className="flex h-full" style={{ width: `${containerWidthPct}%` }}>
+                {daysBuffer.map((day, i) => {
+                  const dayEvents = allEvents.filter(event => {
+                    const eventStart = new Date(event.start);
+                    const eventEnd = event.end ? new Date(event.end) : addMinutes(eventStart, 60);
+                    return (eventStart < endOfDay(day) && eventEnd > startOfDay(day));
+                  });
 
-                {selectionRange && isSameDay(selectionRange.start, day) && (
-                  <div
-                    className="absolute left-1 right-1 bg-primary/30 border-2 border-primary rounded-md z-30 pointer-events-none"
-                    style={{
-                      top: `${Math.min(selectionRange.start.getHours(), selectionRange.end.getHours()) * hourHeight}px`,
-                      height: `${Math.max(1, Math.abs(selectionRange.end.getHours() - selectionRange.start.getHours())) * hourHeight}px`
-                    }}
-                  />
-                )}
+                  return (
+                    <div key={day.getTime()} className="flex-1 border-r border-divider relative min-w-0 bg-white">
+                      <div className="relative w-full overflow-hidden" style={{ height: hourHeight * 24 }}>
+                        {hours.map(hour => (
+                          <CalendarDaySlot
+                            key={hour}
+                            hour={hour}
+                            day={day}
+                            onStartSelection={handleStartSelection}
+                            onUpdateSelection={handleUpdateSelection}
+                            onUpdateEvent={handleUpdateEvent}
+                            allEvents={allEvents}
+                            hourHeight={hourHeight}
+                            isAnyDragging={isAnyDraggingGlobal}
+                          />
+                        ))}
 
-                {calculateTimelineLayout(dayEvents, hourHeight, day).map((item) => (
-                  <DraggableTimelineEvent
-                    key={item.id}
-                    event={item}
-                    top={item.layout.top}
-                    height={item.layout.height}
-                    left={item.layout.left}
-                    width={item.layout.width}
-                    onUpdate={(id: string, updates: any) => handleUpdateEvent(id, id, item.sourceSpaceId, updates)}
-                    onNavigate={(sid: string, title: string) => {
-                      if (viewportsState) {
-                        viewportsState.replaceCurrentTab(viewportsState.focusedViewportId, sid, undefined, title);
-                      }
-                    }}
-                    onHoverEvent={(id: string | null) => {
-                      if (!dragGhostItem && !isSelecting) {
-                        setHoveredEventId(id);
-                      }
-                    }}
-                    isHovered={hoveredEventId === item.id}
-                    onSelect={handleToggleEventSelection}
-                    hourHeight={hourHeight}
-                  />
-                ))}
+                        {selectionRange && isSameDay(selectionRange.start, day) && (
+                          <div
+                            className="absolute left-1 right-1 bg-primary/30 border-2 border-primary rounded-md z-30 pointer-events-none"
+                            style={{
+                              top: `${Math.min(selectionRange.start.getHours(), selectionRange.end.getHours()) * hourHeight}px`,
+                              height: `${Math.max(1, Math.abs(selectionRange.end.getHours() - selectionRange.start.getHours())) * hourHeight}px`
+                            }}
+                          />
+                        )}
+
+                        {calculateTimelineLayout(dayEvents, hourHeight, day).map((item, idx) => (
+                          <DraggableTimelineEvent
+                            key={item.id || idx}
+                            event={item}
+                            top={item.layout.top}
+                            height={item.layout.height}
+                            left={item.layout.left}
+                            width={item.layout.width}
+                            onUpdate={(id: string, updates: any) => handleUpdateEvent(id, id, item.sourceSpaceId, updates)}
+                            onNavigate={(sid: string, title: string) => {
+                              if (viewportsState) {
+                                viewportsState.replaceCurrentTab(viewportsState.focusedViewportId, sid, undefined, title);
+                              }
+                            }}
+                            onHoverEvent={(id: string | null) => {
+                              if (!dragGhostItem && !isSelecting) {
+                                setHoveredEventId(id);
+                              }
+                            }}
+                            isHovered={hoveredEventId === item.id}
+                            onSelect={handleToggleEventSelection}
+                            hourHeight={hourHeight}
+                          />
+                        ))}
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
             </div>
-          );
-        })}
+          </div>
+          {/* Add spacer at bottom for scrolling past last hour */}
+          <div className="h-10 w-full" />
+        </div>
       </div>
     );
   };
 
+  const renderWeekView = () => renderHorizontalGrid(7);
+  const renderNDaysView = () => renderHorizontalGrid(nDays);
+
   return (
-    <div className="flex flex-col h-full overflow-hidden bg-white">
+    <div className="flex flex-col h-full overflow-hidden bg-white overscroll-x-none overscroll-none">
       <style>{`
         .is-dragging-event .calendar-event-item {
           pointer-events: none !important;
         }
+        .is-dragging-now, 
+        .is-dragging-now * {
+          pointer-events: none !important;
+        }
         body.is-dragging-event-global {
           cursor: grabbing !important;
+        }
+        body.is-dragging-event-global .calendar-event-item,
+        body.is-dragging-event-global .calendar-event-item * {
+          pointer-events: none !important; /* Ensure all event items and children are non-interactive during global drag */
         }
         body.is-dragging-event-global * {
           cursor: grabbing !important;
@@ -1957,7 +2238,7 @@ export function CalendarApp({ spacesState, viewportsState }: CalendarAppProps) {
 
         <div className="flex gap-2 items-center">
           <div className="flex gap-0.5 bg-default-100 p-0.5 rounded-lg border border-default-200/50">
-            {(['month', 'week', 'day', 'year', 'timeline'] as const).map((v) => (
+            {(['month', 'week', 'day', 'ndays', 'year', 'timeline'] as const).map((v) => (
               <Button
                 key={v}
                 size="sm"
@@ -1966,10 +2247,26 @@ export function CalendarApp({ spacesState, viewportsState }: CalendarAppProps) {
                 className={`capitalize text-xs h-7 px-3 rounded-md transition-all ${view === v ? 'bg-white text-default-900 font-bold shadow-sm' : 'text-default-500 hover:text-default-700'}`}
                 disableAnimation
               >
-                {v === 'month' ? 'Month' : v === 'week' ? 'Week' : v === 'day' ? 'Day' : v === 'year' ? 'Year' : 'Timeline'}
+                {v === 'month' ? 'Month' : v === 'week' ? 'Week' : v === 'day' ? 'Day' : v === 'ndays' ? `${nDays} Days` : v === 'year' ? 'Year' : 'Timeline'}
               </Button>
             ))}
           </div>
+          {view === 'ndays' && (
+            <div className="w-[60px] ml-2">
+              <Input
+                type="number"
+                size="sm"
+                min={1}
+                max={90}
+                value={nDays.toString()}
+                onValueChange={(v) => {
+                  const val = parseInt(v);
+                  if (!isNaN(val)) setNDays(Math.max(1, Math.min(90, val)));
+                }}
+                classNames={{ input: "text-right font-bold text-xs", inputWrapper: "h-7 min-h-7 px-1" }}
+              />
+            </div>
+          )}
           <div className="w-px h-4 bg-default-300 mx-1" />
           <Button startContent={<Plus size={16} />} size="sm" color="primary" className="font-bold shadow-lg" onPress={onOpen}>
             New
@@ -1982,6 +2279,7 @@ export function CalendarApp({ spacesState, viewportsState }: CalendarAppProps) {
         {view === 'month' && renderMonthView()}
         {view === 'week' && renderWeekView()}
         {view === 'day' && renderDayView()}
+        {view === 'ndays' && renderNDaysView()}
         {view === 'year' && renderYearView()}
         {view === 'timeline' && renderTimelineView()}
       </div>
@@ -2000,42 +2298,84 @@ export function CalendarApp({ spacesState, viewportsState }: CalendarAppProps) {
               top: popoverAnchor.y
             }}
           >
-            <div className="pointer-events-auto w-[260px] p-3 bg-white/95 backdrop-blur-xl rounded-xl shadow-2xl border border-divider flex flex-col gap-2">
-              <div className="flex items-center justify-between pb-1">
-                <span className="text-[10px] font-bold text-default-400 uppercase tracking-wider">New Event</span>
-                <Button size="sm" isIconOnly variant="light" className="h-5 w-5 min-w-5 text-default-400 hover:text-default-700" onClick={() => setPopoverAnchor(null)}>
-                  <Plus size={14} className="rotate-45" />
-                </Button>
+            <div className="pointer-events-auto w-[280px] relative mt-[10px] group filter drop-shadow-2xl">
+              {/* Speech Bubble Arrow (SVG for perfect crispness) */}
+              <div className="absolute -top-[10px] left-8 w-6 h-[11px] pointer-events-none z-20">
+                <svg width="24" height="11" viewBox="0 0 24 11" fill="none" xmlns="http://www.w3.org/2000/svg" className="overflow-visible">
+                  <path d="M0 11L12 0L24 11" fill="white" />
+                  <path d="M0 11L12 0L24 11" stroke="rgba(0,0,0,0.1)" strokeWidth="1" strokeLinejoin="round" fill="none" />
+                  <rect x="0.5" y="10" width="23" height="2" fill="white" />
+                </svg>
               </div>
-              <Input
-                autoFocus
-                placeholder="Event title"
-                variant="bordered"
-                size="sm"
-                value={newEvent.title}
-                onValueChange={(v) => setNewEvent(prev => ({ ...prev, title: v }))}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter' && newEvent.title) handleQuickCreate();
-                  if (e.key === 'Escape') setPopoverAnchor(null);
-                }}
-                classNames={{ inputWrapper: "h-8 min-h-8 px-2 text-sm shadow-none bg-default-50/50" }}
-              />
-              <div className="flex items-center gap-2 text-[10px] text-default-500 bg-default-50 p-1.5 rounded-lg border border-default-100">
-                <CalendarIcon size={12} className="text-primary" />
-                <span className="font-medium">{format(new Date(newEvent.startDate), 'd MMM, HH:mm')}</span>
-                <span className="opacity-30">→</span>
-                <span className="font-medium">{format(new Date(newEvent.endDate), 'HH:mm')}</span>
+
+              <div className="relative z-10 bg-white rounded-[24px] border border-divider flex flex-col overflow-hidden">
+                <div className="absolute right-2 top-2 z-10">
+                  <Button size="sm" isIconOnly variant="light" radius="full" className="h-6 w-6 min-w-6 text-default-400 hover:text-default-800 bg-white/40 hover:bg-white/80 backdrop-blur-md" onClick={() => setPopoverAnchor(null)}>
+                    <Plus size={16} className="rotate-45" />
+                  </Button>
+                </div>
+
+                <div className="p-3 flex flex-col gap-3">
+                  <div className="pt-2 px-1">
+                    <Input
+                      autoFocus
+                      placeholder="Event title"
+                      variant="flat"
+                      size="sm"
+                      value={newEvent.title}
+                      onValueChange={(v) => setNewEvent(prev => ({ ...prev, title: v }))}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' && newEvent.title) handleQuickCreate();
+                        if (e.key === 'Escape') setPopoverAnchor(null);
+                      }}
+                      classNames={{
+                        inputWrapper: "bg-transparent p-0 shadow-none data-[hover=true]:bg-transparent group-data-[focus=true]:bg-transparent h-auto min-h-0",
+                        input: "text-lg font-bold text-default-900 placeholder:text-default-300 tracking-tight py-0"
+                      }}
+                    />
+                    <div className="h-0.5 w-10 bg-primary rounded-full mt-1.5 opacity-20" />
+                  </div>
+
+                  <div className="flex flex-col gap-2">
+                    <div className="flex gap-1.5 items-center text-default-400 text-[10px] font-bold uppercase tracking-wider pl-1">
+                      <span className="w-1 h-1 rounded-full bg-primary" /> TIME
+                    </div>
+                    <div className="grid grid-cols-2 gap-2">
+                      <Input
+                        type="datetime-local"
+                        variant="faded"
+                        size="sm"
+                        value={format(new Date(newEvent.startDate), "yyyy-MM-dd'T'HH:mm")}
+                        onChange={(e) => setNewEvent(prev => ({ ...prev, startDate: e.target.value }))}
+                        classNames={{
+                          inputWrapper: "h-7 px-2 bg-default-50/50 hover:bg-default-100 border-transparent transition-colors rounded-lg shadow-none",
+                          input: "text-[10px] font-semibold text-default-700 font-mono"
+                        }}
+                      />
+                      <Input
+                        type="datetime-local"
+                        variant="faded"
+                        size="sm"
+                        value={format(new Date(newEvent.endDate), "yyyy-MM-dd'T'HH:mm")}
+                        onChange={(e) => setNewEvent(prev => ({ ...prev, endDate: e.target.value }))}
+                        classNames={{
+                          inputWrapper: "h-7 px-2 bg-default-50/50 hover:bg-default-100 border-transparent transition-colors rounded-lg shadow-none",
+                          input: "text-[10px] font-semibold text-default-700 font-mono"
+                        }}
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex gap-2 p-3 bg-gradient-to-t from-white to-white/50 backdrop-blur-md pt-2">
+                  <Button size="sm" fullWidth variant="flat" className="font-semibold h-7 text-[10px] bg-default-100/50 text-default-600 rounded-lg" onClick={() => { setPopoverAnchor(null); onOpen(); }}>
+                    More details
+                  </Button>
+                  <Button size="sm" fullWidth color="primary" className="font-bold h-7 text-[10px] shadow-lg shadow-primary/25 rounded-lg text-white" onClick={handleQuickCreate} isDisabled={!newEvent.title}>
+                    Create Event
+                  </Button>
+                </div>
               </div>
-              <div className="flex gap-2 pt-1">
-                <Button size="sm" fullWidth variant="light" className="font-medium h-7 text-xs bg-default-100" onClick={() => { setPopoverAnchor(null); onOpen(); }}>
-                  More...
-                </Button>
-                <Button size="sm" fullWidth color="primary" className="font-bold h-7 text-xs shadow-lg shadow-primary/20" onClick={handleQuickCreate} isDisabled={!newEvent.title}>
-                  Add
-                </Button>
-              </div>
-              {/* Tooltip arrow */}
-              <div className="absolute -top-1.5 left-1/2 -translate-x-1/2 w-3 h-3 bg-white border-t border-l border-divider rotate-45" />
             </div>
           </motion.div>
         )}
@@ -2052,140 +2392,167 @@ export function CalendarApp({ spacesState, viewportsState }: CalendarAppProps) {
               top: editPopoverAnchor.y
             }}
           >
-            <div className="pointer-events-auto w-[280px] p-2 bg-white/95 backdrop-blur-xl rounded-xl shadow-[0_15px_40px_-5px_rgba(0,0,0,0.3)] border border-divider flex flex-col gap-2">
-              <div className="absolute right-2 top-2 z-10">
-                <Button size="sm" isIconOnly variant="light" radius="full" className="h-6 w-6 min-w-6 text-default-400 hover:text-default-700" onClick={() => handleToggleEventSelection(null)}>
-                  <Plus size={16} className="rotate-45" />
-                </Button>
+            <div className="pointer-events-auto w-[300px] relative mt-[10px] group filter drop-shadow-2xl">
+              {/* Speech Bubble Arrow (SVG for perfect crispness) */}
+              <div className="absolute -top-[10px] left-8 w-6 h-[11px] pointer-events-none z-20">
+                <svg width="24" height="11" viewBox="0 0 24 11" fill="none" xmlns="http://www.w3.org/2000/svg" className="overflow-visible">
+                  <path d="M0 11L12 0L24 11" fill="white" />
+                  <path d="M0 11L12 0L24 11" stroke="rgba(0,0,0,0.1)" strokeWidth="1" strokeLinejoin="round" fill="none" />
+                  <rect x="0.5" y="10" width="23" height="2" fill="white" />
+                </svg>
               </div>
 
-              <div className="pr-8 pt-1">
-                <Input
-                  placeholder="Event title"
-                  variant="flat"
-                  size="sm"
-                  value={selectedEvent.metadata?.title || ''}
-                  onValueChange={(v) => handleUpdateEvent(selectedEvent.id, selectedEvent.id, selectedEvent.sourceSpaceId, { title: v })}
-                  classNames={{
-                    inputWrapper: "bg-transparent hover:bg-default-100 transition-colors h-auto min-h-0 p-0 shadow-none data-[hover=true]:bg-transparent group-data-[focus=true]:bg-transparent",
-                    input: "text-lg font-bold text-default-900 placeholder:text-default-300"
-                  }}
-                />
-              </div>
-
-              <div className="flex flex-col gap-1.5 bg-default-50/50 p-2 rounded-lg border border-default-100/50">
-                <div className="grid grid-cols-2 gap-2">
-                  <Input
-                    type="datetime-local"
-                    variant="bordered"
-                    size="sm"
-                    value={format(selectedEvent.start, "yyyy-MM-dd'T'HH:mm")}
-                    onChange={(e) => handleUpdateEvent(selectedEvent.id, selectedEvent.id, selectedEvent.sourceSpaceId, { startDate: e.target.value })}
-                    classNames={{
-                      inputWrapper: "h-7 min-h-7 px-1.5 bg-white border-default-200/50 shadow-none",
-                      input: "text-[10px] font-medium"
-                    }}
-                  />
-                  <Input
-                    type="datetime-local"
-                    variant="bordered"
-                    size="sm"
-                    value={selectedEvent.end ? format(selectedEvent.end, "yyyy-MM-dd'T'HH:mm") : ''}
-                    onChange={(e) => handleUpdateEvent(selectedEvent.id, selectedEvent.id, selectedEvent.sourceSpaceId, { endDate: e.target.value })}
-                    classNames={{
-                      inputWrapper: "h-7 min-h-7 px-1.5 bg-white border-default-200/50 shadow-none",
-                      input: "text-[10px] font-medium"
-                    }}
-                  />
+              <div className="relative z-10 bg-white rounded-[24px] border border-divider flex flex-col overflow-hidden">
+                <div className="absolute right-3 top-3 z-10">
+                  <Button size="sm" isIconOnly variant="light" radius="full" className="h-7 w-7 min-w-7 text-default-400 hover:text-default-800 bg-white/40 hover:bg-white/80 backdrop-blur-md" onClick={() => handleToggleEventSelection(null)}>
+                    <Plus size={18} className="rotate-45" />
+                  </Button>
                 </div>
 
-                <Select
-                  selectionMode="multiple"
-                  placeholder="Link spaces..."
-                  variant="bordered"
-                  size="sm"
-                  selectedKeys={new Set(selectedEvent.metadata?.linkedSpaceIds || [])}
-                  onSelectionChange={(keys: any) => {
-                    const linkedSpaceIds = Array.from(keys);
-                    handleUpdateEvent(selectedEvent.id, selectedEvent.id, selectedEvent.sourceSpaceId, { linkedSpaceIds });
-                  }}
-                  classNames={{
-                    trigger: "bg-white min-h-7 h-7 py-0 px-2 border-default-200/50 shadow-none",
-                    value: "text-[10px]"
-                  }}
-                  renderValue={(items) => (
-                    <div className="flex flex-wrap gap-1">
-                      {items.map((item) => (
-                        <span key={item.key} className="text-[10px] font-medium text-primary">{item.textValue}</span>
-                      ))}
+                <div className="px-5 pt-5 pb-2">
+                  <Input
+                    placeholder="Event title"
+                    variant="flat"
+                    size="lg"
+                    value={selectedEvent.metadata?.title || ''}
+                    onValueChange={(v) => handleUpdateEvent(selectedEvent.id, selectedEvent.id, selectedEvent.sourceSpaceId, { title: v })}
+                    classNames={{
+                      inputWrapper: "bg-transparent p-0 shadow-none data-[hover=true]:bg-transparent group-data-[focus=true]:bg-transparent h-auto min-h-0",
+                      input: "text-xl font-bold text-default-900 placeholder:text-default-300 tracking-tight py-0"
+                    }}
+                  />
+                  <div className="h-0.5 w-10 bg-primary rounded-full mt-2 opacity-20" />
+                </div>
+
+                <div className="px-5 py-3 flex flex-col gap-4">
+                  {/* Time Section */}
+                  <div className="flex flex-col gap-1.5">
+                    <div className="flex gap-1.5 items-center text-default-400 text-[10px] font-bold uppercase tracking-wider pl-1">
+                      <span className="w-1 h-1 rounded-full bg-primary" /> TIME
                     </div>
-                  )}
-                >
-                  {spacesState.spaces.filter((s: any) => s.id !== selectedEvent.sourceSpaceId).map((space: any) => (
-                    <SelectItem key={space.id} textValue={space.title}>
-                      <div className="flex items-center gap-2">
-                        <div className="w-1.5 h-1.5 rounded-full bg-primary/40" />
-                        <span className="text-xs">{space.title}</span>
-                      </div>
-                    </SelectItem>
-                  ))}
-                </Select>
-              </div>
-
-              <div className="flex flex-col gap-2 mt-1">
-                <Button
-                  size="sm"
-                  variant="flat"
-                  className="w-full justify-between h-9 bg-primary/5 hover:bg-primary/10 text-primary-700 border border-primary/20"
-                  startContent={<FileText size={14} />}
-                  endContent={selectedEvent.metadata?.noteSpaceId ? <ExternalLink size={12} className="opacity-50" /> : <Plus size={12} className="opacity-50" />}
-                  onClick={() => {
-                    let spaceId = selectedEvent.metadata?.noteSpaceId;
-                    if (!spaceId) {
-                      // Create new note space
-                      const newSpace = spacesState.createSpace('page');
-                      const noteTitle = `Notes: ${selectedEvent.metadata?.title || 'Untitled Event'}`;
-                      spacesState.updateSpace(newSpace.id, {
-                        title: noteTitle,
-                        metadata: { isNote: true, eventId: selectedEvent.id }
-                      });
-                      spaceId = newSpace.id;
-                      handleUpdateEvent(selectedEvent.id, selectedEvent.id, selectedEvent.sourceSpaceId, { noteSpaceId: spaceId });
-                    }
-
-                    if (viewportsState && spaceId) {
-                      viewportsState.replaceCurrentTab(viewportsState.focusedViewportId, spaceId, undefined, selectedEvent.metadata?.title || 'Notes');
-                      handleToggleEventSelection(null);
-                    }
-                  }}
-                >
-                  <span className="flex-1 text-left ml-2 font-medium">Event Notes Space</span>
-                </Button>
-                {selectedEvent.metadata?.notes && !selectedEvent.metadata?.noteSpaceId && (
-                  <div className="text-[10px] text-default-400 px-2 line-clamp-2 italic">
-                    {selectedEvent.metadata.notes}
+                    <div className="grid grid-cols-2 gap-2">
+                      <Input
+                        type="datetime-local"
+                        variant="faded"
+                        size="sm"
+                        value={format(selectedEvent.start, "yyyy-MM-dd'T'HH:mm")}
+                        onChange={(e) => handleUpdateEvent(selectedEvent.id, selectedEvent.id, selectedEvent.sourceSpaceId, { startDate: e.target.value })}
+                        classNames={{
+                          inputWrapper: "h-8 px-2 bg-default-50/50 hover:bg-default-100 border-transparent transition-colors rounded-lg",
+                          input: "text-[10px] font-semibold text-default-700 font-mono"
+                        }}
+                      />
+                      <Input
+                        type="datetime-local"
+                        variant="faded"
+                        size="sm"
+                        value={selectedEvent.end ? format(selectedEvent.end, "yyyy-MM-dd'T'HH:mm") : ''}
+                        onChange={(e) => handleUpdateEvent(selectedEvent.id, selectedEvent.id, selectedEvent.sourceSpaceId, { endDate: e.target.value })}
+                        classNames={{
+                          inputWrapper: "h-8 px-2 bg-default-50/50 hover:bg-default-100 border-transparent transition-colors rounded-lg",
+                          input: "text-[10px] font-semibold text-default-700 font-mono"
+                        }}
+                      />
+                    </div>
                   </div>
-                )}
-              </div>
 
-              <div className="flex justify-end pt-2 border-t border-divider mt-1">
-                <Button
-                  size="sm"
-                  variant="solid"
-                  className="font-bold text-[10px] h-7 px-3 shadow-sm bg-red-600 hover:bg-red-700 text-white"
-                  style={{ backgroundColor: '#ef4444', color: 'white' }}
-                  startContent={<Trash2 size={12} className="text-white" />}
-                  onClick={() => {
-                    const space = spacesState.spaces.find((s: any) => s.id === selectedEvent.sourceSpaceId);
-                    if (space) {
-                      const blocks = space.content?.blocks.filter((b: any) => b.id !== selectedEvent.id);
-                      spacesState.updateSpace(selectedEvent.sourceSpaceId, { content: { ...space.content, blocks } });
-                      handleToggleEventSelection(null);
-                    }
-                  }}
-                >
-                  Delete Event
-                </Button>
+                  {/* Spaces Section */}
+                  <div className="flex flex-col gap-1.5">
+                    <div className="flex gap-1.5 items-center text-default-400 text-[10px] font-bold uppercase tracking-wider pl-1">
+                      <span className="w-1 h-1 rounded-full bg-secondary" /> SPACES
+                    </div>
+                    <Select
+                      selectionMode="multiple"
+                      placeholder="Link spaces..."
+                      variant="faded"
+                      size="sm"
+                      selectedKeys={new Set(selectedEvent.metadata?.linkedSpaceIds || [])}
+                      onSelectionChange={(keys: any) => {
+                        const linkedSpaceIds = Array.from(keys);
+                        handleUpdateEvent(selectedEvent.id, selectedEvent.id, selectedEvent.sourceSpaceId, { linkedSpaceIds });
+                      }}
+                      classNames={{
+                        trigger: "bg-default-50/50 hover:bg-default-100 min-h-8 h-auto py-1 px-2 border-transparent rounded-lg",
+                        value: "text-[10px] font-medium"
+                      }}
+                      renderValue={(items) => (
+                        <div className="flex flex-wrap gap-1">
+                          {items.map((item) => (
+                            <span key={item.key} className="text-[10px] font-bold text-secondary-600 px-1.5 py-0.5 bg-secondary/10 rounded-md">{item.textValue}</span>
+                          ))}
+                        </div>
+                      )}
+                    >
+                      {spacesState.spaces.filter((s: any) => s.id !== selectedEvent.sourceSpaceId).map((space: any) => (
+                        <SelectItem key={space.id} textValue={space.title}>
+                          <div className="flex items-center gap-2">
+                            <div className="w-1.5 h-1.5 rounded-full bg-primary/40" />
+                            <span className="text-xs">{space.title}</span>
+                          </div>
+                        </SelectItem>
+                      ))}
+                    </Select>
+                  </div>
+
+                  {/* Notes Section */}
+                  <div className="flex flex-col gap-1.5">
+                    <div className="flex gap-1.5 items-center text-default-400 text-[10px] font-bold uppercase tracking-wider pl-1">
+                      <span className="w-1 h-1 rounded-full bg-warning" /> NOTES
+                    </div>
+                    <Button
+                      size="sm"
+                      variant="flat"
+                      className="w-full justify-between h-10 bg-white border border-default-200/50 shadow-sm hover:border-default-300 hover:shadow transition-all rounded-xl group px-3"
+                      startContent={<div className="p-1 bg-warning/10 rounded-md text-warning-600 group-hover:bg-warning/20 transition-colors"><FileText size={14} /></div>}
+                      endContent={selectedEvent.metadata?.noteSpaceId ? <ExternalLink size={12} className="opacity-30 group-hover:opacity-100 transition-opacity" /> : <Plus size={12} className="opacity-30 group-hover:opacity-100 transition-opacity" />}
+                      onClick={() => {
+                        let spaceId = selectedEvent.metadata?.noteSpaceId;
+                        if (!spaceId) {
+                          const newSpace = spacesState.createSpace('page');
+                          const noteTitle = `Notes: ${selectedEvent.metadata?.title || 'Untitled Event'}`;
+                          spacesState.updateSpace(newSpace.id, {
+                            title: noteTitle,
+                            metadata: { isNote: true, eventId: selectedEvent.id }
+                          });
+                          spaceId = newSpace.id;
+                          handleUpdateEvent(selectedEvent.id, selectedEvent.id, selectedEvent.sourceSpaceId, { noteSpaceId: spaceId });
+                        }
+
+                        if (viewportsState && spaceId) {
+                          viewportsState.replaceCurrentTab(viewportsState.focusedViewportId, spaceId, undefined, selectedEvent.metadata?.title || 'Notes');
+                          handleToggleEventSelection(null);
+                        }
+                      }}
+                    >
+                      <div className="flex flex-col items-start gap-0">
+                        <span className="font-semibold text-default-700 text-[11px]">Open Notes Space</span>
+                        <span className="text-[9px] text-default-400 line-clamp-1">Click to view/edit</span>
+                      </div>
+                    </Button>
+                  </div>
+                </div>
+
+                <div className="flex justify-between items-center p-3 bg-default-50/50 border-t border-divider/50 backdrop-blur-md mt-auto">
+                  <span className="text-[10px] font-semibold text-default-400 pl-2">
+                    {format(new Date(selectedEvent.start), 'd MMM')}
+                  </span>
+                  <Button
+                    size="sm"
+                    variant="light"
+                    className="font-bold text-[10px] h-7 px-3 text-danger hover:bg-danger/10 hover:text-danger-600 rounded-lg transition-colors"
+                    startContent={<Trash2 size={12} />}
+                    onClick={() => {
+                      const space = spacesState.spaces.find((s: any) => s.id === selectedEvent.sourceSpaceId);
+                      if (space) {
+                        const blocks = space.content?.blocks.filter((b: any) => b.id !== selectedEvent.id);
+                        spacesState.updateSpace(selectedEvent.sourceSpaceId, { content: { ...space.content, blocks } });
+                        handleToggleEventSelection(null);
+                      }
+                    }}
+                  >
+                    Delete
+                  </Button>
+                </div>
               </div>
             </div>
           </motion.div>
@@ -2257,7 +2624,7 @@ export function CalendarApp({ spacesState, viewportsState }: CalendarAppProps) {
   );
 }
 
-function CalendarDaySlot({ hour, day, onStartSelection, onUpdateSelection, onUpdateEvent, allEvents, hourHeight = 60 }: any) {
+function CalendarDaySlot({ hour, day, onStartSelection, onUpdateSelection, onUpdateEvent, allEvents, hourHeight = 60, isAnyDragging }: any) {
   const [dropPosition, setDropPosition] = useState<number | null>(null);
 
   const [{ isOver, draggedItem }, drop] = useDrop({
@@ -2326,10 +2693,42 @@ function CalendarDaySlot({ hour, day, onStartSelection, onUpdateSelection, onUpd
       ref={setDropRef}
       style={{ height: `${hourHeight}px` }}
       className={`border-t border-divider hover:bg-default-50/50 cursor-crosshair relative ${isOver ? 'bg-primary/10' : ''}`}
-      onMouseDown={() => {
+      onMouseDown={(e) => {
+        if (isAnyDragging) return;
+        // Calculate initial minute on mouse down for precise start time
+        if (!slotRef.current) {
+          const d = new Date(day);
+          d.setHours(hour, 0, 0, 0);
+          onStartSelection(d);
+          return;
+        }
+
+        const rect = slotRef.current.getBoundingClientRect();
+        const offsetY = e.clientY - rect.top;
+        const minuteHeight = hourHeight / 60;
+        const minute = Math.floor(offsetY / minuteHeight);
+        // Snap to 15m
+        const snappedMinute = Math.floor(minute / 15) * 15;
+
         const d = new Date(day);
-        d.setHours(hour, 0, 0, 0);
+        d.setHours(hour, snappedMinute, 0, 0);
         onStartSelection(d);
+      }}
+      onMouseMove={(e) => {
+        if (isAnyDragging) return;
+        // Support intra-slot selection updating
+        if (e.buttons !== 1) return; // Only if mouse is down (dragging selection)
+        if (!slotRef.current) return;
+
+        const rect = slotRef.current.getBoundingClientRect();
+        const offsetY = e.clientY - rect.top;
+        const minuteHeight = hourHeight / 60;
+        const minute = Math.floor(offsetY / minuteHeight);
+        const snappedMinute = Math.floor(minute / 15) * 15;
+
+        const d = new Date(day);
+        d.setHours(hour, snappedMinute, 0, 0);
+        onUpdateSelection(d);
       }}
       onMouseEnter={() => {
         const d = new Date(day);
@@ -2561,15 +2960,18 @@ function DraggableTimelineEvent({ event, top, height, left = 0, width = 100, onU
   return (
     <div
       ref={setDragRef}
-      className={`absolute rounded bg-primary text-white p-2 text-xs shadow-md overflow-hidden cursor-grab active:cursor-grabbing group calendar-event-item ${isDragging ? 'opacity-50 is-dragging-now' : ''} ${isHovered ? 'ring-2 ring-primary-300' : ''}`}
+      className={`absolute rounded bg-primary text-white p-2 text-xs shadow-md overflow-hidden cursor-grab active:cursor-grabbing group calendar-event-item ${isDragging ? 'opacity-0 is-dragging-now' : ''} ${isHovered ? 'ring-2 ring-primary-300' : ''}`}
       style={{
         top: `${top}px`,
         height: `${height}px`,
         left: `calc(${left}% + 2px)`,
         width: `calc(${width}% - 4px)`,
-        zIndex: 1
+        zIndex: isDragging ? -1 : 50,
+        pointerEvents: isDragging ? 'none' : 'auto',
+        visibility: isDragging ? 'hidden' : 'visible'
       }}
       onMouseDown={(e) => {
+        e.stopPropagation();
         // Track that mouse was pressed on this event
         mouseMovedRef.current = false;
 

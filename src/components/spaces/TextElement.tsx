@@ -1751,16 +1751,67 @@ export function TextElement({
               <div className="w-full">
                 <CalendarElement
                   className="w-full"
-                  data={{
-                    startDate: block.metadata?.startDate || new Date().toISOString(),
-                    endDate: block.metadata?.endDate || new Date(Date.now() + 3600000).toISOString(),
-                    recurrence: block.metadata?.recurrence || 'none',
-                    notes: block.metadata?.notes,
-                    completed: block.metadata?.completed,
-                    attachments: block.metadata?.attachments,
-                    displayMode: block.metadata?.displayMode || 'card'
+                  data={(function () {
+                    const baseData = {
+                      startDate: block.metadata?.startDate || new Date().toISOString(),
+                      endDate: block.metadata?.endDate || new Date(Date.now() + 3600000).toISOString(),
+                      recurrence: block.metadata?.recurrence || 'none',
+                      notes: block.metadata?.notes,
+                      completed: block.metadata?.completed,
+                      attachments: block.metadata?.attachments,
+                      displayMode: block.metadata?.displayMode || 'card',
+                      linkedEventId: block.metadata?.linkedEventId,
+                      sourceSpaceId: block.metadata?.sourceSpaceId
+                    };
+
+                    // Pull sync: Override with source data if linked
+                    if (baseData.linkedEventId && baseData.sourceSpaceId && spacesState) {
+                      const sourceSpace = spacesState.getSpace(baseData.sourceSpaceId);
+                      const sourceBlock = sourceSpace?.content?.blocks?.find((b: any) => b.id === baseData.linkedEventId);
+                      if (sourceBlock) {
+                        return {
+                          ...baseData,
+                          startDate: sourceBlock.metadata?.startDate || baseData.startDate,
+                          endDate: sourceBlock.metadata?.endDate || baseData.endDate,
+                          recurrence: sourceBlock.metadata?.recurrence || baseData.recurrence,
+                          notes: sourceBlock.metadata?.notes || sourceBlock.content || baseData.notes,
+                          completed: sourceBlock.metadata?.completed ?? baseData.completed,
+                          attachments: sourceBlock.metadata?.attachments || baseData.attachments,
+                        };
+                      }
+                    }
+                    return baseData;
+                  })()}
+                  onUpdate={(updates) => {
+                    // Update local block
+                    onUpdate(block.id, { metadata: { ...block.metadata, ...updates } });
+
+                    // Push sync: Update linked source block
+                    if (block.metadata?.linkedEventId && block.metadata?.sourceSpaceId && spacesState) {
+                      const sourceSpace = spacesState.getSpace(block.metadata.sourceSpaceId);
+                      if (sourceSpace && sourceSpace.content?.blocks) {
+                        const sourceBlocks = sourceSpace.content.blocks;
+                        const blockIndex = sourceBlocks.findIndex((b: any) => b.id === block.metadata.linkedEventId);
+                        if (blockIndex !== -1) {
+                          const sourceBlock = sourceBlocks[blockIndex];
+                          const newSourceBlock = {
+                            ...sourceBlock,
+                            // specific mapping: updates.notes -> content & metadata.notes
+                            content: updates.notes !== undefined ? updates.notes : sourceBlock.content,
+                            metadata: {
+                              ...sourceBlock.metadata,
+                              ...updates
+                            }
+                          };
+                          const newBlocks = [...sourceBlocks];
+                          newBlocks[blockIndex] = newSourceBlock;
+                          spacesState.updateSpace(block.metadata.sourceSpaceId, {
+                            content: { ...sourceSpace.content, blocks: newBlocks }
+                          });
+                        }
+                      }
+                    }
                   }}
-                  onUpdate={(updates) => onUpdate(block.id, { metadata: { ...block.metadata, ...updates } })}
                   spacesState={spacesState}
                   isReadOnly={false}
                 />

@@ -1,15 +1,16 @@
 import { Block } from '../../types';
+import { CalendarElement } from './CalendarElement';
 import * as LucideIcons from 'lucide-react';
-import { 
-  Type, 
-  Heading1, 
-  Heading2, 
-  Heading3, 
+import {
+  Type,
+  Heading1,
+  Heading2,
+  Heading3,
   Heading4,
-  List as ListIcon, 
-  ListOrdered, 
-  CheckSquare, 
-  Quote, 
+  List as ListIcon,
+  ListOrdered,
+  CheckSquare,
+  Quote,
   Code,
   AlertCircle,
   ExternalLink,
@@ -49,6 +50,8 @@ export function BlockEmbed({ block, sourceSpaceName, onNavigate, sourceSpaceId }
         return Sigma;
       case 'callout':
         return AlertCircle;
+      case 'calendar':
+        return LucideIcons.Calendar;
       default:
         return Type;
     }
@@ -124,7 +127,7 @@ export function BlockEmbed({ block, sourceSpaceName, onNavigate, sourceSpaceId }
       case 'math':
         return (
           <div className="font-mono bg-default-50 p-3 rounded-md border-l-4 border-primary text-sm">
-             <span className="font-mono">
+            <span className="font-mono">
               {block.content || '(vuoto)'}
             </span>
           </div>
@@ -147,13 +150,37 @@ export function BlockEmbed({ block, sourceSpaceName, onNavigate, sourceSpaceId }
             <span>{block.content || '(vuoto)'}</span>
           </div>
         );
+      case 'calendar':
+        return (
+          <div className="w-full">
+            <CalendarElement
+              data={{
+                startDate: block.metadata?.startDate || new Date().toISOString(),
+                endDate: block.metadata?.endDate || new Date().toISOString(),
+                recurrence: block.metadata?.recurrence,
+                notes: block.metadata?.notes || block.content,
+                completed: block.metadata?.completed,
+                attachments: block.metadata?.attachments,
+                displayMode: block.metadata?.displayMode || 'card'
+              }}
+              onUpdate={() => { }}
+              isReadOnly={true}
+              spacesState={undefined}
+            />
+          </div>
+        );
       default:
         return <span>{block.content || '(vuoto)'}</span>;
     }
   };
 
+  // Special case: Calendar blocks should look native even if embedded
+  if (block.type === 'calendar') {
+    return renderBlockContent();
+  }
+
   return (
-    <div 
+    <div
       className="p-4 bg-white shadow-sm"
       style={{
         borderRadius: '32px',
