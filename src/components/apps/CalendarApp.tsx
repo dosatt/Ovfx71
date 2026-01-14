@@ -393,7 +393,7 @@ interface CalendarDayCellProps {
   isCurrentMonth: boolean;
   isSelected: boolean | null;
   dayEvents: any[];
-  onStartSelection: (date: Date) => void;
+  onStartSelection: (date: Date, mousePos?: { x: number, y: number }) => void;
   onUpdateSelection: (date: Date) => void;
   onUpdateEvent: (eventId: string, blockId: string, spaceId: string, updates: any) => void;
   onNavigate: (sid: string, title: string) => void;
@@ -465,7 +465,7 @@ const CalendarDayCell = memo(({
 
         const dragDate = new Date(day);
         dragDate.setHours(9, 0, 0, 0);
-        onStartSelection(dragDate);
+        onStartSelection(dragDate, { x: e.clientX, y: e.clientY });
       }}
       onMouseEnter={() => {
         if (isAnyDragging) return;
@@ -512,6 +512,8 @@ const CalendarDayCell = memo(({
           />
         ))}
       </div>
+      {/* Free selection zone at bottom of cell */}
+      <div className="flex-1 min-h-[20px]" />
     </div>
   );
 });
@@ -915,7 +917,7 @@ export function CalendarApp({ spacesState, viewportsState }: CalendarAppProps) {
   const [view, setView] = useState<CalendarView>(() => {
     if (typeof localStorage !== 'undefined') {
       const saved = localStorage.getItem('calendar_current_view');
-      if (saved && ['month', 'week', 'day', 'year', 'timeline'].includes(saved)) {
+      if (saved && ['month', 'week', 'day', 'ndays', 'year', 'timeline'].includes(saved)) {
         return saved as CalendarView;
       }
     }
@@ -969,13 +971,17 @@ export function CalendarApp({ spacesState, viewportsState }: CalendarAppProps) {
     spaceId: ''
   });
 
-  // Refs for auto-saving on outside click
+  // Refs for auto-saving on outside click and stable interaction logic
   const newEventRef = useRef(newEvent);
-  const popoverAnchorRef = useRef(popoverAnchor);
+  const popoverAnchorRef = useRef<{ x: number; y: number } | null>(null);
+  const editPopoverAnchorRef = useRef<{ x: number; y: number } | null>(null);
+  const selectionRangeRef = useRef<{ start: Date; end: Date } | null>(null);
   const handleCreateEventRef = useRef<() => void>(() => { });
 
   useEffect(() => { newEventRef.current = newEvent; }, [newEvent]);
   useEffect(() => { popoverAnchorRef.current = popoverAnchor; }, [popoverAnchor]);
+  useEffect(() => { editPopoverAnchorRef.current = editPopoverAnchor; }, [editPopoverAnchor]);
+  useEffect(() => { selectionRangeRef.current = selectionRange; }, [selectionRange]);
 
   const popoverRef = useRef<HTMLDivElement>(null);
   const editPopoverRef = useRef<HTMLDivElement>(null);
@@ -1021,27 +1027,25 @@ export function CalendarApp({ spacesState, viewportsState }: CalendarAppProps) {
 
   // Horizontal Scroll Logic
   // Scroll horizontal logic with native scroll + virtualization
-  const headerRef = useRef<HTMLDivElement>(null);
+  // Scroll horizontal logic with native scroll + virtualization
   const skipScrollEvent = useRef(false);
 
   // Sync header scroll with body scroll
   const handleScroll = useCallback((e: React.UIEvent<HTMLDivElement>) => {
-    if (!containerRef || !headerRef.current) return;
+    if (!containerRef) return;
     if (skipScrollEvent.current) return;
 
     // Prevent date shifts during drag OR if a shift is already pending
     if (isAnyDraggingGlobal || pendingScrollRef.current) {
-      // Still sync header scroll though
-      if (headerRef.current.scrollLeft !== e.currentTarget.scrollLeft) {
-        headerRef.current.scrollLeft = e.currentTarget.scrollLeft;
-      }
+      // Still sync header scroll though - REMOVED (using sticky)
+      // if (headerRef.current.scrollLeft !== e.currentTarget.scrollLeft) {
+      //   headerRef.current.scrollLeft = e.currentTarget.scrollLeft;
+      // }
       return;
     }
 
-    // Sync header X scroll
-    if (headerRef.current.scrollLeft !== e.currentTarget.scrollLeft) {
-      headerRef.current.scrollLeft = e.currentTarget.scrollLeft;
-    }
+    // Sync header X scroll logic removed (using sticky positioning now)
+
 
     // Infinite scroll logic
     // Only for week/ndays view
@@ -1105,10 +1109,7 @@ export function CalendarApp({ spacesState, viewportsState }: CalendarAppProps) {
         containerRef.scrollTop = pendingScrollRef.current.scrollTop;
       }
 
-      // Also sync header immediately
-      if (headerRef.current) {
-        headerRef.current.scrollLeft = containerRef.scrollLeft;
-      }
+
 
       pendingScrollRef.current = null;
       return;
@@ -1138,9 +1139,7 @@ export function CalendarApp({ spacesState, viewportsState }: CalendarAppProps) {
       const initialScroll = BUFFER * colWidth;
       containerRef.scrollLeft = initialScroll;
 
-      if (headerRef.current) {
-        headerRef.current.scrollLeft = initialScroll;
-      }
+
     }
   }, [view, nDays, containerRef]);
 
@@ -1283,19 +1282,20 @@ export function CalendarApp({ spacesState, viewportsState }: CalendarAppProps) {
   }, [popoverAnchor, editPopoverAnchor]);
 
   // Global interaction listener for auto-save/destroy
+
+  // Global interaction listener for auto-save/destroy
   useEffect(() => {
-    if (!popoverAnchor && !editPopoverAnchor) {
-      setSelectionRange(null);
-      setDragGhostDate(null);
-      setDragGhostItem(null); // Ensure drag ghost is cleared
-      return;
-    }
-
     const handleInteraction = (e: Event) => {
-      // If ref is null, it means it was already handled by handleStartSelection (race condition prevention)
-      if (!popoverAnchorRef.current && !editPopoverAnchor) return; // Check both anchors
-
       const target = e.target as HTMLElement;
+      const currentPopoverAnchor = popoverAnchorRef.current;
+      const currentEditPopoverAnchor = editPopoverAnchorRef.current;
+
+      // If no popover is open, we only care about clearing ghosts
+      if (!currentPopoverAnchor && !currentEditPopoverAnchor) {
+        setDragGhostDate(null);
+        setDragGhostItem(null);
+        return;
+      }
 
       // If interacting inside popover, ignore
       if (popoverRef.current && popoverRef.current.contains(target as Node)) {
@@ -1304,42 +1304,56 @@ export function CalendarApp({ spacesState, viewportsState }: CalendarAppProps) {
       if (editPopoverRef.current && editPopoverRef.current.contains(target as Node)) {
         return;
       }
-
       // If interacting with a Portal (e.g., Select dropdowns), ignore
       if (target.closest && target.closest('[role="listbox"], [role="menu"], [data-slot="listbox"], [data-overlay-container="true"]')) {
         return;
       }
 
-      // If interacting outside: auto-save if title exists, otherwise destroy
-      if (popoverAnchorRef.current) { // Only auto-save for new event popover
-        if (newEventRef.current.title) {
-          handleCreateEventRef.current();
-        } else {
+      // On scroll, only close element popover (not creation popover which should follow)
+      if (e.type === 'scroll') {
+        if (currentEditPopoverAnchor) {
+          setEditPopoverAnchor(null);
+          setSelectedEventId(null);
+        }
+        return;
+      }
+
+      // Handle outside interactions
+      if (currentPopoverAnchor || currentEditPopoverAnchor) {
+        // If clicking on an event item, let that handler deal with it
+        if (target.closest('.calendar-event-item')) return;
+
+        if (currentPopoverAnchor) {
+          // Cancel creation on outside click - don't auto-save
           setSelectionRange(null);
+          setPopoverAnchor(null);
+        }
+
+        if (currentEditPopoverAnchor) {
+          setEditPopoverAnchor(null);
+          setSelectedEventId(null);
         }
       }
 
-      setPopoverAnchor(null);
-      popoverAnchorRef.current = null; // Mark as handled
-      setEditPopoverAnchor(null);
-      setDragGhostDate(null); // Clear drag ghost on outside interaction
-      setDragGhostItem(null); // Clear drag ghost item on outside interaction
+      setDragGhostDate(null);
+      setDragGhostItem(null);
     };
 
-    // Use capture phase to handle events before they are stopped by other components (e.g. existing value drags)
-    const options = { capture: true };
-    document.addEventListener('mousedown', handleInteraction, options);
-    document.addEventListener('dragstart', handleInteraction, options);
-    document.addEventListener('wheel', handleInteraction, options);
-    document.addEventListener('contextmenu', handleInteraction, options);
+    const options = { capture: true, passive: true };
+    window.addEventListener('pointerdown', handleInteraction, { capture: true });
+    window.addEventListener('scroll', handleInteraction, options);
+    window.addEventListener('wheel', handleInteraction, options);
+    window.addEventListener('dragstart', handleInteraction, options);
+    window.addEventListener('contextmenu', handleInteraction, { capture: true });
 
     return () => {
-      document.removeEventListener('mousedown', handleInteraction, options);
-      document.removeEventListener('dragstart', handleInteraction, options);
-      document.removeEventListener('wheel', handleInteraction, options);
-      document.removeEventListener('contextmenu', handleInteraction, options);
+      window.removeEventListener('pointerdown', handleInteraction, { capture: true });
+      window.removeEventListener('scroll', handleInteraction, options);
+      window.removeEventListener('wheel', handleInteraction, options);
+      window.removeEventListener('dragstart', handleInteraction, options);
+      window.removeEventListener('contextmenu', handleInteraction, { capture: true });
     };
-  }, [popoverAnchor, editPopoverAnchor]);
+  }, []); // Stable effect
 
   // Keep a stable ref to spacesState to avoid re-creating callbacks on every render
   // This is crucial for performance as spacesState changes frequently
@@ -1499,7 +1513,8 @@ export function CalendarApp({ spacesState, viewportsState }: CalendarAppProps) {
   }, [containerRef, view]);
 
   const handleCreateEvent = useCallback(() => {
-    if (!newEvent.title) return;
+    // We now allow 'New' as fallback title
+    const finalTitle = newEvent.title || 'New';
 
     let targetSpaceId = newEvent.spaceId;
     const spaces = spacesStateRef.current.spaces;
@@ -1519,21 +1534,42 @@ export function CalendarApp({ spacesState, viewportsState }: CalendarAppProps) {
       }
     }
 
+    // Create a dedicate space for the event's "Page Note"
+    const noteSpace = spacesStateRef.current.createSpace('page');
+    // Initialize it with the note content if any, or just title
+    spacesStateRef.current.updateSpace(noteSpace.id, {
+      title: finalTitle, // The page title matches event title
+      content: {
+        blocks: newEvent.notes ? [{
+          id: `block_${Date.now()}_note`,
+          type: 'paragraph',
+          content: newEvent.notes
+        }] : []
+      },
+      metadata: { isNote: true, isEventPage: true }
+    });
+
     const targetSpace = spacesStateRef.current.getSpace(targetSpaceId);
     if (targetSpace) {
       const newBlock = {
         id: `block_${Date.now()}`,
         type: 'calendar',
-        content: newEvent.notes,
+        content: '', // Content is now in the linked space
         metadata: {
           startDate: newEvent.startDate,
           endDate: newEvent.endDate,
-          notes: newEvent.notes,
-          title: newEvent.title,
+          notes: '', // Legacy field cleared
+          noteSpaceId: noteSpace.id, // Link to the new space
+          title: finalTitle,
           displayMode: 'card',
           updatedAt: Date.now() // Track for sort order
         }
       };
+
+      // Back-link the space to the event
+      spacesStateRef.current.updateSpace(noteSpace.id, {
+        metadata: { ...noteSpace.metadata, eventId: newBlock.id }
+      });
 
       const updatedBlocks = [...(targetSpace.content?.blocks || []), newBlock];
       spacesStateRef.current.updateSpace(targetSpaceId, {
@@ -1552,65 +1588,16 @@ export function CalendarApp({ spacesState, viewportsState }: CalendarAppProps) {
     });
   }, [newEvent, onClose]);
 
+  // Update the ref to handleCreateEvent once defined
   useEffect(() => {
     handleCreateEventRef.current = handleCreateEvent;
   }, [handleCreateEvent]);
 
   const handleQuickCreate = useCallback(() => {
-    if (!newEvent.title) return;
+    // Allow 'New' default
     handleCreateEvent();
     setPopoverAnchor(null);
-  }, [newEvent, handleCreateEvent]);
-
-  const handleStartSelection = useCallback((date: Date) => {
-    // Auto-save draft if clicking outside (starting new selection) while popover is open
-    if (popoverAnchorRef.current && newEventRef.current.title) {
-      handleCreateEventRef.current();
-    }
-    setPopoverAnchor(null);
-    popoverAnchorRef.current = null;
-
-    setIsSelecting(true);
-    setSelectionRange({ start: date, end: date });
-  }, []);
-
-  const handleUpdateSelection = useCallback((date: Date) => {
-    if (!isSelecting) return;
-    setSelectionRange(prev => prev ? { ...prev, end: date } : null); // Access prev from state, don't depend on selectionRange
-  }, [isSelecting]);
-
-  const handleEndSelection = useCallback((e?: React.MouseEvent | MouseEvent) => {
-    if (!isSelecting) {
-      // Just explicit false set
-      setIsSelecting(false);
-      return;
-    }
-
-    // We need to access selectionRange state.
-    // Since we can't get it from 'prev', we need it in deps, but then this changes.
-    // So we can use a ref or just accept selectionRange dependency (it changes on drag, which is frequent).
-    // BUT handleEndSelection is attached to container onMouseUp.
-    // If it changes, the listener re-attaches.
-    // However, onMouseUp is likely not a big deal if it's passive.
-    // But let's try to get selectionRange from state inside setSelectionRange if possible? No.
-    // We can use a ref for selectionRange.
-    // Let's defer 'handleEndSelection' logic to effect or just use selectionRange here.
-    // Actually, selectionRange updates every mousemove (hover).
-    // So handleEndSelection updates every mousemove.
-    // This is fine for the event handler itself.
-    // But let's see where it is used.
-    // It is used in `renderMonthView` -> `div onMouseUp`.
-    // The div re-renders every time handleEndSelection changes.
-    // The div contains the WHOLE calendar.
-    // This means the WHOLE CALENDAR re-renders on every mouse move during selection!
-    // THIS IS A BOTTLENECK.
-
-    // FIX: use a ref for selectionRange to read it in handleEndSelection without re-creating the function.
-  }, [isSelecting]); // Wait, implementation below.
-
-  // Using ref for selectionRange to stabilize handleEndSelection
-  const selectionRangeRef = useRef(selectionRange);
-  useEffect(() => { selectionRangeRef.current = selectionRange; }, [selectionRange]);
+  }, [handleCreateEvent]);
 
   const handleEndSelectionStable = useCallback((e?: React.MouseEvent | MouseEvent) => {
     if (!isSelecting) {
@@ -1635,37 +1622,66 @@ export function CalendarApp({ spacesState, viewportsState }: CalendarAppProps) {
       return;
     }
 
-    // For week/day view, ensure at least 30min duration if it's the same time
-    // Note: This logic below likely won't be reached for 0-duration clicks now, 
-    // but useful if we ever allow short drags that default to something.
-    let finalEnd = end;
-    if ((view === 'week' || view === 'day') && start.getTime() === end.getTime()) {
-      // double check logic: if we return above, this is unreachable for strict equality.
-      // However, if we want to allow "very short drags" that are technically clicks?
-      // user said "only be created via dragging". 
-      // A click usually results in identical start/end.
-      finalEnd = new Date(start.getTime() + 30 * 60 * 1000);
-    } else if (view === 'month' && isSameDay(start, end)) {
-      // For month view, default to 1h on that day
-      finalEnd = new Date(start.getTime() + 60 * 60 * 1000);
-    }
-
-    setNewEvent(prev => ({
-      ...prev,
-      title: '', // Empty title to allow cancellation on outside click
-      startDate: format(start, "yyyy-MM-dd'T'HH:mm"),
-      endDate: format(finalEnd, "yyyy-MM-dd'T'HH:mm")
-    }));
-
-    if (e && 'clientX' in e) {
-      setPopoverAnchor({ x: e.clientX, y: e.clientY });
+    // Calculate anchor position for popover
+    let anchor: { x: number; y: number } | null = null;
+    if (e && e.clientX !== undefined) {
+      anchor = { x: e.clientX, y: e.clientY };
     } else {
-      // Fallback anchor
-      setPopoverAnchor({ x: window.innerWidth / 2, y: window.innerHeight / 2 });
+      // Fallback
+      anchor = { x: window.innerWidth / 2, y: window.innerHeight / 2 };
     }
 
+    // Reset new event data
+    setNewEvent({
+      title: '',
+      startDate: format(start, "yyyy-MM-dd'T'HH:mm"),
+      endDate: format(end, "yyyy-MM-dd'T'HH:mm"),
+      notes: '',
+      spaceId: spacesStateRef.current.focusedSpaceId || (spacesStateRef.current.spaces[0]?.id || '')
+    });
+
+    setPopoverAnchor(anchor);
+    if (dragTrackRef.current) prevDragTrackRef.current.isDragCreation = true;
     setIsSelecting(false);
-  }, [isSelecting, view]); // Removed selectionRange from deps
+    // Don't clear selectionRange here - we want the blue highlight to stay
+    // while the user fills the popover fields.
+  }, [isSelecting, setNewEvent, setPopoverAnchor, setIsSelecting, setSelectionRange, spacesStateRef]);
+
+  const handleStartSelection = useCallback((date: Date, mousePos?: { x: number, y: number }) => {
+    // If we're already selecting, finish that one first (safety)
+    // Note: avoid calling handleEndSelectionStable directly if it's not defined yet,
+    // but here we are reordering so it's fine.
+    if (isSelecting) {
+      setIsSelecting(false);
+    }
+
+    // Force close any existing popover
+    if (popoverAnchorRef.current) {
+      if (newEventRef.current.title) {
+        handleCreateEventRef.current();
+      }
+      setPopoverAnchor(null);
+    }
+    setEditPopoverAnchor(null);
+    setSelectedEventId(null);
+
+    setIsSelecting(true);
+    const newRange = { start: date, end: date };
+    selectionRangeRef.current = newRange;
+    setSelectionRange(newRange);
+
+    // Initialize drag tracking immediately to ensure move/up correctly detect it
+    if (mousePos) {
+      dragTrackRef.current.mouseDownPos = mousePos;
+    }
+  }, [isSelecting, setSelectionRange, setIsSelecting, setPopoverAnchor, setEditPopoverAnchor, setSelectedEventId, newEventRef, handleCreateEventRef, popoverAnchorRef]);
+
+  const handleUpdateSelection = useCallback((date: Date) => {
+    if (!isSelecting) return;
+    const newRange = selectionRangeRef.current ? { ...selectionRangeRef.current, end: date } : { start: date, end: date };
+    selectionRangeRef.current = newRange;
+    setSelectionRange(newRange);
+  }, [isSelecting]);
 
   const handleUpdateEvent = useCallback((eventId: string, blockId: string, spaceId: string, updates: any) => {
     const space = spacesStateRef.current.spaces.find((s: any) => s.id === spaceId);
@@ -1689,7 +1705,10 @@ export function CalendarApp({ spacesState, viewportsState }: CalendarAppProps) {
     });
   }, []);
 
-  // Handle global Escape key to cancel selection
+  const dragTrackRef = useRef({ mouseDownPos: null as { x: number, y: number } | null, isDragCreation: false });
+  // Helper ref to access current value in callbacks without recreating them if not needed, though dragTrackRef is stable.
+  const prevDragTrackRef = dragTrackRef;
+
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
@@ -1710,29 +1729,81 @@ export function CalendarApp({ spacesState, viewportsState }: CalendarAppProps) {
       }
     };
 
-    // Handle global mouseup to ensure selection ends even if outside calendar
+    const handleGlobalMouseDown = (e: MouseEvent) => {
+      // If we already started selecting via handleStartSelection, this track is already set.
+      // But for clicks outside, we still need to capture it.
+      if (isSelecting && e.button === 0 && !dragTrackRef.current.mouseDownPos) {
+        dragTrackRef.current.mouseDownPos = { x: e.clientX, y: e.clientY };
+      }
+
+      const target = e.target as HTMLElement;
+      if (isSelecting && containerRef && !containerRef.contains(target)) {
+        setIsSelecting(false);
+        setSelectionRange(null);
+      }
+    };
+
+    const handleGlobalMouseMove = (e: MouseEvent) => {
+      if (!isSelecting || !dragTrackRef.current.mouseDownPos) return;
+
+      const dx = Math.abs(e.clientX - dragTrackRef.current.mouseDownPos.x);
+      const dy = Math.abs(e.clientY - dragTrackRef.current.mouseDownPos.y);
+
+      if (dx > 5 || dy > 5) {
+        const target = e.target as HTMLElement;
+        const calendarContainer = containerRef;
+        if (calendarContainer && (!calendarContainer.contains(target) || target.closest('.calendar-event-item'))) {
+          setIsSelecting(false);
+          setSelectionRange(null);
+          dragTrackRef.current.mouseDownPos = null;
+        }
+      }
+    };
+
     const handleGlobalMouseUp = (e: MouseEvent) => {
       if (isSelecting) {
         handleEndSelectionStable(e);
       }
-      // Also ensure dragging state is cleared if react-dnd misses it
-      if (document.body.classList.contains('is-dragging-event-global')) {
-        // This is handled by isDragging state in DraggableTimelineEvent, 
-        // but if the component unmounts or something, we might want to be safe.
-        // However, we can't easily set isDragging from here without context.
-        // But we CAN ensure our UI is clean.
+      dragTrackRef.current.mouseDownPos = null;
+    };
+
+    const handleDragStart = (e: DragEvent) => {
+      if (isSelecting) {
+        setIsSelecting(false);
+        setSelectionRange(null);
       }
     };
 
     window.addEventListener('keydown', handleKeyDown);
+    window.addEventListener('mousedown', handleGlobalMouseDown, { capture: true });
+    window.addEventListener('mousemove', handleGlobalMouseMove);
     window.addEventListener('mouseup', handleGlobalMouseUp);
+    window.addEventListener('dragstart', handleDragStart, { capture: true });
+
     return () => {
       window.removeEventListener('keydown', handleKeyDown);
+      window.removeEventListener('mousedown', handleGlobalMouseDown, { capture: true });
+      window.removeEventListener('mousemove', handleGlobalMouseMove);
       window.removeEventListener('mouseup', handleGlobalMouseUp);
+      window.removeEventListener('dragstart', handleDragStart, { capture: true });
     };
-  }, [isSelecting, popoverAnchor, handleEndSelectionStable]);
+  }, [isSelecting, popoverAnchor, handleEndSelectionStable, selectedEventId, activeResize, containerRef]);
+
+  // Keep ref-based anchors for interaction logic
+  // Removed from here, moved to the top of the component body for hoisting safety
+
 
   const handleToggleEventSelection = useCallback((id: string | null, anchor?: { x: number, y: number }) => {
+    // Always close creation state when interacting with an existing element or clearing selection
+    setPopoverAnchor(null);
+    popoverAnchorRef.current = null;
+    setIsSelecting(false);
+    setSelectionRange(null);
+
+    if (id && anchor && newEventRef.current.title) {
+      handleCreateEventRef.current();
+    }
+
     setSelectedEventId(id);
     if (anchor) setEditPopoverAnchor(anchor);
     else setEditPopoverAnchor(null);
@@ -1784,6 +1855,12 @@ export function CalendarApp({ spacesState, viewportsState }: CalendarAppProps) {
         onMouseUp={(e) => isSelecting && handleEndSelectionStable(e)}
         onMouseLeave={() => isSelecting && handleEndSelectionStable()}
         onClick={(e) => {
+          // If this click is the tail of a drag-creation, ignore it to prevent closing the popover immediately
+          if (dragTrackRef.current.isDragCreation) {
+            dragTrackRef.current.isDragCreation = false;
+            return;
+          }
+
           const target = e.target as HTMLElement;
           if (!target.closest('.calendar-event-item')) {
             handleToggleEventSelection(null);
@@ -1896,6 +1973,9 @@ export function CalendarApp({ spacesState, viewportsState }: CalendarAppProps) {
                 allEvents={allEvents}
                 hourHeight={hourHeight}
                 isAnyDragging={isAnyDraggingGlobal}
+                isSelecting={isSelecting}
+                onDragEnter={handleDragEnter}
+                onDragLeave={handleDragLeave}
               />
             ))}
 
@@ -1980,7 +2060,7 @@ export function CalendarApp({ spacesState, viewportsState }: CalendarAppProps) {
                           if (e.button !== 0 || isAnyDraggingGlobal) return;
                           const d = new Date(day);
                           d.setHours(9, 0, 0, 0);
-                          handleStartSelection(d);
+                          handleStartSelection(d, { x: e.clientX, y: e.clientY });
                         }}
                         onMouseEnter={() => {
                           if (!isSelecting || isAnyDraggingGlobal) return;
@@ -2038,7 +2118,7 @@ export function CalendarApp({ spacesState, viewportsState }: CalendarAppProps) {
                 if (e.button !== 0 || isAnyDraggingGlobal) return;
                 const d = new Date(day);
                 d.setHours(9, 0, 0, 0);
-                handleStartSelection(d);
+                handleStartSelection(d, { x: e.clientX, y: e.clientY });
               }}
               onMouseEnter={() => {
                 if (!isSelecting || isAnyDraggingGlobal) return;
@@ -2077,51 +2157,68 @@ export function CalendarApp({ spacesState, viewportsState }: CalendarAppProps) {
     const daysBuffer = Array.from({ length: totalDays }, (_, i) => addDays(startOfDay(currentDate), i + startOffset));
     const hours = Array.from({ length: 24 }, (_, i) => i);
 
-    // We want the columns to be `viewportWidth / n` wide.
-    // So the total width of the inner container must be `(totalDays / n) * 100%`.
-    const containerWidthPct = (totalDays / n) * 100;
+    // Total track width must include the sidebar (60px) plus the columns.
+    // However, since columns are flex-1, we use containerWidthPct to scale them relative to viewport.
+    const totalWidthPct = (totalDays / n) * 100;
 
     return (
-      <div className="flex flex-col h-full bg-white">
-        {/* Header Row */}
-        <div className="flex border-b border-divider shrink-0 bg-white z-20 relative">
-          <div className="w-[60px] shrink-0 border-r border-divider bg-default-50/50" />
-          <div className="flex-1 overflow-hidden relative bg-white" ref={headerRef}>
-            <div className="flex h-full" style={{ width: `${containerWidthPct}%` }}>
-              {daysBuffer.map((day, i) => {
-                const isToday = isSameDay(day, new Date());
-                return (
-                  <div key={day.getTime()} className="flex-1 h-[40px] flex flex-col items-center justify-center border-r border-divider min-w-0">
-                    <span className="text-[10px] uppercase font-bold text-default-400">{format(day, 'EEE', { locale: enUS })}</span>
-                    <span className={`text-sm ${isToday ? 'font-bold text-primary' : ''}`}>{format(day, 'd')}</span>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        </div>
-
-        {/* Body Row */}
+      <div className="flex flex-col h-full bg-white relative overflow-hidden select-none">
         <div
           ref={setContainerRef}
-          className="flex-1 overflow-auto relative no-scrollbar overscroll-x-none overscroll-none"
+          className="flex-1 overflow-auto relative no-scrollbar scroll-smooth overscroll-none"
           onScroll={handleScroll}
         >
-          <div className="flex min-h-full">
-            {/* Sidebar (Sticky) */}
-            <div className="w-[60px] shrink-0 sticky left-0 z-30 bg-default-50/50 border-r border-divider pointer-events-none">
-              {hours.map(hour => (
-                <div key={hour} style={{ height: `${hourHeight}px` }} className="px-1 relative border-t border-divider text-[10px] text-default-400">
-                  <span className="absolute -top-[7px] left-1/2 -translate-x-1/2 bg-default-50 px-1 rounded-sm">
-                    {`${hour}:00`}
-                  </span>
-                </div>
-              ))}
+          {/* Scrollable track with explicit width for sticky row bounds */}
+          <div
+            className="flex flex-col relative min-h-full"
+            style={{ width: `${totalWidthPct}%`, minWidth: '100%' }}
+          >
+            {/* Header Row - Sticky Top */}
+            <div className="sticky top-0 z-50 flex border-b border-divider bg-white shrink-0 h-[40px] w-full">
+              {/* Corner */}
+              <div
+                className="w-[60px] shrink-0 border-r border-divider bg-default-50 sticky left-0 z-[60] flex items-center justify-center font-bold text-[10px] text-default-400"
+                style={{ transform: 'translate3d(0,0,0)', willChange: 'transform' }}
+              >
+                TIME
+              </div>
+
+              {/* Header Days */}
+              <div className="flex-1 flex bg-white min-w-0">
+                {daysBuffer.map((day, i) => {
+                  const isToday = isSameDay(day, new Date());
+                  return (
+                    <div key={day.getTime()} className="flex-1 flex flex-col items-center justify-center border-r border-divider min-w-0 bg-white">
+                      <span className="text-[10px] uppercase font-bold text-default-400 leading-none">{format(day, 'EEE', { locale: enUS })}</span>
+                      <span className={`text-[13px] mt-0.5 ${isToday ? 'font-black text-primary' : 'font-bold text-default-800'}`}>{format(day, 'd')}</span>
+                    </div>
+                  );
+                })}
+              </div>
             </div>
 
-            {/* Columns */}
-            <div className="flex-1 relative">
-              <div className="flex h-full" style={{ width: `${containerWidthPct}%` }}>
+            {/* Grid Body Sticky Row */}
+            <div className="flex flex-1 relative bg-white min-h-0 overflow-visible" style={{ width: '100%' }}>
+              {/* Sidebar - Sticky Left */}
+              <div
+                className="w-[60px] shrink-0 bg-default-50 border-r border-divider sticky left-0 z-40 pointer-events-none self-start flex flex-col"
+                style={{
+                  height: `${hourHeight * 24}px`,
+                  transform: 'translate3d(0,0,0)',
+                  willChange: 'transform'
+                }}
+              >
+                {hours.map(hour => (
+                  <div key={hour} style={{ height: `${hourHeight}px` }} className="px-1 relative border-t border-divider text-[10px] text-default-400 font-medium">
+                    <span className="absolute -top-[7px] left-1/2 -translate-x-1/2 bg-default-50 px-1 rounded-sm">
+                      {`${hour}:00`}
+                    </span>
+                  </div>
+                ))}
+              </div>
+
+              {/* Columns Area - Explicitly flex to fill the remaining track width */}
+              <div className="flex-1 flex min-w-0 h-full relative" style={{ width: `calc(100% - 60px)` }}>
                 {daysBuffer.map((day, i) => {
                   const dayEvents = allEvents.filter(event => {
                     const eventStart = new Date(event.start);
@@ -2143,18 +2240,58 @@ export function CalendarApp({ spacesState, viewportsState }: CalendarAppProps) {
                             allEvents={allEvents}
                             hourHeight={hourHeight}
                             isAnyDragging={isAnyDraggingGlobal}
+                            isSelecting={isSelecting}
+                            onDragEnter={handleDragEnter}
+                            onDragLeave={handleDragLeave}
                           />
                         ))}
 
-                        {selectionRange && isSameDay(selectionRange.start, day) && (
-                          <div
-                            className="absolute left-1 right-1 bg-primary/30 border-2 border-primary rounded-md z-30 pointer-events-none"
-                            style={{
-                              top: `${Math.min(selectionRange.start.getHours(), selectionRange.end.getHours()) * hourHeight}px`,
-                              height: `${Math.max(1, Math.abs(selectionRange.end.getHours() - selectionRange.start.getHours())) * hourHeight}px`
-                            }}
-                          />
-                        )}
+                        {selectionRange && (() => {
+                          // Normalize range
+                          const s = selectionRange.start < selectionRange.end ? selectionRange.start : selectionRange.end;
+                          const e = selectionRange.start < selectionRange.end ? selectionRange.end : selectionRange.start;
+
+                          const dayStart = startOfDay(day);
+                          const dayEnd = endOfDay(day);
+
+                          // Check if selection overlaps this day
+                          if (s < dayEnd && e > dayStart) {
+                            let top = 0;
+                            let height = hourHeight * 24;
+
+                            const isS = isSameDay(s, day);
+                            const isE = isSameDay(e, day);
+
+                            if (isS && isE) {
+                              top = (s.getHours() * 60 + s.getMinutes()) * (hourHeight / 60);
+                              const durationMinutes = (e.getHours() * 60 + e.getMinutes()) - (s.getHours() * 60 + s.getMinutes());
+                              height = Math.max(15 * (hourHeight / 60), durationMinutes * (hourHeight / 60));
+                            } else if (isS) {
+                              top = (s.getHours() * 60 + s.getMinutes()) * (hourHeight / 60);
+                              height = (24 * 60 - (s.getHours() * 60 + s.getMinutes())) * (hourHeight / 60);
+                            } else if (isE) {
+                              top = 0;
+                              height = (e.getHours() * 60 + e.getMinutes()) * (hourHeight / 60);
+                            }
+
+                            return (
+                              <div
+                                className={`
+                                  absolute left-0 right-0 bg-primary/30 z-[35] pointer-events-none border-x-2 border-primary
+                                  ${isS ? 'border-t-2 rounded-t-md mt-0.5' : ''} 
+                                  ${isE ? 'border-b-2 rounded-b-md mb-0.5' : ''}
+                                `}
+                                style={{
+                                  top: `${top}px`,
+                                  height: `${height}px`,
+                                  left: '2px',
+                                  right: '2px'
+                                }}
+                              />
+                            );
+                          }
+                          return null;
+                        })()}
 
                         {calculateTimelineLayout(dayEvents, hourHeight, day).map((item, idx) => (
                           <DraggableTimelineEvent
@@ -2186,9 +2323,9 @@ export function CalendarApp({ spacesState, viewportsState }: CalendarAppProps) {
                 })}
               </div>
             </div>
+
+            <div className="h-10 w-full shrink-0" />
           </div>
-          {/* Add spacer at bottom for scrolling past last hour */}
-          <div className="h-10 w-full" />
         </div>
       </div>
     );
@@ -2212,7 +2349,7 @@ export function CalendarApp({ spacesState, viewportsState }: CalendarAppProps) {
         }
         body.is-dragging-event-global .calendar-event-item,
         body.is-dragging-event-global .calendar-event-item * {
-          pointer-events: none !important; /* Ensure all event items and children are non-interactive during global drag */
+          pointer-events: none !important;
         }
         body.is-dragging-event-global * {
           cursor: grabbing !important;
@@ -2268,8 +2405,32 @@ export function CalendarApp({ spacesState, viewportsState }: CalendarAppProps) {
             </div>
           )}
           <div className="w-px h-4 bg-default-300 mx-1" />
-          <Button startContent={<Plus size={16} />} size="sm" color="primary" className="font-bold shadow-lg" onPress={onOpen}>
-            New
+          <Button
+            isIconOnly
+            size="sm"
+            color="primary"
+            className="font-bold shadow-lg"
+            onPress={(e) => {
+              // Get button position for anchor
+              const rect = (e.target as HTMLElement).getBoundingClientRect();
+              // Create a pseudo-anchor below the button
+              // We use setPopoverAnchor which is usually for drag-create, 
+              // but we can repurpose it if we want the same exact UI.
+              // However, to differentiate "click create" vs "drag create", 
+              // we might want to just set it.
+              // Let's set the anchor exactly below the button center.
+              setPopoverAnchor({ x: rect.left + rect.width / 2 - 140, y: rect.bottom + 10 });
+
+              setNewEvent({
+                title: '',
+                startDate: format(new Date(), "yyyy-MM-dd'T'HH:mm"),
+                endDate: format(new Date(Date.now() + 3600000), "yyyy-MM-dd'T'HH:mm"),
+                notes: '',
+                spaceId: spacesStateRef.current.focusedSpaceId || (spacesStateRef.current.spaces[0]?.id || '')
+              });
+            }}
+          >
+            <Plus size={18} />
           </Button>
         </div>
       </div>
@@ -2319,13 +2480,13 @@ export function CalendarApp({ spacesState, viewportsState }: CalendarAppProps) {
                   <div className="pt-2 px-1">
                     <Input
                       autoFocus
-                      placeholder="Event title"
+                      placeholder="New"
                       variant="flat"
                       size="sm"
                       value={newEvent.title}
                       onValueChange={(v) => setNewEvent(prev => ({ ...prev, title: v }))}
                       onKeyDown={(e) => {
-                        if (e.key === 'Enter' && newEvent.title) handleQuickCreate();
+                        if (e.key === 'Enter') handleQuickCreate();
                         if (e.key === 'Escape') setPopoverAnchor(null);
                       }}
                       classNames={{
@@ -2371,7 +2532,7 @@ export function CalendarApp({ spacesState, viewportsState }: CalendarAppProps) {
                   <Button size="sm" fullWidth variant="flat" className="font-semibold h-7 text-[10px] bg-default-100/50 text-default-600 rounded-lg" onClick={() => { setPopoverAnchor(null); onOpen(); }}>
                     More details
                   </Button>
-                  <Button size="sm" fullWidth color="primary" className="font-bold h-7 text-[10px] shadow-lg shadow-primary/25 rounded-lg text-white" onClick={handleQuickCreate} isDisabled={!newEvent.title}>
+                  <Button size="sm" fullWidth color="primary" className="font-bold h-7 text-[10px] shadow-lg shadow-primary/25 rounded-lg text-white" onClick={handleQuickCreate}>
                     Create Event
                   </Button>
                 </div>
@@ -2494,39 +2655,47 @@ export function CalendarApp({ spacesState, viewportsState }: CalendarAppProps) {
                     </Select>
                   </div>
 
-                  {/* Notes Section */}
+                  {/* Page / Content Section */}
                   <div className="flex flex-col gap-1.5">
                     <div className="flex gap-1.5 items-center text-default-400 text-[10px] font-bold uppercase tracking-wider pl-1">
-                      <span className="w-1 h-1 rounded-full bg-warning" /> NOTES
+                      <span className="w-1 h-1 rounded-full bg-warning" /> CONTENT
                     </div>
                     <Button
                       size="sm"
                       variant="flat"
-                      className="w-full justify-between h-10 bg-white border border-default-200/50 shadow-sm hover:border-default-300 hover:shadow transition-all rounded-xl group px-3"
-                      startContent={<div className="p-1 bg-warning/10 rounded-md text-warning-600 group-hover:bg-warning/20 transition-colors"><FileText size={14} /></div>}
-                      endContent={selectedEvent.metadata?.noteSpaceId ? <ExternalLink size={12} className="opacity-30 group-hover:opacity-100 transition-opacity" /> : <Plus size={12} className="opacity-30 group-hover:opacity-100 transition-opacity" />}
+                      className="w-full justify-between h-12 bg-white border border-default-200/50 shadow-sm hover:border-default-300 hover:shadow transition-all rounded-xl group px-3"
+                      startContent={<div className="p-1.5 bg-warning/10 rounded-md text-warning-600 group-hover:bg-warning/20 transition-colors"><FileText size={16} /></div>}
+                      endContent={<ExternalLink size={14} className="opacity-30 group-hover:opacity-100 transition-opacity" />}
                       onClick={() => {
                         let spaceId = selectedEvent.metadata?.noteSpaceId;
+
+                        // Legacy support: if no noteSpaceId but has notes, create a space now
                         if (!spaceId) {
                           const newSpace = spacesState.createSpace('page');
-                          const noteTitle = `Notes: ${selectedEvent.metadata?.title || 'Untitled Event'}`;
+                          const noteTitle = selectedEvent.metadata?.title || 'Untitled Event';
+                          // Try to get legacy note content
+                          const legacyNote = selectedEvent.metadata?.notes || '';
+
                           spacesState.updateSpace(newSpace.id, {
                             title: noteTitle,
-                            metadata: { isNote: true, eventId: selectedEvent.id }
+                            content: { blocks: legacyNote ? [{ type: 'paragraph', content: legacyNote, id: 'migrated_note' }] : [] },
+                            metadata: { isNote: true, eventId: selectedEvent.id, isEventPage: true }
                           });
                           spaceId = newSpace.id;
                           handleUpdateEvent(selectedEvent.id, selectedEvent.id, selectedEvent.sourceSpaceId, { noteSpaceId: spaceId });
                         }
 
                         if (viewportsState && spaceId) {
-                          viewportsState.replaceCurrentTab(viewportsState.focusedViewportId, spaceId, undefined, selectedEvent.metadata?.title || 'Notes');
+                          viewportsState.replaceCurrentTab(viewportsState.focusedViewportId, spaceId, undefined, selectedEvent.metadata?.title || 'Event Page');
                           handleToggleEventSelection(null);
                         }
                       }}
                     >
-                      <div className="flex flex-col items-start gap-0">
-                        <span className="font-semibold text-default-700 text-[11px]">Open Notes Space</span>
-                        <span className="text-[9px] text-default-400 line-clamp-1">Click to view/edit</span>
+                      <div className="flex flex-col items-start gap-0.5 overflow-hidden">
+                        <span className="font-bold text-default-700 text-[11px] truncate w-full text-left">
+                          {selectedEvent.metadata?.title || 'Event Page'}
+                        </span>
+                        <span className="text-[9px] text-default-400 font-medium">Click to open editor</span>
                       </div>
                     </Button>
                   </div>
@@ -2624,7 +2793,7 @@ export function CalendarApp({ spacesState, viewportsState }: CalendarAppProps) {
   );
 }
 
-function CalendarDaySlot({ hour, day, onStartSelection, onUpdateSelection, onUpdateEvent, allEvents, hourHeight = 60, isAnyDragging }: any) {
+function CalendarDaySlot({ hour, day, onStartSelection, onUpdateSelection, onUpdateEvent, allEvents, hourHeight = 60, isAnyDragging, isSelecting, onDragEnter, onDragLeave }: any) {
   const [dropPosition, setDropPosition] = useState<number | null>(null);
 
   const [{ isOver, draggedItem }, drop] = useDrop({
@@ -2681,6 +2850,16 @@ function CalendarDaySlot({ hour, day, onStartSelection, onUpdateSelection, onUpd
     })
   });
 
+  useEffect(() => {
+    if (isOver && draggedItem && onDragEnter) {
+      const d = new Date(day);
+      d.setHours(hour, dropPosition || 0, 0, 0);
+      onDragEnter(d, draggedItem);
+    } else if (!isOver && onDragLeave) {
+      onDragLeave();
+    }
+  }, [isOver, draggedItem, day, hour, dropPosition, onDragEnter, onDragLeave]);
+
   const slotRef = useRef<HTMLDivElement>(null);
 
   const setDropRef = useCallback((node: HTMLDivElement | null) => {
@@ -2699,7 +2878,7 @@ function CalendarDaySlot({ hour, day, onStartSelection, onUpdateSelection, onUpd
         if (!slotRef.current) {
           const d = new Date(day);
           d.setHours(hour, 0, 0, 0);
-          onStartSelection(d);
+          onStartSelection(d, { x: e.clientX, y: e.clientY });
           return;
         }
 
@@ -2712,11 +2891,11 @@ function CalendarDaySlot({ hour, day, onStartSelection, onUpdateSelection, onUpd
 
         const d = new Date(day);
         d.setHours(hour, snappedMinute, 0, 0);
-        onStartSelection(d);
+        onStartSelection(d, { x: e.clientX, y: e.clientY });
       }}
       onMouseMove={(e) => {
-        if (isAnyDragging) return;
-        // Support intra-slot selection updating
+        if (isAnyDragging || !isSelecting) return;
+        // Support intra-slot and cross-column selection updating
         if (e.buttons !== 1) return; // Only if mouse is down (dragging selection)
         if (!slotRef.current) return;
 
@@ -2730,7 +2909,8 @@ function CalendarDaySlot({ hour, day, onStartSelection, onUpdateSelection, onUpd
         d.setHours(hour, snappedMinute, 0, 0);
         onUpdateSelection(d);
       }}
-      onMouseEnter={() => {
+      onMouseEnter={(e) => {
+        if (e.buttons !== 1 || !isSelecting) return;
         const d = new Date(day);
         d.setHours(hour, 0, 0, 0);
         onUpdateSelection(d);
@@ -2848,8 +3028,8 @@ function calculateTimelineLayout(events: any[], hourHeight: number, referenceDat
         layout: {
           top: event.layoutTop,
           height: event.layoutHeight,
-          left: (colIndex / totalCols) * 100,
-          width: 100 / totalCols
+          left: (colIndex / totalCols) * 90,
+          width: 90 / totalCols
         }
       });
     });
@@ -2917,6 +3097,8 @@ function DraggableTimelineEvent({ event, top, height, left = 0, width = 100, onU
     e.preventDefault();
 
     const startY = e.clientY;
+    const startX = e.clientX;
+    const target = e.target as HTMLElement;
     const startTime = direction === 'top' ? new Date(event.start) : (event.end || addMinutes(event.start, 60));
 
     const handleMouseMove = (moveEvent: MouseEvent) => {
@@ -2936,10 +3118,22 @@ function DraggableTimelineEvent({ event, top, height, left = 0, width = 100, onU
           onUpdate(event.id, { startDate: format(newStart, "yyyy-MM-dd'T'HH:mm") });
         }
       } else {
-        const newEnd = addMinutes(startTime, snappedDeltaMinutes);
-        const currentStart = new Date(event.start);
-        if (newEnd > currentStart) {
-          onUpdate(event.id, { endDate: format(newEnd, "yyyy-MM-dd'T'HH:mm") });
+        // Multi-column resize logic for Week/N-days
+        const rect = target.closest('.flex-1')?.getBoundingClientRect();
+        if (rect) {
+          const colWidth = rect.width;
+          const deltaX = moveEvent.clientX - startX;
+          const daysToJump = Math.round(deltaX / colWidth);
+
+          let newEnd = addMinutes(startTime, snappedDeltaMinutes);
+          if (daysToJump !== 0) {
+            newEnd = addDays(newEnd, daysToJump);
+          }
+
+          const currentStart = new Date(event.start);
+          if (newEnd > currentStart) {
+            onUpdate(event.id, { endDate: format(newEnd, "yyyy-MM-dd'T'HH:mm") });
+          }
         }
       }
     };

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import {
   Calendar as CalendarIcon,
   Clock,
@@ -53,6 +53,44 @@ interface CalendarElementProps {
   spacesState?: any; // To resolve attachments if needed
 }
 
+function usePopoverAutoClose(isOpen: boolean, setIsOpen: (open: boolean) => void) {
+  const contentRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!isOpen) return;
+
+    const handleInteraction = (e: Event) => {
+      // If interaction is inside the popover content, ignore
+      if (contentRef.current && (contentRef.current.contains(e.target as Node) || (e.target as HTMLElement).closest('[data-slot="popover-content"]'))) {
+        return;
+      }
+      setIsOpen(false);
+    };
+
+    const handleResize = () => setIsOpen(false);
+
+    const options = { capture: true, passive: true };
+    // We use window to ensure we catch everything, and capture phase to run before other handlers
+    window.addEventListener('scroll', handleInteraction, options);
+    window.addEventListener('pointerdown', handleInteraction, { capture: true });
+    window.addEventListener('resize', handleResize, options);
+    window.addEventListener('wheel', handleInteraction, options);
+    window.addEventListener('dragstart', handleInteraction, options);
+    window.addEventListener('contextmenu', handleInteraction, { capture: true });
+
+    return () => {
+      window.removeEventListener('scroll', handleInteraction, options);
+      window.removeEventListener('pointerdown', handleInteraction, { capture: true });
+      window.removeEventListener('resize', handleResize, options);
+      window.removeEventListener('wheel', handleInteraction, options);
+      window.removeEventListener('dragstart', handleInteraction, options);
+      window.removeEventListener('contextmenu', handleInteraction, { capture: true });
+    };
+  }, [isOpen, setIsOpen]);
+
+  return contentRef;
+}
+
 export function CalendarElement({
   data,
   onUpdate,
@@ -61,6 +99,7 @@ export function CalendarElement({
   spacesState
 }: CalendarElementProps) {
   const [isOpen, setIsOpen] = useState(false);
+  const popoverRef = usePopoverAutoClose(isOpen, setIsOpen);
 
   const formatDate = (dateStr: string) => {
     if (!dateStr) return '';
@@ -130,13 +169,15 @@ export function CalendarElement({
           </div>
         </PopoverTrigger>
         <PopoverContent className="w-[340px] p-0">
-          <CalendarElementEditor
-            data={data}
-            onUpdate={onUpdate}
-            isReadOnly={isReadOnly}
-            onClose={() => setIsOpen(false)}
-            spacesState={spacesState}
-          />
+          <div ref={popoverRef}>
+            <CalendarElementEditor
+              data={data}
+              onUpdate={onUpdate}
+              isReadOnly={isReadOnly}
+              onClose={() => setIsOpen(false)}
+              spacesState={spacesState}
+            />
+          </div>
         </PopoverContent>
       </Popover>
     );
@@ -194,19 +235,21 @@ export function CalendarElement({
               <LucideIcons.Link size={14} />
             </div>
           )}
-          <Popover placement="bottom-end">
+          <Popover placement="bottom-end" isOpen={isOpen} onOpenChange={setIsOpen}>
             <PopoverTrigger>
               <Button isIconOnly size="sm" variant="light" className="text-default-400">
                 <MoreVertical size={16} />
               </Button>
             </PopoverTrigger>
             <PopoverContent className="p-0 w-[340px]">
-              <CalendarElementEditor
-                data={data}
-                onUpdate={onUpdate}
-                isReadOnly={isReadOnly}
-                spacesState={spacesState}
-              />
+              <div ref={popoverRef}>
+                <CalendarElementEditor
+                  data={data}
+                  onUpdate={onUpdate}
+                  isReadOnly={isReadOnly}
+                  spacesState={spacesState}
+                />
+              </div>
             </PopoverContent>
           </Popover>
         </div>
