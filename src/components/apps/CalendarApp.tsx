@@ -1064,8 +1064,8 @@ export function CalendarApp({ spacesState, viewportsState }: CalendarAppProps) {
     // Threshold to load more: 3 columns approx
     const threshold = colWidth * 3;
 
-    // We shift by 7 days at a time to keep it stable
-    const SHIFT_DAYS = 7;
+    // We shift by 28 days (4 weeks) at a time to keep it stable and handle momentum
+    const SHIFT_DAYS = 28;
 
     if (scrollLeft < threshold) {
       const pxToShift = SHIFT_DAYS * colWidth;
@@ -1134,7 +1134,7 @@ export function CalendarApp({ spacesState, viewportsState }: CalendarAppProps) {
       // Use clientWidth to calculate column width
       const n = view === 'week' ? 7 : nDays;
       const colWidth = containerRef.clientWidth / n;
-      const BUFFER = 10;
+      const BUFFER = 60;
 
       const initialScroll = BUFFER * colWidth;
       containerRef.scrollLeft = initialScroll;
@@ -2148,7 +2148,7 @@ export function CalendarApp({ spacesState, viewportsState }: CalendarAppProps) {
   };
 
   const renderHorizontalGrid = (n: number) => {
-    const BUFFER = 20;
+    const BUFFER = 60;
     // Render: [-BUFFER ... -1, 0, 1 ... n-1, n ... n+BUFFER-1]
     const totalDays = n + (BUFFER * 2);
     const startOffset = -BUFFER;
