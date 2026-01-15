@@ -1197,11 +1197,15 @@ export function TextElement({
       onKeyDown={handleKeyDown}
       onFocus={() => setIsFocused(true)}
       onBlur={() => {
-        setIsFocused(false);
-        // Convert empty heading to text on blur
-        if (isHeader && (!block.content || block.content.trim() === '')) {
-          onConvertBlock(block.id, 'text');
-        }
+        // Use a small delay to avoid flicker and allow button clicks in the placeholder
+        // before they are unmounted by isFocused becoming false.
+        setTimeout(() => {
+          setIsFocused(false);
+          // Convert empty heading to text on blur
+          if (isHeader && (!block.content || block.content.trim() === '')) {
+            onConvertBlock(block.id, 'text');
+          }
+        }, 150);
       }}
       placeholder={placeholder || activeConfig.placeholder}
       spacesState={spacesState}
@@ -1613,22 +1617,24 @@ export function TextElement({
 
                   {/* Custom Placeholder and Insert Button */}
                   {!block.content && (isFocused || isDropdownOpen) && (
-                    <div className={`absolute top-0 left-0 w-full h-full pointer-events-none flex items-baseline pb-1 select-none px-0 ${block.align === 'center' ? 'justify-center' : block.align === 'right' ? 'justify-end' : 'justify-start'}`}>
-                      <span className="text-default-400 opacity-50 font-normal leading-[1.2]">{index === 0 ? 'Title' : (activeConfig.placeholder || "Type something")}</span>
-                      <div className="pointer-events-auto flex items-baseline ml-2">
-                        <span className="text-default-300 mr-2 font-normal">or</span>
-                        <DropdownMenu onOpenChange={setIsDropdownOpen}>
+                    <div className={`absolute top-0 left-0 w-full pointer-events-none pb-1 select-none px-0 leading-[1.8] ${getTextAlignmentClass()}`}>
+                      <span className="text-default-400 opacity-50 font-normal font-sans text-base">{index === 0 ? 'Type "#" to add a title' : (activeConfig.placeholder || "Type something")}</span>
+                      <span className="text-default-400 opacity-50 font-normal font-sans text-base"> or </span>
+                      <div className="pointer-events-auto inline-block align-baseline">
+                        <DropdownMenu onOpenChange={setIsDropdownOpen} modal={false}>
                           <DropdownMenuTrigger asChild>
                             <button
-                              className="bg-neutral-200 hover:bg-neutral-300 cursor-pointer border-none rounded-full px-3 py-1 flex items-center gap-1 leading-none text-neutral-600 font-normal text-[14px] transition-colors"
+                              type="button"
+                              onMouseDown={(e) => e.preventDefault()}
+                              className="relative z-10 bg-neutral-200 hover:bg-neutral-300 cursor-pointer border-none rounded-full px-3 py-1 flex items-center gap-1 leading-none text-neutral-600 font-normal text-[14px] transition-colors"
                             >
-                              add an element <ChevronDown className="h-3 w-3" />
+                              an element <ChevronDown className="h-3 w-3" />
                             </button>
                           </DropdownMenuTrigger>
                           <DropdownMenuContent
                             align="start"
                             side="bottom"
-                            sideOffset={5}
+                            sideOffset={15}
                             className="z-[2000]"
                             onCloseAutoFocus={(e) => {
                               e.preventDefault();
@@ -1664,8 +1670,6 @@ export function TextElement({
                                       onConvertBlock(block.id, type as BlockType);
                                     }
                                   }}
-                                  onMouseEnter={() => setPreviewType(type as BlockType)}
-                                  onMouseLeave={() => setPreviewType(null)}
                                 >
                                   <Icon className="mr-2 h-4 w-4" />
                                   <span>{blockTypeConfig[type]?.label}</span>
@@ -1675,6 +1679,9 @@ export function TextElement({
                           </DropdownMenuContent>
                         </DropdownMenu>
                       </div>
+                      {index === 0 && (
+                        <span className="text-default-400 opacity-50 font-normal font-sans text-base"> or just simply type something...</span>
+                      )}
                     </div>
                   )}
                 </div>
