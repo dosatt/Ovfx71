@@ -272,6 +272,7 @@ interface TextElementProps {
   onToggleSelection?: (blockId: string, isShift: boolean) => void;
   onSelectAll?: () => void;
   onSelectGroup?: () => void;
+  isEventPage?: boolean;
 }
 
 const ALLOWED_INDENT_TYPES = ['bulletList', 'numberedList', 'checkbox', 'checkboxNumberedList'];
@@ -311,6 +312,7 @@ export function TextElement({
   onToggleSelection,
   onSelectAll,
   onSelectGroup,
+  isEventPage,
 }: TextElementProps) {
   const [previewType, setPreviewType] = useState<BlockType | null>(null);
   const effectiveBlock = previewType ? { ...block, type: previewType } : block;
@@ -1254,7 +1256,7 @@ export function TextElement({
         ${(isDragging || justMoved) ? 'opacity-50' : 'opacity-100'}
       `}
     >
-      <div className="max-w-[700px] mx-auto px-4 relative">
+      <div className={`${isEventPage ? 'w-full px-1' : 'max-w-[700px] mx-auto px-4'} relative`}>
         {/* Drop Lines - Aligned with content */}
         {isOver && dropLinePosition === 'top' && (
           <div className="absolute top-0 left-4 right-4 h-[2px] bg-primary z-50 pointer-events-none" />

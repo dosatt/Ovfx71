@@ -1045,7 +1045,9 @@ export function PageEditor({
               settings={settings}
               onUpdateSettings={onUpdateSettings}
               selectedBlockIds={selectedBlockIds}
+
               onToggleSelection={onToggleSelection}
+              isEventPage={space.metadata?.isEventPage}
             />
           );
           i = j;
@@ -1098,7 +1100,9 @@ export function PageEditor({
           settings={settings}
           onUpdateSettings={onUpdateSettings}
           selectedBlockIds={selectedBlockIds}
+
           onToggleSelection={onToggleSelection}
+          isEventPage={space.metadata?.isEventPage}
         />
       );
       i++;
@@ -1130,7 +1134,9 @@ export function PageEditor({
       className={`flex-1 h-full min-h-[500px] overflow-y-auto no-scrollbar pb-32 transition-colors duration-200 ${isOver ? 'bg-primary/5' : ''}`}
     >
       <div
-        className={`max-w-4xl mx-auto pb-8 px-8 flex flex-col transition-all duration-300 ${showProperties ? 'pt-6' : 'pt-[15vh]'
+        className={`max-w-4xl mx-auto flex flex-col transition-all duration-300 ${space.metadata?.isEventPage
+          ? 'p-2 pt-2'
+          : `pb-8 px-8 ${showProperties ? 'pt-6' : 'pt-[15vh]'}`
           }`}
       >
         {/* Properties Section */}

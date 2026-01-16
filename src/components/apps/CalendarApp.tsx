@@ -46,8 +46,11 @@ import {
   Trash2,
   GripVertical,
   FileText,
-  ExternalLink
+  ExternalLink,
+  Layout,
+  X
 } from 'lucide-react';
+import { PageEditor } from '../spaces/PageEditor';
 import { useDrag, useDrop, useDragLayer } from 'react-dnd';
 import { getEmptyImage } from 'react-dnd-html5-backend';
 
@@ -2411,16 +2414,6 @@ export function CalendarApp({ spacesState, viewportsState }: CalendarAppProps) {
             color="primary"
             className="font-bold shadow-lg"
             onPress={(e) => {
-              // Get button position for anchor
-              const rect = (e.target as HTMLElement).getBoundingClientRect();
-              // Create a pseudo-anchor below the button
-              // We use setPopoverAnchor which is usually for drag-create, 
-              // but we can repurpose it if we want the same exact UI.
-              // However, to differentiate "click create" vs "drag create", 
-              // we might want to just set it.
-              // Let's set the anchor exactly below the button center.
-              setPopoverAnchor({ x: rect.left + rect.width / 2 - 140, y: rect.bottom + 10 });
-
               setNewEvent({
                 title: '',
                 startDate: format(new Date(), "yyyy-MM-dd'T'HH:mm"),
@@ -2428,6 +2421,7 @@ export function CalendarApp({ spacesState, viewportsState }: CalendarAppProps) {
                 notes: '',
                 spaceId: spacesStateRef.current.focusedSpaceId || (spacesStateRef.current.spaces[0]?.id || '')
               });
+              onOpen(); // Open the Drawer directly
             }}
           >
             <Plus size={18} />
@@ -2461,21 +2455,20 @@ export function CalendarApp({ spacesState, viewportsState }: CalendarAppProps) {
           >
             <div className="pointer-events-auto w-[280px] relative mt-[10px] group filter drop-shadow-2xl">
               {/* Speech Bubble Arrow (SVG for perfect crispness) */}
-              <div className="absolute -top-[10px] left-8 w-6 h-[11px] pointer-events-none z-20">
+              <div className="absolute left-8 w-6 h-[11px] pointer-events-none z-20" style={{ top: '-15px' }}>
                 <svg width="24" height="11" viewBox="0 0 24 11" fill="none" xmlns="http://www.w3.org/2000/svg" className="overflow-visible">
                   <path d="M0 11L12 0L24 11" fill="white" />
                   <path d="M0 11L12 0L24 11" stroke="rgba(0,0,0,0.1)" strokeWidth="1" strokeLinejoin="round" fill="none" />
-                  <rect x="0.5" y="10" width="23" height="2" fill="white" />
                 </svg>
               </div>
 
-              <div className="relative z-10 bg-white rounded-[24px] border border-divider flex flex-col overflow-hidden">
-                <div className="absolute right-2 top-2 z-10">
-                  <Button size="sm" isIconOnly variant="light" radius="full" className="h-6 w-6 min-w-6 text-default-400 hover:text-default-800 bg-white/40 hover:bg-white/80 backdrop-blur-md" onClick={() => setPopoverAnchor(null)}>
-                    <Plus size={16} className="rotate-45" />
-                  </Button>
-                </div>
+              <div className="absolute -right-10 top-0 z-20">
+                <Button size="sm" isIconOnly variant="light" radius="full" className="h-8 w-8 min-w-8 text-default-400 hover:text-default-800 bg-white shadow-sm hover:shadow-md" onClick={() => setPopoverAnchor(null)}>
+                  <Plus size={18} className="rotate-45" />
+                </Button>
+              </div>
 
+              <div className="relative z-10 bg-white rounded-[24px] border border-divider flex flex-col overflow-hidden">
                 <div className="p-3 flex flex-col gap-3">
                   <div className="pt-2 px-1">
                     <Input
@@ -2498,9 +2491,6 @@ export function CalendarApp({ spacesState, viewportsState }: CalendarAppProps) {
                   </div>
 
                   <div className="flex flex-col gap-2">
-                    <div className="flex gap-1.5 items-center text-default-400 text-[10px] font-bold uppercase tracking-wider pl-1">
-                      <span className="w-1 h-1 rounded-full bg-primary" /> TIME
-                    </div>
                     <div className="grid grid-cols-2 gap-2">
                       <Input
                         type="datetime-local"
@@ -2510,7 +2500,7 @@ export function CalendarApp({ spacesState, viewportsState }: CalendarAppProps) {
                         onChange={(e) => setNewEvent(prev => ({ ...prev, startDate: e.target.value }))}
                         classNames={{
                           inputWrapper: "h-7 px-2 bg-default-50/50 hover:bg-default-100 border-transparent transition-colors rounded-lg shadow-none",
-                          input: "text-[10px] font-semibold text-default-700 font-mono"
+                          input: "text-sm font-semibold text-default-700 font-mono"
                         }}
                       />
                       <Input
@@ -2521,7 +2511,7 @@ export function CalendarApp({ spacesState, viewportsState }: CalendarAppProps) {
                         onChange={(e) => setNewEvent(prev => ({ ...prev, endDate: e.target.value }))}
                         classNames={{
                           inputWrapper: "h-7 px-2 bg-default-50/50 hover:bg-default-100 border-transparent transition-colors rounded-lg shadow-none",
-                          input: "text-[10px] font-semibold text-default-700 font-mono"
+                          input: "text-sm font-semibold text-default-700 font-mono"
                         }}
                       />
                     </div>
@@ -2555,21 +2545,20 @@ export function CalendarApp({ spacesState, viewportsState }: CalendarAppProps) {
           >
             <div className="pointer-events-auto w-[300px] relative mt-[10px] group filter drop-shadow-2xl">
               {/* Speech Bubble Arrow (SVG for perfect crispness) */}
-              <div className="absolute -top-[10px] left-8 w-6 h-[11px] pointer-events-none z-20">
+              <div className="absolute left-8 w-6 h-[11px] pointer-events-none z-20" style={{ top: '-15px' }}>
                 <svg width="24" height="11" viewBox="0 0 24 11" fill="none" xmlns="http://www.w3.org/2000/svg" className="overflow-visible">
                   <path d="M0 11L12 0L24 11" fill="white" />
                   <path d="M0 11L12 0L24 11" stroke="rgba(0,0,0,0.1)" strokeWidth="1" strokeLinejoin="round" fill="none" />
-                  <rect x="0.5" y="10" width="23" height="2" fill="white" />
                 </svg>
               </div>
 
-              <div className="relative z-10 bg-white rounded-[24px] border border-divider flex flex-col overflow-hidden">
-                <div className="absolute right-3 top-3 z-10">
-                  <Button size="sm" isIconOnly variant="light" radius="full" className="h-7 w-7 min-w-7 text-default-400 hover:text-default-800 bg-white/40 hover:bg-white/80 backdrop-blur-md" onClick={() => handleToggleEventSelection(null)}>
-                    <Plus size={18} className="rotate-45" />
-                  </Button>
-                </div>
+              <div className="absolute -right-10 top-0 z-20">
+                <Button size="sm" isIconOnly variant="light" radius="full" className="h-8 w-8 min-w-8 text-default-400 hover:text-default-800 bg-white shadow-sm hover:shadow-md" onClick={() => handleToggleEventSelection(null)}>
+                  <Plus size={18} className="rotate-45" />
+                </Button>
+              </div>
 
+              <div className="relative z-10 bg-white rounded-[24px] border border-divider flex flex-col overflow-hidden">
                 <div className="px-5 pt-5 pb-2">
                   <Input
                     placeholder="Event title"
@@ -2588,9 +2577,6 @@ export function CalendarApp({ spacesState, viewportsState }: CalendarAppProps) {
                 <div className="px-5 py-3 flex flex-col gap-4">
                   {/* Time Section */}
                   <div className="flex flex-col gap-1.5">
-                    <div className="flex gap-1.5 items-center text-default-400 text-[10px] font-bold uppercase tracking-wider pl-1">
-                      <span className="w-1 h-1 rounded-full bg-primary" /> TIME
-                    </div>
                     <div className="grid grid-cols-2 gap-2">
                       <Input
                         type="datetime-local"
@@ -2600,7 +2586,7 @@ export function CalendarApp({ spacesState, viewportsState }: CalendarAppProps) {
                         onChange={(e) => handleUpdateEvent(selectedEvent.id, selectedEvent.id, selectedEvent.sourceSpaceId, { startDate: e.target.value })}
                         classNames={{
                           inputWrapper: "h-8 px-2 bg-default-50/50 hover:bg-default-100 border-transparent transition-colors rounded-lg",
-                          input: "text-[10px] font-semibold text-default-700 font-mono"
+                          input: "text-sm font-semibold text-default-700 font-mono"
                         }}
                       />
                       <Input
@@ -2611,100 +2597,70 @@ export function CalendarApp({ spacesState, viewportsState }: CalendarAppProps) {
                         onChange={(e) => handleUpdateEvent(selectedEvent.id, selectedEvent.id, selectedEvent.sourceSpaceId, { endDate: e.target.value })}
                         classNames={{
                           inputWrapper: "h-8 px-2 bg-default-50/50 hover:bg-default-100 border-transparent transition-colors rounded-lg",
-                          input: "text-[10px] font-semibold text-default-700 font-mono"
+                          input: "text-sm font-semibold text-default-700 font-mono"
                         }}
                       />
                     </div>
                   </div>
 
-                  {/* Spaces Section */}
-                  <div className="flex flex-col gap-1.5">
-                    <div className="flex gap-1.5 items-center text-default-400 text-[10px] font-bold uppercase tracking-wider pl-1">
-                      <span className="w-1 h-1 rounded-full bg-secondary" /> SPACES
-                    </div>
-                    <Select
-                      selectionMode="multiple"
-                      placeholder="Link spaces..."
-                      variant="faded"
-                      size="sm"
-                      selectedKeys={new Set(selectedEvent.metadata?.linkedSpaceIds || [])}
-                      onSelectionChange={(keys: any) => {
-                        const linkedSpaceIds = Array.from(keys);
-                        handleUpdateEvent(selectedEvent.id, selectedEvent.id, selectedEvent.sourceSpaceId, { linkedSpaceIds });
-                      }}
-                      classNames={{
-                        trigger: "bg-default-50/50 hover:bg-default-100 min-h-8 h-auto py-1 px-2 border-transparent rounded-lg",
-                        value: "text-[10px] font-medium"
-                      }}
-                      renderValue={(items) => (
-                        <div className="flex flex-wrap gap-1">
-                          {items.map((item) => (
-                            <span key={item.key} className="text-[10px] font-bold text-secondary-600 px-1.5 py-0.5 bg-secondary/10 rounded-md">{item.textValue}</span>
-                          ))}
-                        </div>
-                      )}
-                    >
-                      {spacesState.spaces.filter((s: any) => s.id !== selectedEvent.sourceSpaceId).map((space: any) => (
-                        <SelectItem key={space.id} textValue={space.title}>
-                          <div className="flex items-center gap-2">
-                            <div className="w-1.5 h-1.5 rounded-full bg-primary/40" />
-                            <span className="text-xs">{space.title}</span>
-                          </div>
-                        </SelectItem>
-                      ))}
-                    </Select>
-                  </div>
+
 
                   {/* Page / Content Section */}
                   <div className="flex flex-col gap-1.5">
                     <div className="flex gap-1.5 items-center text-default-400 text-[10px] font-bold uppercase tracking-wider pl-1">
-                      <span className="w-1 h-1 rounded-full bg-warning" /> CONTENT
+                      <span className="w-1 h-1 rounded-full bg-success" /> PAGE
                     </div>
-                    <Button
-                      size="sm"
-                      variant="flat"
-                      className="w-full justify-between h-12 bg-white border border-default-200/50 shadow-sm hover:border-default-300 hover:shadow transition-all rounded-xl group px-3"
-                      startContent={<div className="p-1.5 bg-warning/10 rounded-md text-warning-600 group-hover:bg-warning/20 transition-colors"><FileText size={16} /></div>}
-                      endContent={<ExternalLink size={14} className="opacity-30 group-hover:opacity-100 transition-opacity" />}
-                      onClick={() => {
-                        let spaceId = selectedEvent.metadata?.noteSpaceId;
+                    {(() => {
+                      const linkedSpaceId = selectedEvent.metadata?.noteSpaceId;
+                      const linkedSpace = linkedSpaceId ? spacesState.spaces.find((s: any) => s.id === linkedSpaceId) : null;
 
-                        // Legacy support: if no noteSpaceId but has notes, create a space now
-                        if (!spaceId) {
-                          const newSpace = spacesState.createSpace('page');
-                          const noteTitle = selectedEvent.metadata?.title || 'Untitled Event';
-                          // Try to get legacy note content
-                          const legacyNote = selectedEvent.metadata?.notes || '';
+                      if (linkedSpace) {
+                        return (
+                          <div className="h-[200px] overflow-y-auto border border-divider rounded-xl bg-white shadow-inner">
+                            <PageEditor
+                              space={linkedSpace}
+                              spacesState={spacesState}
+                            // Pass dummy or minimal props if needed, mostly just need space and state
+                            />
+                          </div>
+                        );
+                      }
 
-                          spacesState.updateSpace(newSpace.id, {
-                            title: noteTitle,
-                            content: { blocks: legacyNote ? [{ type: 'paragraph', content: legacyNote, id: 'migrated_note' }] : [] },
-                            metadata: { isNote: true, eventId: selectedEvent.id, isEventPage: true }
-                          });
-                          spaceId = newSpace.id;
-                          handleUpdateEvent(selectedEvent.id, selectedEvent.id, selectedEvent.sourceSpaceId, { noteSpaceId: spaceId });
-                        }
+                      return (
+                        <Button
+                          size="sm"
+                          variant="flat"
+                          className="w-full justify-between h-12 bg-white border border-default-200/50 shadow-sm hover:border-default-300 hover:shadow transition-all rounded-xl group px-3"
+                          startContent={<div className="p-1.5 bg-success/10 rounded-md text-success-600 group-hover:bg-success/20 transition-colors"><Layout size={16} /></div>}
+                          endContent={<ExternalLink size={14} className="opacity-30 group-hover:opacity-100 transition-opacity" />}
+                          onClick={() => {
+                            const newSpace = spacesState.createSpace('page');
+                            const noteTitle = selectedEvent.metadata?.title || 'Untitled Event';
+                            // Try to get legacy note content
+                            const legacyNote = selectedEvent.metadata?.notes || '';
 
-                        if (viewportsState && spaceId) {
-                          viewportsState.replaceCurrentTab(viewportsState.focusedViewportId, spaceId, undefined, selectedEvent.metadata?.title || 'Event Page');
-                          handleToggleEventSelection(null);
-                        }
-                      }}
-                    >
-                      <div className="flex flex-col items-start gap-0.5 overflow-hidden">
-                        <span className="font-bold text-default-700 text-[11px] truncate w-full text-left">
-                          {selectedEvent.metadata?.title || 'Event Page'}
-                        </span>
-                        <span className="text-[9px] text-default-400 font-medium">Click to open editor</span>
-                      </div>
-                    </Button>
+                            spacesState.updateSpace(newSpace.id, {
+                              title: noteTitle,
+                              content: { blocks: legacyNote ? [{ type: 'paragraph', content: legacyNote, id: 'migrated_note' }] : [] },
+                              metadata: { isNote: true, eventId: selectedEvent.id, isEventPage: true }
+                            });
+
+                            handleUpdateEvent(selectedEvent.id, selectedEvent.id, selectedEvent.sourceSpaceId, { noteSpaceId: newSpace.id });
+                          }}
+                        >
+                          <div className="flex flex-col items-start gap-0.5 overflow-hidden">
+                            <span className="font-bold text-default-700 text-[11px] truncate w-full text-left">
+                              Create Linked Page
+                            </span>
+                            <span className="text-[9px] text-default-400 font-medium">Click to create page</span>
+                          </div>
+                        </Button>
+                      );
+                    })()}
                   </div>
                 </div>
 
-                <div className="flex justify-between items-center p-3 bg-default-50/50 border-t border-divider/50 backdrop-blur-md mt-auto">
-                  <span className="text-[10px] font-semibold text-default-400 pl-2">
-                    {format(new Date(selectedEvent.start), 'd MMM')}
-                  </span>
+                <div className="flex justify-end items-center p-3 bg-default-50/50 border-t border-divider/50 backdrop-blur-md mt-auto">
                   <Button
                     size="sm"
                     variant="light"
@@ -2728,67 +2684,87 @@ export function CalendarApp({ spacesState, viewportsState }: CalendarAppProps) {
         )}
       </AnimatePresence>
 
-      {/* New Event Modal */}
-      <Modal isOpen={isOpen} onOpenChange={onOpenChange} size="md">
-        <ModalContent>
-          {(onClose) => (
-            <>
-              <ModalHeader className="flex flex-col gap-1">Create New Event</ModalHeader>
-              <ModalBody>
-                <div className="flex flex-col gap-4">
+      {/* Event Drawer (replaces Modal) */}
+      <AnimatePresence>
+        {isOpen && (
+          <>
+            {/* Backdrop */}
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={onClose}
+              className="absolute inset-0 bg-black/20 backdrop-blur-sm z-[50]"
+            />
+            {/* Right Drawer */}
+            <motion.div
+              initial={{ x: '100%' }}
+              animate={{ x: 0 }}
+              exit={{ x: '100%' }}
+              transition={{ type: 'spring', damping: 25, stiffness: 200 }}
+              className="absolute top-2 right-2 bottom-2 w-[400px] bg-white shadow-2xl z-[51] rounded-2xl border border-default-200 flex flex-col overflow-hidden"
+            >
+              <div className="flex items-center justify-between p-4 border-b border-divider bg-white">
+                <h2 className="text-lg font-bold">Create New Event</h2>
+                <Button isIconOnly size="sm" variant="light" onClick={onClose}><X size={18} /></Button>
+              </div>
+
+              <div className="flex-1 overflow-y-auto p-5 flex flex-col gap-5">
+                <Input
+                  label="Title"
+                  placeholder="Event name"
+                  variant="bordered"
+                  value={newEvent.title}
+                  onValueChange={(v) => setNewEvent(prev => ({ ...prev, title: v }))}
+                  classNames={{ input: "font-bold text-lg" }}
+                />
+                <div className="flex gap-2">
                   <Input
-                    label="Title"
-                    placeholder="Event name"
+                    type="datetime-local"
+                    label="Start"
                     variant="bordered"
-                    value={newEvent.title}
-                    onValueChange={(v) => setNewEvent(prev => ({ ...prev, title: v }))}
+                    value={newEvent.startDate}
+                    onValueChange={(v) => setNewEvent(prev => ({ ...prev, startDate: v }))}
                   />
-                  <div className="flex gap-2">
-                    <Input
-                      type="datetime-local"
-                      label="Start"
-                      variant="bordered"
-                      value={newEvent.startDate}
-                      onValueChange={(v) => setNewEvent(prev => ({ ...prev, startDate: v }))}
-                    />
-                    <Input
-                      type="datetime-local"
-                      label="End"
-                      variant="bordered"
-                      value={newEvent.endDate}
-                      onValueChange={(v) => setNewEvent(prev => ({ ...prev, endDate: v }))}
-                    />
-                  </div>
-                  <Select
-                    label="Destination"
-                    placeholder="Choose a space"
+                  <Input
+                    type="datetime-local"
+                    label="End"
                     variant="bordered"
-                    selectedKeys={newEvent.spaceId ? [newEvent.spaceId] : []}
-                    onSelectionChange={(keys: any) => setNewEvent(prev => ({ ...prev, spaceId: Array.from(keys)[0] as string }))}
-                  >
-                    {spacesState.spaces.filter((s: any) => s.type === 'page').map((space: any) => (
-                      <SelectItem key={space.id}>
-                        {space.title}
-                      </SelectItem>
-                    ))}
-                  </Select>
-                  <Textarea
-                    label="Note"
-                    placeholder="Additional details..."
-                    variant="bordered"
-                    value={newEvent.notes}
-                    onValueChange={(v) => setNewEvent(prev => ({ ...prev, notes: v }))}
+                    value={newEvent.endDate}
+                    onValueChange={(v) => setNewEvent(prev => ({ ...prev, endDate: v }))}
                   />
                 </div>
-              </ModalBody>
-              <ModalFooter>
+                <Select
+                  label="Destination"
+                  placeholder="Choose a space"
+                  variant="bordered"
+                  selectedKeys={newEvent.spaceId ? [newEvent.spaceId] : []}
+                  onSelectionChange={(keys: any) => setNewEvent(prev => ({ ...prev, spaceId: Array.from(keys)[0] as string }))}
+                >
+                  {spacesState.spaces.filter((s: any) => s.type === 'page').map((space: any) => (
+                    <SelectItem key={space.id}>
+                      {space.title}
+                    </SelectItem>
+                  ))}
+                </Select>
+                <Textarea
+                  label="Note"
+                  placeholder="Additional details..."
+                  variant="bordered"
+                  value={newEvent.notes}
+                  onValueChange={(v) => setNewEvent(prev => ({ ...prev, notes: v }))}
+                  minRows={3}
+                />
+              </div>
+
+              <div className="p-4 border-t border-divider bg-default-50 flex justify-end gap-2">
                 <Button variant="light" onPress={onClose}>Cancel</Button>
-                <Button color="primary" onPress={handleCreateEvent}>Save Event</Button>
-              </ModalFooter>
-            </>
-          )}
-        </ModalContent>
-      </Modal>
+                <Button color="primary" onPress={() => { handleCreateEvent(); onClose(); }}>Save Event</Button>
+              </div>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
     </div >
   );
 }
