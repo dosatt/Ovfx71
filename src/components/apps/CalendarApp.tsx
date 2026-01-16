@@ -2616,7 +2616,7 @@ export function CalendarApp({ spacesState, viewportsState }: CalendarAppProps) {
 
                       if (linkedSpace) {
                         return (
-                          <div className="h-[200px] overflow-y-auto border border-divider rounded-xl bg-white shadow-inner">
+                          <div className="h-[200px] overflow-y-auto border border-divider rounded-xl bg-white shadow-inner p-1">
                             <PageEditor
                               space={linkedSpace}
                               spacesState={spacesState}
