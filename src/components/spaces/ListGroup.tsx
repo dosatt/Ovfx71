@@ -255,6 +255,6 @@ export function ListGroup(props: ListGroupProps) {
           </div>
         </div>
       </div>
-    </div>
+    </div >
   );
 }
