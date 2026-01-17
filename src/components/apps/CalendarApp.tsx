@@ -1875,7 +1875,7 @@ export function CalendarApp({ spacesState, viewportsState }: CalendarAppProps) {
         }}
       >
         {/* Sticky Day Headers */}
-        <div className="sticky top-0 z-50 bg-white/95 backdrop-blur-md border-b border-divider shadow-sm">
+        <div className="sticky top-0 z-40 bg-white/95 backdrop-blur-md border-b border-divider shadow-sm">
           <div className="grid grid-cols-7 gap-0 border-l border-divider">
             {daysOfWeek.map(d => (
               <div key={d} className="py-2 text-center font-bold text-[9px] uppercase text-default-400 border-r border-divider tracking-wider">
@@ -1950,7 +1950,7 @@ export function CalendarApp({ spacesState, viewportsState }: CalendarAppProps) {
         onMouseLeave={() => isSelecting && handleEndSelectionStable()}
       >
         <div className="w-[60px] shrink-0 border-r border-divider bg-default-50/50 relative">
-          <div className="h-[40px] sticky top-0 bg-default-50/50 z-20 border-b border-divider" />
+          <div className="h-[40px] sticky top-0 bg-default-50/50 z-10 border-b border-divider" />
           {hours.map(hour => (
             <div key={hour} style={{ height: `${hourHeight}px` }} className="px-1 relative border-t border-divider text-[10px] text-default-400">
               <span className="absolute -top-[7px] left-1/2 -translate-x-1/2 bg-default-50 px-1 rounded-sm">
@@ -2177,10 +2177,10 @@ export function CalendarApp({ spacesState, viewportsState }: CalendarAppProps) {
             style={{ width: `${totalWidthPct}%`, minWidth: '100%' }}
           >
             {/* Header Row - Sticky Top */}
-            <div className="sticky top-0 z-50 flex border-b border-divider bg-white shrink-0 h-[40px] w-full">
+            <div className="sticky top-0 z-40 flex border-b border-divider bg-white shrink-0 h-[40px] w-full">
               {/* Corner */}
               <div
-                className="w-[60px] shrink-0 border-r border-divider bg-default-50 sticky left-0 z-[60] flex items-center justify-center font-bold text-[10px] text-default-400"
+                className="w-[60px] shrink-0 border-r border-divider bg-default-50 sticky left-0 z-50 flex items-center justify-center font-bold text-[10px] text-default-400"
                 style={{ transform: 'translate3d(0,0,0)', willChange: 'transform' }}
               >
                 TIME
@@ -2338,7 +2338,7 @@ export function CalendarApp({ spacesState, viewportsState }: CalendarAppProps) {
   const renderNDaysView = () => renderHorizontalGrid(nDays);
 
   return (
-    <div className="flex flex-col h-full overflow-hidden bg-white overscroll-x-none overscroll-none">
+    <div className="flex flex-col h-full overflow-hidden bg-white overscroll-x-none overscroll-none relative">
       <style>{`
         .is-dragging-event .calendar-event-item {
           pointer-events: none !important;
@@ -2360,7 +2360,7 @@ export function CalendarApp({ spacesState, viewportsState }: CalendarAppProps) {
       `}</style>
       {/* Header */}
       {/* Header */}
-      <div className="flex justify-between items-center px-4 py-2 border-b border-divider shrink-0 bg-background/80 backdrop-blur-md z-20">
+      <div className="flex justify-between items-center px-4 py-2 border-b border-divider shrink-0 bg-background/80 backdrop-blur-md z-20 relative">
         <div className="flex items-center gap-2">
           <div className="flex items-center bg-default-100 rounded-lg p-0.5">
             <Button isIconOnly size="sm" variant="light" onPress={prevPeriod} className="h-7 w-7 min-w-7 data-[hover=true]:bg-white rounded-md">
@@ -2430,7 +2430,7 @@ export function CalendarApp({ spacesState, viewportsState }: CalendarAppProps) {
       </div>
 
       {/* Content */}
-      <div className={`flex-1 overflow-hidden ${dragGhostItem ? 'is-dragging-event' : ''}`}>
+      <div className={`flex-1 overflow-hidden relative z-0 ${dragGhostItem ? 'is-dragging-event' : ''}`}>
         {view === 'month' && renderMonthView()}
         {view === 'week' && renderWeekView()}
         {view === 'day' && renderDayView()}
@@ -2693,8 +2693,7 @@ export function CalendarApp({ spacesState, viewportsState }: CalendarAppProps) {
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              onClick={onClose}
-              className="absolute inset-0 bg-black/20 backdrop-blur-sm z-[50]"
+              className="absolute inset-0 bg-transparent pointer-events-none z-[500]"
             />
             {/* Right Drawer */}
             <motion.div
@@ -2702,7 +2701,7 @@ export function CalendarApp({ spacesState, viewportsState }: CalendarAppProps) {
               animate={{ x: 0 }}
               exit={{ x: '100%' }}
               transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-              className="absolute top-2 right-2 bottom-2 w-[400px] bg-white shadow-2xl z-[51] rounded-2xl border border-default-200 flex flex-col overflow-hidden"
+              className="absolute top-0 right-0 bottom-0 w-[400px] bg-white shadow-lg z-[501] border-l border-default-200 flex flex-col"
             >
               <div className="flex items-center justify-between p-4 border-b border-divider bg-white">
                 <h2 className="text-lg font-bold">Create New Event</h2>
