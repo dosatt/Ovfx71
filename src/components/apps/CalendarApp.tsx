@@ -73,6 +73,7 @@ interface DraggableEventProps {
   onDragEnd?: () => void;
   onHoverEvent: (id: string | null) => void;
   isHovered: boolean;
+  onOpenDrawer?: (event: any) => void;
 }
 
 interface DraggableMultiDayEventProps extends Omit<DraggableEventProps, 'onNavigate'> {
@@ -84,7 +85,7 @@ interface DraggableMultiDayEventProps extends Omit<DraggableEventProps, 'onNavig
   onHoverDateChange?: (date: Date | null) => void;
 }
 
-function DraggableCalendarEvent({ event, onUpdate, onNavigate, onDragEnd, onHoverEvent, isHovered }: DraggableEventProps) {
+function DraggableCalendarEvent({ event, onUpdate, onNavigate, onDragEnd, onHoverEvent, isHovered, onSelect, onOpenDrawer }: DraggableEventProps) {
   const [{ isDragging }, drag, preview] = useDrag(() => ({
     type: 'CALENDAR_EVENT',
     item: {
@@ -160,6 +161,12 @@ function DraggableCalendarEvent({ event, onUpdate, onNavigate, onDragEnd, onHove
       title={`${event.metadata?.title || 'Event'}`}
       onClick={(e) => {
         e.stopPropagation();
+        if (onSelect) onSelect(event.id, { x: e.clientX, y: e.clientY });
+        else onNavigate(event.sourceSpaceId, event.sourceSpaceTitle);
+      }}
+      onDoubleClick={(e) => {
+        e.stopPropagation();
+        if (onOpenDrawer) onOpenDrawer(event);
       }}
     >
       {/* Left Resizer */}
@@ -198,6 +205,7 @@ interface DraggableMultiDayEventProps extends Omit<DraggableEventProps, 'onNavig
   onActiveResizeChange: (resize: { id: string, direction: 'left' | 'right', offset: number } | null) => void;
   isSelected: boolean;
   onSelect: (id: string, anchor: { x: number; y: number }) => void;
+  onOpenDrawer: (event: any) => void;
   eventHeight?: number;
   topOffset?: number;
   onHoverEvent: (id: string | null) => void;
@@ -362,6 +370,10 @@ const DraggableMultiDayEvent = memo(({
         const elementCenterX = rect.left + rect.width / 2;
         onSelect(event.id, { x: e.clientX, y: e.clientY, elementCenterX });
       }}
+      onDoubleClick={(e) => {
+        e.stopPropagation();
+        onOpenDrawer(event);
+      }}
     >
       {isResizing && isStart && (
         <div className="absolute -top-8 left-1/2 -translate-x-1/2 bg-primary-800 text-white text-[9px] px-2 py-1 rounded shadow-lg font-bold whitespace-nowrap z-[100] border border-primary-600">
@@ -408,6 +420,7 @@ interface CalendarDayCellProps {
   onDragEnter?: (date: Date, item: any) => void;
   onDragLeave?: () => void;
   isAnyDragging?: boolean;
+  onOpenDrawer?: (event: any) => void;
 }
 
 const CalendarDayCell = memo(({
@@ -424,7 +437,8 @@ const CalendarDayCell = memo(({
   renderEvents = true,
   onDragEnter,
   onDragLeave,
-  isAnyDragging
+  isAnyDragging,
+  onOpenDrawer
 }: CalendarDayCellProps) => {
   const [{ isOver, draggedItem }, drop] = useDrop(() => ({
     accept: 'CALENDAR_EVENT',
@@ -515,6 +529,7 @@ const CalendarDayCell = memo(({
             onDragEnd={onDragLeave}
             onHoverEvent={() => { }}
             isHovered={false}
+            onOpenDrawer={onOpenDrawer}
           />
         ))}
       </div>
@@ -548,6 +563,7 @@ interface MonthWeekRowProps {
   hoveredEventId: string | null;
   onHoverEvent: (id: string | null) => void;
   isAnyDragging?: boolean;
+  onOpenDrawer: (event: any) => void;
 }
 
 
@@ -674,7 +690,8 @@ const MonthWeekRow = memo(({
   onDragLeave,
   hoveredEventId,
   onHoverEvent,
-  isAnyDragging
+  isAnyDragging,
+  onOpenDrawer
 }: MonthWeekRowProps) => {
   const weekEnd = endOfWeek(weekStart, { weekStartsOn: 1 });
   const days = useMemo(() => eachDayOfInterval({ start: weekStart, end: weekEnd }), [weekStart, weekEnd]);
@@ -828,6 +845,7 @@ const MonthWeekRow = memo(({
                 onDragEnter={onDragEnter}
                 onDragLeave={onDragLeave}
                 isAnyDragging={isAnyDragging}
+                onOpenDrawer={onOpenDrawer}
               />
             </div>
           );
@@ -846,6 +864,7 @@ const MonthWeekRow = memo(({
               onActiveResizeChange={onActiveResizeChange}
               isSelected={selectedEventId === item.event.id}
               onSelect={onSelectEvent}
+              onOpenDrawer={onOpenDrawer}
               onDragEnd={onDragLeave}
               eventHeight={eventHeight}
               topOffset={topOffset}
@@ -1818,6 +1837,19 @@ export function CalendarApp({ spacesState, viewportsState }: CalendarAppProps) {
     else setEditPopoverAnchor(null);
   }, []);
 
+  const handleOpenDrawer = useCallback((event: any) => {
+    setNewEvent({
+      title: event.metadata?.title || '',
+      startDate: format(event.start, "yyyy-MM-dd'T'HH:mm"),
+      endDate: event.end ? format(event.end, "yyyy-MM-dd'T'HH:mm") : format(event.start, "yyyy-MM-dd'T'HH:mm"),
+      info: '',
+      spaceId: event.sourceSpaceId
+    });
+    setEditingEventId(event.id);
+    handleToggleEventSelection(null);
+    onOpen();
+  }, [handleToggleEventSelection, onOpen]);
+
   const handleDragEnter = useCallback((date: Date, item: any) => {
     setDragGhostDate(date);
     setDragGhostItem(item);
@@ -1931,6 +1963,7 @@ export function CalendarApp({ spacesState, viewportsState }: CalendarAppProps) {
                     }
                   }}
                   isAnyDragging={isAnyDraggingGlobal}
+                  onOpenDrawer={handleOpenDrawer}
                 />
               </div>
             );
@@ -2018,6 +2051,7 @@ export function CalendarApp({ spacesState, viewportsState }: CalendarAppProps) {
                 }}
                 isHovered={hoveredEventId === item.id}
                 onSelect={handleToggleEventSelection}
+                onOpenDrawer={handleOpenDrawer}
                 hourHeight={hourHeight}
               />
             ))}
@@ -2323,6 +2357,7 @@ export function CalendarApp({ spacesState, viewportsState }: CalendarAppProps) {
                             }}
                             isHovered={hoveredEventId === item.id}
                             onSelect={handleToggleEventSelection}
+                            onOpenDrawer={handleOpenDrawer}
                             hourHeight={hourHeight}
                           />
                         ))}
@@ -2710,6 +2745,23 @@ export function CalendarApp({ spacesState, viewportsState }: CalendarAppProps) {
                       <Button
                         size="sm"
                         variant="flat"
+                        color="danger"
+                        className="font-bold text-[10px] h-7 px-3 rounded-lg text-red-600 bg-red-50 hover:bg-red-100 transition-colors"
+                        startContent={<Trash2 size={12} className="text-red-600" />}
+                        onClick={() => {
+                          const space = spacesState.spaces.find((s: any) => s.id === selectedEvent.sourceSpaceId);
+                          if (space) {
+                            const blocks = space.content?.blocks.filter((b: any) => b.id !== selectedEvent.id);
+                            spacesState.updateSpace(selectedEvent.sourceSpaceId, { content: { ...space.content, blocks } });
+                            handleToggleEventSelection(null);
+                          }
+                        }}
+                      >
+                        Delete
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="flat"
                         className="font-semibold text-[10px] h-7 px-3 rounded-lg"
                         onClick={() => {
                           // Sync the selected event's data to the drawer
@@ -2726,23 +2778,6 @@ export function CalendarApp({ spacesState, viewportsState }: CalendarAppProps) {
                         }}
                       >
                         More details
-                      </Button>
-                      <Button
-                        size="sm"
-                        color="danger"
-                        variant="flat"
-                        className="font-bold text-[10px] h-7 px-3 rounded-lg"
-                        startContent={<Trash2 size={12} />}
-                        onClick={() => {
-                          const space = spacesState.spaces.find((s: any) => s.id === selectedEvent.sourceSpaceId);
-                          if (space) {
-                            const blocks = space.content?.blocks.filter((b: any) => b.id !== selectedEvent.id);
-                            spacesState.updateSpace(selectedEvent.sourceSpaceId, { content: { ...space.content, blocks } });
-                            handleToggleEventSelection(null);
-                          }
-                        }}
-                      >
-                        Delete
                       </Button>
                     </div>
                   </div>
@@ -3122,7 +3157,7 @@ function calculateTimelineLayout(events: any[], hourHeight: number, referenceDat
   return result;
 }
 
-function DraggableTimelineEvent({ event, top, height, left = 0, width = 100, onUpdate, onNavigate, onHoverEvent, isHovered, onSelect, hourHeight }: any) {
+function DraggableTimelineEvent({ event, top, height, left = 0, width = 100, onUpdate, onNavigate, onHoverEvent, isHovered, onSelect, onOpenDrawer, hourHeight }: any) {
   const dragOccurredRef = useRef(false);
   const mouseMovedRef = useRef(false);
 
@@ -3275,6 +3310,10 @@ function DraggableTimelineEvent({ event, top, height, left = 0, width = 100, onU
         }
         if (onSelect) onSelect(event.id, { x: e.clientX, y: e.clientY });
         else if (onNavigate) onNavigate(event.sourceSpaceId, event.sourceSpaceTitle);
+      }}
+      onDoubleClick={(e) => {
+        e.stopPropagation();
+        if (onOpenDrawer) onOpenDrawer(event);
       }}
     >
       {/* Top Resizer Handle */}
