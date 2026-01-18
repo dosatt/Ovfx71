@@ -339,7 +339,7 @@ const DraggableMultiDayEvent = memo(({
         top: `${topOffset + row * eventHeight}px`,
         height: `${eventHeight}px`,
         position: 'absolute',
-        zIndex: isResizing || isSelected ? 100 : 20,
+        zIndex: isResizing || isSelected ? 35 : 20,
         transition: isResizing ? 'none' : 'all 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275)',
         overflow: 'hidden',
         opacity: isResizing ? 0.05 : 1,
@@ -357,7 +357,10 @@ const DraggableMultiDayEvent = memo(({
       onMouseLeave={() => onHoverEvent(null)}
       onClick={(e) => {
         e.stopPropagation();
-        onSelect(event.id, { x: e.clientX, y: e.clientY });
+        const target = e.currentTarget as HTMLElement;
+        const rect = target.getBoundingClientRect();
+        const elementCenterX = rect.left + rect.width / 2;
+        onSelect(event.id, { x: e.clientX, y: e.clientY, elementCenterX });
       }}
     >
       {isResizing && isStart && (
@@ -957,27 +960,28 @@ export function CalendarApp({ spacesState, viewportsState }: CalendarAppProps) {
   const [selectedEventId, setSelectedEventId] = useState<string | null>(null);
   const [isSelecting, setIsSelecting] = useState(false);
   const [selectionRange, setSelectionRange] = useState<{ start: Date; end: Date } | null>(null);
-  const [popoverAnchor, setPopoverAnchor] = useState<{ x: number; y: number } | null>(null);
+  const [popoverAnchor, setPopoverAnchor] = useState<{ x: number; y: number; elementCenterX?: number } | null>(null);
   const [hoveredResizeDate, setHoveredResizeDate] = useState<Date | null>(null);
   const [activeResize, setActiveResize] = useState<{ id: string, direction: 'left' | 'right', offset: number } | null>(null);
   const [dragGhostDate, setDragGhostDate] = useState<Date | null>(null);
   const [dragGhostItem, setDragGhostItem] = useState<any | null>(null);
   const [hoveredEventId, setHoveredEventId] = useState<string | null>(null);
-  const [editPopoverAnchor, setEditPopoverAnchor] = useState<{ x: number, y: number } | null>(null);
+  const [editPopoverAnchor, setEditPopoverAnchor] = useState<{ x: number, y: number; elementCenterX?: number } | null>(null);
 
   // New event state
   const [newEvent, setNewEvent] = useState({
     title: '',
     startDate: format(new Date(), "yyyy-MM-dd'T'HH:mm"),
     endDate: format(new Date(Date.now() + 3600000), "yyyy-MM-dd'T'HH:mm"),
-    notes: '',
+    info: '',
     spaceId: ''
   });
+  const [editingEventId, setEditingEventId] = useState<string | null>(null);
 
   // Refs for auto-saving on outside click and stable interaction logic
   const newEventRef = useRef(newEvent);
-  const popoverAnchorRef = useRef<{ x: number; y: number } | null>(null);
-  const editPopoverAnchorRef = useRef<{ x: number; y: number } | null>(null);
+  const popoverAnchorRef = useRef<{ x: number; y: number; elementCenterX?: number } | null>(null);
+  const editPopoverAnchorRef = useRef<{ x: number; y: number; elementCenterX?: number } | null>(null);
   const selectionRangeRef = useRef<{ start: Date; end: Date } | null>(null);
   const handleCreateEventRef = useRef<() => void>(() => { });
 
@@ -1537,19 +1541,12 @@ export function CalendarApp({ spacesState, viewportsState }: CalendarAppProps) {
       }
     }
 
-    // Create a dedicate space for the event's "Page Note"
-    const noteSpace = spacesStateRef.current.createSpace('page');
-    // Initialize it with the note content if any, or just title
-    spacesStateRef.current.updateSpace(noteSpace.id, {
-      title: finalTitle, // The page title matches event title
-      content: {
-        blocks: newEvent.notes ? [{
-          id: `block_${Date.now()}_note`,
-          type: 'paragraph',
-          content: newEvent.notes
-        }] : []
-      },
-      metadata: { isNote: true, isEventPage: true }
+    // Create Info space for the event - this is a REAL page/space
+    const infoSpace = spacesStateRef.current.createSpace('page');
+    spacesStateRef.current.updateSpace(infoSpace.id, {
+      title: `${finalTitle} - Info`,
+      content: { blocks: [] },
+      metadata: { isInfo: true, eventId: '' } // Will be updated with eventId after block creation
     });
 
     const targetSpace = spacesStateRef.current.getSpace(targetSpaceId);
@@ -1557,21 +1554,20 @@ export function CalendarApp({ spacesState, viewportsState }: CalendarAppProps) {
       const newBlock = {
         id: `block_${Date.now()}`,
         type: 'calendar',
-        content: '', // Content is now in the linked space
+        content: '',
         metadata: {
           startDate: newEvent.startDate,
           endDate: newEvent.endDate,
-          notes: '', // Legacy field cleared
-          noteSpaceId: noteSpace.id, // Link to the new space
           title: finalTitle,
+          infoSpaceId: infoSpace.id,
           displayMode: 'card',
-          updatedAt: Date.now() // Track for sort order
+          updatedAt: Date.now()
         }
       };
 
-      // Back-link the space to the event
-      spacesStateRef.current.updateSpace(noteSpace.id, {
-        metadata: { ...noteSpace.metadata, eventId: newBlock.id }
+      // Back-link the Info space to the event
+      spacesStateRef.current.updateSpace(infoSpace.id, {
+        metadata: { ...infoSpace.metadata, eventId: newBlock.id }
       });
 
       const updatedBlocks = [...(targetSpace.content?.blocks || []), newBlock];
@@ -1586,7 +1582,7 @@ export function CalendarApp({ spacesState, viewportsState }: CalendarAppProps) {
       title: '',
       startDate: format(new Date(), "yyyy-MM-dd'T'HH:mm"),
       endDate: format(new Date(Date.now() + 3600000), "yyyy-MM-dd'T'HH:mm"),
-      notes: '',
+      info: '',
       spaceId: ''
     });
   }, [newEvent, onClose]);
@@ -1626,9 +1622,19 @@ export function CalendarApp({ spacesState, viewportsState }: CalendarAppProps) {
     }
 
     // Calculate anchor position for popover
-    let anchor: { x: number; y: number } | null = null;
+    let anchor: { x: number; y: number; elementCenterX?: number } | null = null;
     if (e && e.clientX !== undefined) {
-      anchor = { x: e.clientX, y: e.clientY };
+      // Try to find the element center from the event target or selection
+      let elementCenterX: number | undefined;
+
+      // Try to get the element that was clicked/selected
+      const target = e.target as HTMLElement;
+      if (target) {
+        const rect = target.getBoundingClientRect();
+        elementCenterX = rect.left + rect.width / 2;
+      }
+
+      anchor = { x: e.clientX, y: e.clientY, elementCenterX };
     } else {
       // Fallback
       anchor = { x: window.innerWidth / 2, y: window.innerHeight / 2 };
@@ -1796,7 +1802,7 @@ export function CalendarApp({ spacesState, viewportsState }: CalendarAppProps) {
   // Removed from here, moved to the top of the component body for hoisting safety
 
 
-  const handleToggleEventSelection = useCallback((id: string | null, anchor?: { x: number, y: number }) => {
+  const handleToggleEventSelection = useCallback((id: string | null, anchor?: { x: number, y: number; elementCenterX?: number }) => {
     // Always close creation state when interacting with an existing element or clearing selection
     setPopoverAnchor(null);
     popoverAnchorRef.current = null;
@@ -2453,81 +2459,104 @@ export function CalendarApp({ spacesState, viewportsState }: CalendarAppProps) {
               top: popoverAnchor.y
             }}
           >
-            <div className="pointer-events-auto w-[280px] relative mt-[10px] group filter drop-shadow-2xl">
-              {/* Speech Bubble Arrow (SVG for perfect crispness) */}
-              <div className="absolute left-8 w-6 h-[11px] pointer-events-none z-20" style={{ top: '-10px' }}>
-                <svg width="24" height="11" viewBox="0 0 24 11" fill="none" xmlns="http://www.w3.org/2000/svg" className="overflow-visible">
-                  <path d="M0 11L12 0L24 11" fill="white" />
-                  <path d="M0 11L12 0L24 11" stroke="#e4e4e7" strokeWidth="1.5" strokeLinejoin="round" fill="none" />
-                </svg>
-              </div>
+            {(() => {
+              // Calculate arrow position to point at element center
+              // Popover width is 280px, arrow width is 24px
+              // We want the arrow centered on the element, but clamped within rounded corners (12px to 268px)
+              const popoverWidth = 280;
+              const arrowWidth = 24;
+              const minArrowLeft = 12; // Stay inside left rounded corner
+              const maxArrowLeft = popoverWidth - arrowWidth - 12; // Stay inside right rounded corner
 
-              <div className="absolute -right-10 top-0 z-20">
-                <Button size="sm" isIconOnly variant="light" radius="full" className="h-8 w-8 min-w-8 text-default-400 hover:text-default-800 bg-white shadow-sm hover:shadow-md" onClick={() => setPopoverAnchor(null)}>
-                  <Plus size={18} className="rotate-45" />
-                </Button>
-              </div>
+              let arrowLeft = 32; // Default position (left-8)
 
-              <div className="relative z-10 bg-white border border-divider flex flex-col overflow-hidden" style={{ borderRadius: '24px' }}>
-                <div className="p-3 flex flex-col gap-3">
-                  <div className="pt-2 px-1">
-                    <Input
-                      autoFocus
-                      placeholder="New"
-                      variant="flat"
-                      size="sm"
-                      value={newEvent.title}
-                      onValueChange={(v) => setNewEvent(prev => ({ ...prev, title: v }))}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter') handleQuickCreate();
-                        if (e.key === 'Escape') setPopoverAnchor(null);
-                      }}
-                      classNames={{
-                        inputWrapper: "bg-transparent p-0 shadow-none data-[hover=true]:bg-transparent group-data-[focus=true]:bg-transparent h-auto min-h-0",
-                        input: "text-lg font-bold text-default-900 placeholder:text-default-300 tracking-tight py-0"
-                      }}
-                    />
-                    <div className="h-0.5 w-10 bg-primary rounded-full mt-1.5 opacity-20" />
+              if (popoverAnchor.elementCenterX !== undefined) {
+                // Calculate offset from popover left edge to element center
+                const offset = popoverAnchor.elementCenterX - popoverAnchor.x;
+                // Center the arrow on that offset
+                arrowLeft = offset - (arrowWidth / 2);
+                // Clamp to stay within rounded corners
+                arrowLeft = Math.max(minArrowLeft, Math.min(maxArrowLeft, arrowLeft));
+              }
+
+              return (
+                <div className="pointer-events-auto w-[280px] relative mt-[10px] group filter drop-shadow-2xl">
+                  {/* Speech Bubble Arrow (SVG for perfect crispness) */}
+                  <div className="absolute w-6 h-[11px] pointer-events-none z-20" style={{ left: `${arrowLeft}px`, top: '-10px' }}>
+                    <svg width="24" height="11" viewBox="0 0 24 11" fill="none" xmlns="http://www.w3.org/2000/svg" className="overflow-visible">
+                      <path d="M0 11L12 0L24 11" fill="white" />
+                      <path d="M0 11L12 0L24 11" stroke="#e4e4e7" strokeWidth="1.5" strokeLinejoin="round" fill="none" />
+                    </svg>
                   </div>
 
-                  <div className="flex flex-col gap-2">
-                    <div className="grid grid-cols-2 gap-2">
-                      <Input
-                        type="datetime-local"
-                        variant="faded"
-                        size="sm"
-                        value={format(new Date(newEvent.startDate), "yyyy-MM-dd'T'HH:mm")}
-                        onChange={(e) => setNewEvent(prev => ({ ...prev, startDate: e.target.value }))}
-                        classNames={{
-                          inputWrapper: "h-7 px-2 bg-default-50/50 hover:bg-default-100 border-transparent transition-colors rounded-lg shadow-none",
-                          input: "text-sm font-semibold text-default-700 font-mono"
-                        }}
-                      />
-                      <Input
-                        type="datetime-local"
-                        variant="faded"
-                        size="sm"
-                        value={format(new Date(newEvent.endDate), "yyyy-MM-dd'T'HH:mm")}
-                        onChange={(e) => setNewEvent(prev => ({ ...prev, endDate: e.target.value }))}
-                        classNames={{
-                          inputWrapper: "h-7 px-2 bg-default-50/50 hover:bg-default-100 border-transparent transition-colors rounded-lg shadow-none",
-                          input: "text-sm font-semibold text-default-700 font-mono"
-                        }}
-                      />
+                  <div className="absolute -right-10 top-0 z-20">
+                    <Button size="sm" isIconOnly variant="light" radius="full" className="h-8 w-8 min-w-8 text-default-400 hover:text-default-800 bg-white shadow-sm hover:shadow-md" onClick={() => setPopoverAnchor(null)}>
+                      <Plus size={18} className="rotate-45" />
+                    </Button>
+                  </div>
+
+                  <div className="relative z-10 bg-white border border-divider flex flex-col overflow-hidden shadow-xl" style={{ borderRadius: '12px' }}>
+                    <div className="p-3 flex flex-col gap-1.5">
+                      <div className="pt-3 px-4">
+                        <Input
+                          autoFocus
+                          placeholder="New"
+                          variant="flat"
+                          size="sm"
+                          value={newEvent.title}
+                          onValueChange={(v) => setNewEvent(prev => ({ ...prev, title: v }))}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter') handleQuickCreate();
+                            if (e.key === 'Escape') setPopoverAnchor(null);
+                          }}
+                          classNames={{
+                            inputWrapper: "bg-transparent px-4 shadow-none data-[hover=true]:bg-transparent group-data-[focus=true]:bg-transparent h-auto min-h-0",
+                            input: "text-lg font-bold text-default-900 placeholder:text-default-300 tracking-tight py-0"
+                          }}
+                        />
+                        <div className="h-0.5 w-10 bg-primary rounded-full mt-1.5 opacity-20" />
+                      </div>
+
+                      <div className="flex flex-col gap-2">
+                        <div className="grid grid-cols-2 gap-2">
+                          <Input
+                            type="datetime-local"
+                            variant="faded"
+                            size="sm"
+                            value={format(new Date(newEvent.startDate), "yyyy-MM-dd'T'HH:mm")}
+                            onChange={(e) => setNewEvent(prev => ({ ...prev, startDate: e.target.value }))}
+                            classNames={{
+                              inputWrapper: "h-7 px-2 bg-default-50/50 hover:bg-default-100 border-transparent transition-colors rounded-lg shadow-none",
+                              input: "text-xs font-medium text-default-600"
+                            }}
+                          />
+                          <Input
+                            type="datetime-local"
+                            variant="faded"
+                            size="sm"
+                            value={format(new Date(newEvent.endDate), "yyyy-MM-dd'T'HH:mm")}
+                            onChange={(e) => setNewEvent(prev => ({ ...prev, endDate: e.target.value }))}
+                            classNames={{
+                              inputWrapper: "h-7 px-2 bg-default-50/50 hover:bg-default-100 border-transparent transition-colors rounded-lg shadow-none",
+                              input: "text-xs font-medium text-default-600"
+                            }}
+                          />
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="flex gap-2 p-3 bg-gradient-to-t from-white to-white/50 backdrop-blur-md pt-2" style={{ borderBottomLeftRadius: '12px', borderBottomRightRadius: '12px' }}>
+                      <Button size="sm" fullWidth variant="flat" className="font-semibold h-7 text-[10px] bg-default-100/50 text-default-600 rounded-lg" onClick={() => { setPopoverAnchor(null); onOpen(); }}>
+                        More details
+                      </Button>
+                      <Button size="sm" fullWidth color="primary" className="font-bold h-7 text-[10px] shadow-lg shadow-primary/25 rounded-lg text-white" onClick={handleQuickCreate}>
+                        Create Event
+                      </Button>
                     </div>
                   </div>
                 </div>
-
-                <div className="flex gap-2 p-3 bg-gradient-to-t from-white to-white/50 backdrop-blur-md pt-2" style={{ borderBottomLeftRadius: '24px', borderBottomRightRadius: '24px' }}>
-                  <Button size="sm" fullWidth variant="flat" className="font-semibold h-7 text-[10px] bg-default-100/50 text-default-600 rounded-lg" onClick={() => { setPopoverAnchor(null); onOpen(); }}>
-                    More details
-                  </Button>
-                  <Button size="sm" fullWidth color="primary" className="font-bold h-7 text-[10px] shadow-lg shadow-primary/25 rounded-lg text-white" onClick={handleQuickCreate}>
-                    Create Event
-                  </Button>
-                </div>
-              </div>
-            </div>
+              );
+            })()}
           </motion.div>
         )}
 
@@ -2543,144 +2572,183 @@ export function CalendarApp({ spacesState, viewportsState }: CalendarAppProps) {
               top: editPopoverAnchor.y
             }}
           >
-            <div className="pointer-events-auto w-[300px] relative mt-[10px] group filter drop-shadow-2xl">
-              {/* Speech Bubble Arrow (SVG for perfect crispness) */}
-              <div className="absolute left-8 w-6 h-[11px] pointer-events-none z-20" style={{ top: '-10px' }}>
-                <svg width="24" height="11" viewBox="0 0 24 11" fill="none" xmlns="http://www.w3.org/2000/svg" className="overflow-visible">
-                  <path d="M0 11L12 0L24 11" fill="white" />
-                  <path d="M0 11L12 0L24 11" stroke="#e4e4e7" strokeWidth="1.5" strokeLinejoin="round" fill="none" />
-                </svg>
-              </div>
+            {(() => {
+              // Calculate arrow position to point at element center
+              // Edit popover width is 300px, arrow width is 24px
+              // We want the arrow centered on the element, but clamped within rounded corners (12px to 288px)
+              const popoverWidth = 300;
+              const arrowWidth = 24;
+              const minArrowLeft = 12; // Stay inside left rounded corner
+              const maxArrowLeft = popoverWidth - arrowWidth - 12; // Stay inside right rounded corner
 
+              let arrowLeft = 32; // Default position (left-8)
 
-              <div className="absolute -right-10 top-0 z-20">
-                <Button size="sm" isIconOnly variant="light" radius="full" className="h-8 w-8 min-w-8 text-default-400 hover:text-default-800 bg-white shadow-sm hover:shadow-md" onClick={() => handleToggleEventSelection(null)}>
-                  <Plus size={18} className="rotate-45" />
-                </Button>
-              </div>
+              if (editPopoverAnchor.elementCenterX !== undefined) {
+                // Calculate offset from popover left edge to element center
+                const offset = editPopoverAnchor.elementCenterX - editPopoverAnchor.x;
+                // Center the arrow on that offset
+                arrowLeft = offset - (arrowWidth / 2);
+                // Clamp to stay within rounded corners
+                arrowLeft = Math.max(minArrowLeft, Math.min(maxArrowLeft, arrowLeft));
+              }
 
-              <div className="relative z-10 bg-white border border-divider flex flex-col overflow-hidden" style={{ borderRadius: '24px' }}>
-                <div className="px-5 pt-5 pb-2">
-                  <Input
-                    placeholder="Event title"
-                    variant="flat"
-                    size="lg"
-                    value={selectedEvent.metadata?.title || ''}
-                    onValueChange={(v) => handleUpdateEvent(selectedEvent.id, selectedEvent.id, selectedEvent.sourceSpaceId, { title: v })}
-                    classNames={{
-                      inputWrapper: "bg-transparent p-0 shadow-none data-[hover=true]:bg-transparent group-data-[focus=true]:bg-transparent h-auto min-h-0",
-                      input: "text-xl font-bold text-default-900 placeholder:text-default-300 tracking-tight py-0"
-                    }}
-                  />
-                  <div className="h-0.5 w-10 bg-primary rounded-full mt-2 opacity-20" />
-                </div>
-
-                <div className="px-5 py-3 flex flex-col gap-4">
-                  {/* Time Section */}
-                  <div className="flex flex-col gap-1.5">
-                    <div className="grid grid-cols-2 gap-2">
-                      <Input
-                        type="datetime-local"
-                        variant="faded"
-                        size="sm"
-                        value={format(selectedEvent.start, "yyyy-MM-dd'T'HH:mm")}
-                        onChange={(e) => handleUpdateEvent(selectedEvent.id, selectedEvent.id, selectedEvent.sourceSpaceId, { startDate: e.target.value })}
-                        classNames={{
-                          inputWrapper: "h-8 px-2 bg-default-50/50 hover:bg-default-100 border-transparent transition-colors rounded-lg",
-                          input: "text-sm font-semibold text-default-700 font-mono"
-                        }}
-                      />
-                      <Input
-                        type="datetime-local"
-                        variant="faded"
-                        size="sm"
-                        value={selectedEvent.end ? format(selectedEvent.end, "yyyy-MM-dd'T'HH:mm") : ''}
-                        onChange={(e) => handleUpdateEvent(selectedEvent.id, selectedEvent.id, selectedEvent.sourceSpaceId, { endDate: e.target.value })}
-                        classNames={{
-                          inputWrapper: "h-8 px-2 bg-default-50/50 hover:bg-default-100 border-transparent transition-colors rounded-lg",
-                          input: "text-sm font-semibold text-default-700 font-mono"
-                        }}
-                      />
-                    </div>
+              return (
+                <div className="pointer-events-auto w-[300px] relative mt-[10px] group filter drop-shadow-2xl">
+                  {/* Speech Bubble Arrow (SVG for perfect crispness) */}
+                  <div className="absolute w-6 h-[11px] pointer-events-none z-20" style={{ left: `${arrowLeft}px`, top: '-10px' }}>
+                    <svg width="24" height="11" viewBox="0 0 24 11" fill="none" xmlns="http://www.w3.org/2000/svg" className="overflow-visible">
+                      <path d="M0 11L12 0L24 11" fill="white" />
+                      <path d="M0 11L12 0L24 11" stroke="#e4e4e7" strokeWidth="1.5" strokeLinejoin="round" fill="none" />
+                    </svg>
                   </div>
 
 
+                  <div className="absolute -right-10 top-0 z-20">
+                    <Button size="sm" isIconOnly variant="light" radius="full" className="h-8 w-8 min-w-8 text-default-400 hover:text-default-800 bg-white shadow-sm hover:shadow-md" onClick={() => handleToggleEventSelection(null)}>
+                      <Plus size={18} className="rotate-45" />
+                    </Button>
+                  </div>
 
-                  {/* Page / Content Section */}
-                  <div className="flex flex-col gap-1.5">
-                    <div className="flex gap-1.5 items-center text-default-400 text-[10px] font-bold uppercase tracking-wider pl-1">
-                      <span className="w-1 h-1 rounded-full bg-success" /> PAGE
+                  <div className="relative z-10 bg-white border border-divider flex flex-col overflow-hidden shadow-xl" style={{ borderRadius: '12px' }}>
+                    <div className="px-5 pt-6 pb-2">
+                      <Input
+                        placeholder="Event title"
+                        variant="flat"
+                        size="lg"
+                        value={selectedEvent.metadata?.title || ''}
+                        onValueChange={(v) => handleUpdateEvent(selectedEvent.id, selectedEvent.id, selectedEvent.sourceSpaceId, { title: v })}
+                        classNames={{
+                          inputWrapper: "bg-transparent px-4 shadow-none data-[hover=true]:bg-transparent group-data-[focus=true]:bg-transparent h-auto min-h-0",
+                          input: "text-xl font-bold text-default-900 placeholder:text-default-300 tracking-tight py-0"
+                        }}
+                      />
+                      <div className="h-0.5 w-10 bg-primary rounded-full mt-2 opacity-20" />
                     </div>
-                    {(() => {
-                      const linkedSpaceId = selectedEvent.metadata?.noteSpaceId;
-                      const linkedSpace = linkedSpaceId ? spacesState.spaces.find((s: any) => s.id === linkedSpaceId) : null;
 
-                      if (linkedSpace) {
-                        return (
-                          <div className="h-[200px] overflow-y-auto border border-divider rounded-xl bg-white shadow-inner">
-                            <PageEditor
-                              space={linkedSpace}
-                              spacesState={spacesState}
-                            // Pass dummy or minimal props if needed, mostly just need space and state
-                            />
-                          </div>
-                        );
-                      }
+                    <div className="px-5 py-1.5 flex flex-col gap-4">
+                      {/* Time Section */}
+                      <div className="flex flex-col gap-1.5">
+                        <div className="grid grid-cols-2 gap-2">
+                          <Input
+                            type="datetime-local"
+                            variant="faded"
+                            size="sm"
+                            value={format(selectedEvent.start, "yyyy-MM-dd'T'HH:mm")}
+                            onChange={(e) => handleUpdateEvent(selectedEvent.id, selectedEvent.id, selectedEvent.sourceSpaceId, { startDate: e.target.value })}
+                            classNames={{
+                              inputWrapper: "h-8 px-2 bg-default-50/50 hover:bg-default-100 border-transparent transition-colors rounded-lg",
+                              input: "text-xs font-medium text-default-600"
+                            }}
+                          />
+                          <Input
+                            type="datetime-local"
+                            variant="faded"
+                            size="sm"
+                            value={selectedEvent.end ? format(selectedEvent.end, "yyyy-MM-dd'T'HH:mm") : ''}
+                            onChange={(e) => handleUpdateEvent(selectedEvent.id, selectedEvent.id, selectedEvent.sourceSpaceId, { endDate: e.target.value })}
+                            classNames={{
+                              inputWrapper: "h-8 px-2 bg-default-50/50 hover:bg-default-100 border-transparent transition-colors rounded-lg",
+                              input: "text-xs font-medium text-default-600"
+                            }}
+                          />
+                        </div>
+                      </div>
 
-                      return (
-                        <Button
-                          size="sm"
-                          variant="flat"
-                          className="w-full justify-between h-12 bg-white border border-default-200/50 shadow-sm hover:border-default-300 hover:shadow transition-all rounded-xl group px-3"
-                          startContent={<div className="p-1.5 bg-success/10 rounded-md text-success-600 group-hover:bg-success/20 transition-colors"><Layout size={16} /></div>}
-                          endContent={<ExternalLink size={14} className="opacity-30 group-hover:opacity-100 transition-opacity" />}
-                          onClick={() => {
-                            const newSpace = spacesState.createSpace('page');
-                            const noteTitle = selectedEvent.metadata?.title || 'Untitled Event';
-                            // Try to get legacy note content
-                            const legacyNote = selectedEvent.metadata?.notes || '';
+                      {/* Info Section */}
+                      <div className="flex flex-col gap-1.5">
+                        <div className="flex gap-1.5 items-center text-default-400 text-[10px] font-bold uppercase tracking-wider pl-1">
+                          <span className="w-1 h-1 rounded-full bg-primary" /> INFO
+                        </div>
+                        {(() => {
+                          const infoSpaceId = selectedEvent.metadata?.infoSpaceId;
+                          const infoSpace = infoSpaceId ? spacesState.spaces.find((s: any) => s.id === infoSpaceId) : null;
 
-                            spacesState.updateSpace(newSpace.id, {
-                              title: noteTitle,
-                              content: { blocks: legacyNote ? [{ type: 'paragraph', content: legacyNote, id: 'migrated_note' }] : [] },
-                              metadata: { isNote: true, eventId: selectedEvent.id, isEventPage: true }
-                            });
+                          if (infoSpace) {
+                            return (
+                              <div className="h-[200px] overflow-y-auto border border-divider rounded-xl bg-white shadow-inner">
+                                <PageEditor
+                                  space={infoSpace}
+                                  spacesState={spacesState}
+                                />
+                              </div>
+                            );
+                          }
 
-                            handleUpdateEvent(selectedEvent.id, selectedEvent.id, selectedEvent.sourceSpaceId, { noteSpaceId: newSpace.id });
-                          }}
-                        >
-                          <div className="flex flex-col items-start gap-0.5 overflow-hidden">
-                            <span className="font-bold text-default-700 text-[11px] truncate w-full text-left">
-                              Create Linked Page
-                            </span>
-                            <span className="text-[9px] text-default-400 font-medium">Click to create page</span>
-                          </div>
-                        </Button>
-                      );
-                    })()}
+                          return (
+                            <Button
+                              size="sm"
+                              variant="flat"
+                              className="w-full justify-between h-12 bg-white border border-default-200/50 shadow-sm hover:border-default-300 hover:shadow transition-all rounded-xl group px-3"
+                              startContent={<div className="p-1.5 bg-primary/10 rounded-md text-primary-600 group-hover:bg-primary/20 transition-colors"><Layout size={16} /></div>}
+                              endContent={<ExternalLink size={14} className="opacity-30 group-hover:opacity-100 transition-opacity" />}
+                              onClick={() => {
+                                const newSpace = spacesState.createSpace('page');
+                                const infoTitle = `${selectedEvent.metadata?.title || 'Untitled Event'} - Info`;
+
+                                spacesState.updateSpace(newSpace.id, {
+                                  title: infoTitle,
+                                  content: { blocks: [] },
+                                  metadata: { isInfo: true, eventId: selectedEvent.id }
+                                });
+
+                                handleUpdateEvent(selectedEvent.id, selectedEvent.id, selectedEvent.sourceSpaceId, { infoSpaceId: newSpace.id });
+                              }}
+                            >
+                              <div className="flex flex-col items-start gap-0.5 overflow-hidden">
+                                <span className="font-bold text-default-700 text-[11px] truncate w-full text-left">
+                                  Create Info Page
+                                </span>
+                                <span className="text-[9px] text-default-400 font-medium">Click to add event details</span>
+                              </div>
+                            </Button>
+                          );
+                        })()}
+                      </div>
+                    </div>
+
+                    <div className="flex justify-between items-center p-3 bg-default-50/50 border-t border-divider/50 backdrop-blur-md mt-auto" style={{ borderBottomLeftRadius: '12px', borderBottomRightRadius: '12px' }}>
+                      <Button
+                        size="sm"
+                        variant="flat"
+                        className="font-semibold text-[10px] h-7 px-3 rounded-lg"
+                        onClick={() => {
+                          // Sync the selected event's data to the drawer
+                          setNewEvent({
+                            title: selectedEvent.metadata?.title || '',
+                            startDate: format(selectedEvent.start, "yyyy-MM-dd'T'HH:mm"),
+                            endDate: selectedEvent.end ? format(selectedEvent.end, "yyyy-MM-dd'T'HH:mm") : format(selectedEvent.start, "yyyy-MM-dd'T'HH:mm"),
+                            info: '',
+                            spaceId: selectedEvent.sourceSpaceId
+                          });
+                          setEditingEventId(selectedEvent.id);
+                          handleToggleEventSelection(null);
+                          onOpen();
+                        }}
+                      >
+                        More details
+                      </Button>
+                      <Button
+                        size="sm"
+                        color="danger"
+                        variant="flat"
+                        className="font-bold text-[10px] h-7 px-3 rounded-lg"
+                        startContent={<Trash2 size={12} />}
+                        onClick={() => {
+                          const space = spacesState.spaces.find((s: any) => s.id === selectedEvent.sourceSpaceId);
+                          if (space) {
+                            const blocks = space.content?.blocks.filter((b: any) => b.id !== selectedEvent.id);
+                            spacesState.updateSpace(selectedEvent.sourceSpaceId, { content: { ...space.content, blocks } });
+                            handleToggleEventSelection(null);
+                          }
+                        }}
+                      >
+                        Delete
+                      </Button>
+                    </div>
                   </div>
                 </div>
-
-                <div className="flex justify-end items-center p-3 bg-default-50/50 border-t border-divider/50 backdrop-blur-md mt-auto" style={{ borderBottomLeftRadius: '24px', borderBottomRightRadius: '24px' }}>
-                  <Button
-                    size="sm"
-                    variant="light"
-                    className="font-bold text-[10px] h-7 px-3 text-danger hover:bg-danger/10 hover:text-danger-600 rounded-lg transition-colors"
-                    startContent={<Trash2 size={12} />}
-                    onClick={() => {
-                      const space = spacesState.spaces.find((s: any) => s.id === selectedEvent.sourceSpaceId);
-                      if (space) {
-                        const blocks = space.content?.blocks.filter((b: any) => b.id !== selectedEvent.id);
-                        spacesState.updateSpace(selectedEvent.sourceSpaceId, { content: { ...space.content, blocks } });
-                        handleToggleEventSelection(null);
-                      }
-                    }}
-                  >
-                    Delete
-                  </Button>
-                </div>
-              </div>
-            </div>
+              );
+            })()}
           </motion.div >
         )
         }
@@ -2743,35 +2811,62 @@ export function CalendarApp({ spacesState, viewportsState }: CalendarAppProps) {
                     </div>
                   </div>
                   <div className="flex flex-col gap-2">
-                    <label className="text-sm font-semibold text-default-700">Destination</label>
-                    <Select
-                      placeholder="Choose a space"
-                      variant="bordered"
-                      selectedKeys={newEvent.spaceId ? [newEvent.spaceId] : []}
-                      onSelectionChange={(keys: any) => setNewEvent(prev => ({ ...prev, spaceId: Array.from(keys)[0] as string }))}
-                    >
-                      {spacesState.spaces.filter((s: any) => s.type === 'page').map((space: any) => (
-                        <SelectItem key={space.id}>
-                          {space.title}
-                        </SelectItem>
-                      ))}
-                    </Select>
-                  </div>
-                  <div className="flex flex-col gap-2">
-                    <label className="text-sm font-semibold text-default-700">Note</label>
-                    <Textarea
-                      placeholder="Additional details..."
-                      variant="bordered"
-                      value={newEvent.notes}
-                      onValueChange={(v) => setNewEvent(prev => ({ ...prev, notes: v }))}
-                      minRows={3}
-                    />
+                    <label className="text-sm font-semibold text-default-700">Info</label>
+                    {(() => {
+                      if (editingEventId) {
+                        // We're editing an existing event - try to find its Info space
+                        const event = allEvents.find((e: any) => e.id === editingEventId);
+                        const infoSpaceId = event?.metadata?.infoSpaceId;
+                        const infoSpace = infoSpaceId ? spacesState.spaces.find((s: any) => s.id === infoSpaceId) : null;
+
+                        if (infoSpace) {
+                          return (
+                            <div className="h-[300px] overflow-y-auto border border-divider rounded-xl bg-white shadow-inner">
+                              <PageEditor
+                                space={infoSpace}
+                                spacesState={spacesState}
+                              />
+                            </div>
+                          );
+                        }
+                      }
+
+                      // Creating new event or no Info space yet
+                      return (
+                        <div className="h-[300px] overflow-y-auto border border-default-200 rounded-xl bg-default-50/30 flex items-center justify-center">
+                          <div className="text-center p-6">
+                            <div className="p-3 bg-primary/10 rounded-full w-12 h-12 mx-auto mb-3 flex items-center justify-center">
+                              <Layout size={20} className="text-primary-600" />
+                            </div>
+                            <p className="text-sm font-semibold text-default-700 mb-1">Info Page</p>
+                            <p className="text-xs text-default-500">Will be created when you save the event</p>
+                          </div>
+                        </div>
+                      );
+                    })()}
                   </div>
                 </div>
 
                 <div className="p-4 border-t border-divider bg-default-50 flex justify-end gap-2">
-                  <Button variant="light" onPress={onClose}>Cancel</Button>
-                  <Button color="primary" onPress={() => { handleCreateEvent(); onClose(); }}>Save Event</Button>
+                  <Button variant="light" onPress={() => { setEditingEventId(null); onClose(); }}>Cancel</Button>
+                  <Button color="primary" onPress={() => {
+                    if (editingEventId) {
+                      // Update existing event
+                      const event = allEvents.find((e: any) => e.id === editingEventId);
+                      if (event) {
+                        handleUpdateEvent(editingEventId, editingEventId, event.sourceSpaceId, {
+                          title: newEvent.title,
+                          startDate: newEvent.startDate,
+                          endDate: newEvent.endDate
+                        });
+                      }
+                      setEditingEventId(null);
+                    } else {
+                      // Create new event
+                      handleCreateEvent();
+                    }
+                    onClose();
+                  }}>Save Event</Button>
                 </div>
               </motion.div>
             </>
