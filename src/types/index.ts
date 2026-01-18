@@ -14,6 +14,9 @@ export interface Space {
   createdAt: string;
   updatedAt: string;
   isFavorite?: boolean;
+  metadata?: {
+    [key: string]: any;
+  };
 }
 
 // TextElement types for Page

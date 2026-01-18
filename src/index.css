@@ -5380,3 +5380,45 @@ input[type=range].slider::-webkit-slider-runnable-track {
 }
 
 /* --- MANUAL SPACING PATCH END --- */
+
+.autohide-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: transparent transparent;
+  transition: scrollbar-color 0.3s ease;
+}
+
+.autohide-scrollbar:hover {
+  scrollbar-color: var(--tw-black) transparent;
+}
+
+/* For Webkit browsers (Chrome, Safari, Edge) */
+.autohide-scrollbar::-webkit-scrollbar {
+  width: 5px;
+  height: 5px;
+}
+
+.autohide-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.autohide-scrollbar::-webkit-scrollbar-thumb {
+  background: transparent;
+  border-radius: 10px;
+  transition: background 0.3s ease;
+}
+
+.autohide-scrollbar:hover::-webkit-scrollbar-thumb {
+  background: rgba(0, 0, 0, 0.15);
+}
+
+.dark .autohide-scrollbar:hover::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+.autohide-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: rgba(0, 0, 0, 0.25) !important;
+}
+
+.dark .autohide-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.3) !important;
+}

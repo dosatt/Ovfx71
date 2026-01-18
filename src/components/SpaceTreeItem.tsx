@@ -27,11 +27,15 @@ import {
 import { Space, SpaceType } from '../types';
 import { IconPicker } from './IconPicker';
 import * as LucideIcons from 'lucide-react';
+import { SpaceContextMenu } from './SpaceContextMenu';
 
 interface SpaceTreeItemProps {
   space: Space;
   spacesState: any;
-  onSpaceClick: (space: Space) => void;
+  onSpaceClick: (e: React.MouseEvent, space: Space) => void;
+  onSpaceDoubleClick: (space: Space) => void;
+  isSelected?: boolean;
+  selectedSpaceIds?: string[];
   level?: number;
 }
 
@@ -48,7 +52,15 @@ const ITEM_TYPE_TEXT_ELEMENT = 'TEXT_ELEMENT';
 
 export { ITEM_TYPE_TO_WORKSPACE, ITEM_TYPE_TEXT_ELEMENT };
 
-export function SpaceTreeItem({ space, spacesState, onSpaceClick, level = 0 }: SpaceTreeItemProps) {
+export function SpaceTreeItem({
+  space,
+  spacesState,
+  onSpaceClick,
+  onSpaceDoubleClick,
+  isSelected = false,
+  selectedSpaceIds = [],
+  level = 0
+}: SpaceTreeItemProps) {
   const [expanded, setExpanded] = useState(false);
   const [showMenu, setShowMenu] = useState(false);
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number } | null>(null);
@@ -173,7 +185,7 @@ export function SpaceTreeItem({ space, spacesState, onSpaceClick, level = 0 }: S
           className={`
             flex items-center pr-2 py-1 rounded-lg cursor-pointer transition-colors duration-150 ease-out group
             ${isDragging ? 'opacity-50' : 'opacity-100'}
-            ${isOver && canDrop ? 'bg-primary/10' : 'hover:bg-default-100'}
+            ${isSelected ? 'bg-primary/10 text-primary-900' : (isOver && canDrop ? 'bg-primary/10' : 'hover:bg-default-100')}
           `}
           style={{ paddingLeft: `${level * 16 + 8}px` }}
         >
@@ -193,7 +205,11 @@ export function SpaceTreeItem({ space, spacesState, onSpaceClick, level = 0 }: S
           )}
 
           <div
-            onClick={() => onSpaceClick(space)}
+            onClick={(e) => onSpaceClick(e, space)}
+            onDoubleClick={(e) => {
+              e.stopPropagation();
+              onSpaceDoubleClick(space);
+            }}
             onContextMenu={handleContextMenu}
             className={`flex-1 flex items-center gap-2 min-w-0 ${hasChildren ? '' : 'ml-[24px]'}`}
           >
@@ -216,7 +232,7 @@ export function SpaceTreeItem({ space, spacesState, onSpaceClick, level = 0 }: S
                 space.icon && <span className="text-base shrink-0">{space.icon}</span>
               );
             })()}
-            <span className="text-small truncate overflow-hidden text-ellipsis whitespace-nowrap">
+            <span className={`text-small truncate overflow-hidden text-ellipsis whitespace-nowrap ${isSelected ? 'font-medium' : ''}`}>
               {space.title}
             </span>
           </div>
@@ -246,6 +262,9 @@ export function SpaceTreeItem({ space, spacesState, onSpaceClick, level = 0 }: S
                 space={child}
                 spacesState={spacesState}
                 onSpaceClick={onSpaceClick}
+                onSpaceDoubleClick={onSpaceDoubleClick}
+                isSelected={selectedSpaceIds.includes(child.id)}
+                selectedSpaceIds={selectedSpaceIds}
                 level={level + 1}
               />
             ))}
@@ -253,68 +272,30 @@ export function SpaceTreeItem({ space, spacesState, onSpaceClick, level = 0 }: S
         )}
       </div>
 
-      {/* Simple dropdown menu */}
-      {showMenu && buttonRef.current && (() => {
-        const buttonRect = buttonRef.current.getBoundingClientRect();
-        const menuWidth = 200;
-        const menuHeight = 150;
-        const windowWidth = window.innerWidth;
-        const windowHeight = window.innerHeight;
+      {/* Dropdown Menu (3-dots) */}
+      {showMenu && buttonRef.current && (
+        <SpaceContextMenu
+          space={space}
+          spacesState={spacesState}
+          selectedSpaceIds={selectedSpaceIds}
+          position={{ x: 0, y: 0 }}
+          anchorRef={buttonRef}
+          onClose={() => setShowMenu(false)}
+          onRename={handleRename}
+        />
+      )}
 
-        const isOffRight = buttonRect.left + menuWidth > windowWidth;
-        const isOffBottom = buttonRect.bottom + menuHeight > windowHeight;
-
-        return (
-          <>
-            <div
-              className="fixed inset-0 z-[999]"
-              onClick={() => setShowMenu(false)}
-            />
-            <div
-              className="fixed bg-white shadow-lg rounded-lg p-1 z-[1000] border border-divider min-w-[200px]"
-              style={{
-                top: isOffBottom ? `${buttonRect.top - menuHeight}px` : `${buttonRect.bottom + 4}px`,
-                left: isOffRight ? `${buttonRect.right - menuWidth}px` : `${buttonRect.left}px`
-              }}
-            >
-              <div
-                onClick={handleRename}
-                className="p-2 rounded-md cursor-pointer flex items-center gap-2 hover:bg-default-100 transition-colors"
-              >
-                <Edit2 size={14} />
-                <span className="text-small">Rename</span>
-              </div>
-              <div
-                onClick={handleToggleFavorite}
-                className="p-2 rounded-md cursor-pointer flex items-center gap-2 hover:bg-default-100 transition-colors"
-              >
-                <Star size={14} />
-                <span className="text-small">
-                  {space.isFavorite ? 'Remove from favorites' : 'Add to favorites'}
-                </span>
-              </div>
-              {space.type === 'page' && (
-                <div
-                  onClick={handleToggleProperties}
-                  className="p-2 rounded-md cursor-pointer flex items-center gap-2 hover:bg-default-100 transition-colors"
-                >
-                  <Settings2 size={14} />
-                  <span className="text-small">
-                    {space.metadata?.showProperties === true ? 'Hide Properties' : 'Show Properties'}
-                  </span>
-                </div>
-              )}
-              <div
-                onClick={handleDelete}
-                className="p-2 rounded-md cursor-pointer flex items-center gap-2 text-red-600 hover:bg-red-50 transition-colors"
-              >
-                <Trash2 size={14} className="text-red-600" />
-                <span className="text-small text-red-600">Delete</span>
-              </div>
-            </div>
-          </>
-        );
-      })()}
+      {/* Right-click Context Menu */}
+      {contextMenu && (
+        <SpaceContextMenu
+          space={space}
+          spacesState={spacesState}
+          selectedSpaceIds={selectedSpaceIds}
+          position={contextMenu}
+          onClose={() => setContextMenu(null)}
+          onRename={handleRename}
+        />
+      )}
 
       {/* Rename modal */}
       <Modal isOpen={renaming} onClose={() => setRenaming(false)}>
@@ -347,98 +328,6 @@ export function SpaceTreeItem({ space, spacesState, onSpaceClick, level = 0 }: S
           )}
         </ModalContent>
       </Modal>
-
-      {/* Icon change modal */}
-      <Modal isOpen={changingIcon} onClose={() => setChangingIcon(false)} size="lg">
-        <ModalContent>
-          {(onClose) => (
-            <>
-              <ModalHeader className="flex gap-2 items-center">
-                <Button isIconOnly variant="light" size="sm" onPress={onClose}>
-                  <ArrowLeft size={18} />
-                </Button>
-                Change Icon
-              </ModalHeader>
-              <ModalBody>
-                <IconPicker
-                  currentIcon={tempIcon}
-                  currentColor={tempColor}
-                  onIconChange={handleIconChange}
-                  onColorChange={handleColorChange}
-                />
-              </ModalBody>
-              <ModalFooter>
-                <Button color="danger" variant="light" onPress={onClose}>
-                  Cancel
-                </Button>
-                <Button color="primary" onPress={handleConfirmIcon}>
-                  OK
-                </Button>
-              </ModalFooter>
-            </>
-          )}
-        </ModalContent>
-      </Modal>
-
-      {/* Context menu */}
-      {contextMenu && (
-        <>
-          <div
-            className="fixed inset-0 z-[999]"
-            onClick={() => setContextMenu(null)}
-          />
-          <div
-            className="fixed bg-white shadow-lg rounded-lg p-1 z-[1000] border border-divider min-w-[180px]"
-            style={{
-              top: `${contextMenu.y}px`,
-              left: `${contextMenu.x}px`,
-              transform: 'translate(-50%, -100%) translateY(-4px)'
-            }}
-          >
-            <div
-              onClick={handleRename}
-              className="p-2 rounded-md cursor-pointer flex items-center gap-2 hover:bg-default-100 transition-colors"
-            >
-              <Edit2 size={14} />
-              <span className="text-small">Rename</span>
-            </div>
-            <div
-              onClick={handleContextToggleFavorite}
-              className="p-2 rounded-md cursor-pointer flex items-center gap-2 hover:bg-default-100 transition-colors"
-            >
-              <Star size={14} />
-              <span className="text-small">
-                {space.isFavorite ? 'Remove from favorites' : 'Add to favorites'}
-              </span>
-            </div>
-            {space.type === 'page' && (
-              <div
-                onClick={handleToggleProperties}
-                className="p-2 rounded-md cursor-pointer flex items-center gap-2 hover:bg-default-100 transition-colors"
-              >
-                <Settings2 size={14} />
-                <span className="text-small">
-                  {space.metadata?.showProperties === true ? 'Hide Properties' : 'Show Properties'}
-                </span>
-              </div>
-            )}
-            <div
-              onClick={handleChangeIcon}
-              className="p-2 rounded-md cursor-pointer flex items-center gap-2 hover:bg-default-100 transition-colors"
-            >
-              <Smile size={14} />
-              <span className="text-small">Change Icon</span>
-            </div>
-            <div
-              onClick={handleContextDelete}
-              className="p-2 rounded-md cursor-pointer flex items-center gap-2 text-red-600 hover:bg-red-50 transition-colors"
-            >
-              <Trash2 size={14} className="text-red-600" />
-              <span className="text-small text-red-600">Delete</span>
-            </div>
-          </div>
-        </>
-      )}
     </>
   );
 }

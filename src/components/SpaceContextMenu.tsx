@@ -8,7 +8,8 @@ import {
   FolderInput,
   ChevronRight,
   Smile,
-  ArrowLeft
+  ArrowLeft,
+  Settings2
 } from 'lucide-react';
 import { Space } from '../types';
 import { IconPicker } from './IconPicker';
@@ -17,8 +18,9 @@ import { DeleteSpaceDialog } from './spaces/DeleteSpaceDialog';
 interface SpaceContextMenuProps {
   space: Space;
   spacesState: any;
+  selectedSpaceIds?: string[];
   position: { x: number; y: number };
-  anchorRef?: React.RefObject<HTMLElement>;
+  anchorRef?: React.RefObject<HTMLElement | null>;
   onClose: () => void;
   onRename?: () => void;
 }
@@ -26,9 +28,11 @@ interface SpaceContextMenuProps {
 export function SpaceContextMenu({
   space,
   spacesState,
+  selectedSpaceIds = [],
   position,
   anchorRef,
   onClose,
+  onRename
 }: SpaceContextMenuProps) {
   const [showIconPicker, setShowIconPicker] = useState(false);
   const [showMoveMenu, setShowMoveMenu] = useState(false);
@@ -94,17 +98,26 @@ export function SpaceContextMenu({
 
   const menuPosition = getMenuPosition();
 
+  const getTargetIds = () => {
+    if (!selectedSpaceIds || !Array.isArray(selectedSpaceIds)) return [space.id];
+    if (selectedSpaceIds.includes(space.id)) {
+      return selectedSpaceIds;
+    }
+    return [space.id];
+  };
+
   const handleToggleFavorite = () => {
-    spacesState.toggleFavorite(space.id);
+    getTargetIds().forEach(id => spacesState.toggleFavorite(id));
     onClose();
   };
 
   const handleDeleteClick = () => {
-    // Controlla se ci sono link a questo space
+    const targetIds = getTargetIds();
+    // Use the primary space for the linked check, but apply delete to all
     const linkedSpaces = spacesState.findSpacesLinkingTo(space.id);
     setLinkedPagesCount(linkedSpaces.length);
-    
-    if (linkedSpaces.length > 0) {
+
+    if (linkedSpaces.length > 0 && targetIds.length === 1) {
       setShowDeleteDialog(true);
     } else {
       handleDelete();
@@ -112,7 +125,7 @@ export function SpaceContextMenu({
   };
 
   const handleDelete = () => {
-    spacesState.deleteSpace(space.id);
+    getTargetIds().forEach(id => spacesState.deleteSpace(id));
     setShowDeleteDialog(false);
     onClose();
   };
@@ -124,12 +137,15 @@ export function SpaceContextMenu({
   };
 
   const handleConfirmIcon = () => {
-    if (tempIcon) {
-      spacesState.updateSpace(space.id, { icon: tempIcon });
-    }
-    if (tempColor) {
-      spacesState.updateSpace(space.id, { iconColor: tempColor });
-    }
+    const targetIds = getTargetIds();
+    targetIds.forEach(id => {
+      if (tempIcon) {
+        spacesState.updateSpace(id, { icon: tempIcon });
+      }
+      if (tempColor) {
+        spacesState.updateSpace(id, { iconColor: tempColor });
+      }
+    });
     setShowIconPicker(false);
     onClose();
   };
@@ -139,7 +155,20 @@ export function SpaceContextMenu({
   };
 
   const handleMoveToSpace = (targetSpaceId: string) => {
-    spacesState.moveSpace(space.id, targetSpaceId);
+    getTargetIds().forEach(id => spacesState.moveSpace(id, targetSpaceId));
+    onClose();
+  };
+
+  const handleToggleProperties = () => {
+    getTargetIds().forEach(id => {
+      const s = spacesState.getSpace(id);
+      if (s && s.type === 'page') {
+        const currentShow = s.metadata?.showProperties === true;
+        spacesState.updateSpace(id, {
+          metadata: { ...s.metadata, showProperties: !currentShow }
+        });
+      }
+    });
     onClose();
   };
 
@@ -160,7 +189,8 @@ export function SpaceContextMenu({
     };
 
     traverse(null);
-    return allSpaces;
+    const targetIds = getTargetIds();
+    return allSpaces.filter(s => !targetIds.includes(s.id));
   };
 
   return createPortal(
@@ -175,6 +205,18 @@ export function SpaceContextMenu({
             left: `${menuPosition.left}px`
           }}
         >
+          {onRename && (
+            <div
+              onClick={() => {
+                onRename();
+                onClose();
+              }}
+              className="p-2 rounded-md cursor-pointer flex items-center gap-2 hover:bg-default-100 transition-colors overflow-hidden"
+            >
+              <Edit2 size={14} className="shrink-0" />
+              <span className="text-small truncate">Rename</span>
+            </div>
+          )}
           <div
             onClick={handleToggleFavorite}
             className="p-2 rounded-md cursor-pointer flex items-center gap-2 hover:bg-default-100 transition-colors overflow-hidden"
@@ -203,11 +245,23 @@ export function SpaceContextMenu({
           </div>
 
           <div
+            onClick={handleToggleProperties}
+            className="p-2 rounded-md cursor-pointer flex items-center gap-2 hover:bg-default-100 transition-colors overflow-hidden"
+          >
+            <Settings2 size={14} className="shrink-0" />
+            <span className="text-small truncate">
+              {space.metadata?.showProperties === true ? 'Hide Properties' : 'Show Properties'}
+            </span>
+          </div>
+
+          <div
             onClick={handleDeleteClick}
             className="p-2 rounded-md cursor-pointer flex items-center gap-2 text-red-600 hover:bg-red-50 transition-colors overflow-hidden"
           >
             <Trash2 size={14} className="shrink-0 text-red-600" />
-            <span className="text-small truncate text-red-600">Delete</span>
+            <span className="text-small truncate text-red-600">
+              {getTargetIds().length > 1 ? `Delete ${getTargetIds().length} spaces` : 'Delete'}
+            </span>
           </div>
         </div>
       )}
@@ -232,7 +286,7 @@ export function SpaceContextMenu({
             </div>
             <span className="text-small font-semibold">Change Icon</span>
           </div>
-          
+
           <IconPicker
             currentIcon={tempIcon}
             currentColor={tempColor}
@@ -240,15 +294,15 @@ export function SpaceContextMenu({
             onColorChange={setTempColor}
           />
           <div className="flex gap-2 justify-end mt-3">
-            <Button 
-              size="sm" 
-              variant="light" 
+            <Button
+              size="sm"
+              variant="light"
               onPress={() => setShowIconPicker(false)}
             >
               Cancel
             </Button>
-            <Button 
-              size="sm" 
+            <Button
+              size="sm"
               color="primary"
               onPress={handleConfirmIcon}
             >
@@ -261,7 +315,7 @@ export function SpaceContextMenu({
       {/* Move Menu Dropdown */}
       {showMoveMenu && (() => {
         const availableSpaces = getAllSpaces();
-        const filteredSpaces = availableSpaces.filter(s => 
+        const filteredSpaces = availableSpaces.filter(s =>
           s.title.toLowerCase().includes(moveSearch.toLowerCase())
         );
 
@@ -284,7 +338,7 @@ export function SpaceContextMenu({
               </div>
               <span className="text-small font-semibold">Move to</span>
             </div>
-            
+
             <Input
               size="sm"
               placeholder="Search spaces..."

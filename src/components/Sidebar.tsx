@@ -23,6 +23,7 @@ import {
 import * as LucideIcons from 'lucide-react';
 import { SpaceTree } from './SpaceTree';
 import { DraggableSpaceItem } from './DraggableSpaceItem';
+import { SpaceContextMenu } from './SpaceContextMenu';
 import { NewSpaceModal } from './NewSpaceModal';
 import { Space, AppType } from '../types';
 import type { Settings } from '../hooks/useSettings';
@@ -50,23 +51,24 @@ export function Sidebar({ open, onToggle, spacesState, viewportsState, settings,
   const [isResizing, setIsResizing] = useState(false);
   const [favoritesExpanded, setFavoritesExpanded] = useState(true);
   const [spacesExpanded, setSpacesExpanded] = useState(true);
+  const [searchResultContextMenu, setSearchResultContextMenu] = useState<{ x: number; y: number; space: Space } | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const searchInputRef = useRef<HTMLInputElement>(null);
   const sidebarRef = useRef<HTMLDivElement>(null);
 
-  const favorites = spacesState.getFavorites().filter((s: Space) => !s.metadata?.isHidden);
-  const rootSpaces = spacesState.getChildren().filter((s: Space) => !s.metadata?.isHidden);
+  const favorites = spacesState.getFavorites().filter((s: Space) => !s.metadata?.isHidden && (s.type as string) !== 'calendar' && !s.metadata?.isCalendarElement && !s.metadata?.eventId);
+  const rootSpaces = spacesState.getChildren().filter((s: Space) => !s.metadata?.isHidden && (s.type as string) !== 'calendar' && !s.metadata?.isCalendarElement && !s.metadata?.eventId);
 
   // Recursive function to filter spaces
   const filterSpaces = (spaces: Space[], query: string): Space[] => {
-    const baseSpaces = spaces.filter(s => !s.metadata?.isHidden);
+    const baseSpaces = spaces.filter(s => !s.metadata?.isHidden && (s.type as string) !== 'calendar' && !s.metadata?.isCalendarElement && !s.metadata?.eventId);
     if (!query) return baseSpaces;
 
     const lowerQuery = query.toLowerCase();
     const filtered: Space[] = [];
 
     for (const space of baseSpaces) {
-      const children = spacesState.getChildren(space.id).filter((s: Space) => !s.metadata?.isHidden);
+      const children = spacesState.getChildren(space.id).filter((s: Space) => !s.metadata?.isHidden && (s.type as string) !== 'calendar' && !s.metadata?.isCalendarElement && !s.metadata?.eventId);
       const filteredChildren = filterSpaces(children, query);
 
       if (space.title.toLowerCase().includes(lowerQuery) || filteredChildren.length > 0) {
@@ -116,7 +118,65 @@ export function Sidebar({ open, onToggle, spacesState, viewportsState, settings,
     return () => document.removeEventListener('keydown', handleKeyDown);
   }, [searchQuery]);
 
-  const handleSpaceClick = (space: Space) => {
+  const [selectedSpaceIds, setSelectedSpaceIds] = useState<string[]>([]);
+  const [lastSelectedId, setLastSelectedId] = useState<string | null>(null);
+
+  const handleSpaceClick = (e: React.MouseEvent, space: Space) => {
+    e.stopPropagation();
+
+    // Command/Control key logic (toggle selection)
+    if (e.metaKey || e.ctrlKey) {
+      setSelectedSpaceIds(prev =>
+        prev.includes(space.id)
+          ? prev.filter(id => id !== space.id)
+          : [...prev, space.id]
+      );
+      setLastSelectedId(space.id);
+      return;
+    }
+
+    // Shift key logic (range selection)
+    if (e.shiftKey && lastSelectedId) {
+      // Get all visible spaces in a flat list to calculate range
+      const getFlatVisibleSpaces = (spaces: Space[]): string[] => {
+        let result: string[] = [];
+        for (const s of spaces) {
+          result.push(s.id);
+          // Only include children if the space would be expanded in the UI
+          // For simplicity in Sidebar, we'll get all children of rootSpaces
+          // (actual refinement might need tracking expanded state, but this is a good start)
+          const children = spacesState.getChildren(s.id).filter((child: Space) => !child.metadata?.isHidden);
+          if (children.length > 0) {
+            result = [...result, ...getFlatVisibleSpaces(children)];
+          }
+        }
+        return result;
+      };
+
+      const flatIds = Array.from(new Set([
+        ...getFlatVisibleSpaces(favorites),
+        ...getFlatVisibleSpaces(rootSpaces)
+      ]));
+      const lastIndex = flatIds.indexOf(lastSelectedId);
+      const currentIndex = flatIds.indexOf(space.id);
+
+      if (lastIndex !== -1 && currentIndex !== -1) {
+        const start = Math.min(lastIndex, currentIndex);
+        const end = Math.max(lastIndex, currentIndex);
+        const rangeIds = flatIds.slice(start, end + 1);
+
+        setSelectedSpaceIds(prev => Array.from(new Set([...prev, ...rangeIds])));
+        setLastSelectedId(space.id);
+        return;
+      }
+    }
+
+    // Default: Single selection
+    setSelectedSpaceIds([space.id]);
+    setLastSelectedId(space.id);
+  };
+
+  const handleSpaceDoubleClick = (space: Space) => {
     const focusedId = viewportsState.focusedViewportId;
     const findViewportById = (vp: any, id: string): any => {
       if (vp.id === id) return vp;
@@ -227,6 +287,7 @@ export function Sidebar({ open, onToggle, spacesState, viewportsState, settings,
       <div
         ref={sidebarRef}
         style={{ width: sidebarWidth }}
+        onClick={() => setSelectedSpaceIds([])}
         className={`
           flex flex-col h-[calc(100vh-8px)] overflow-hidden relative mt-1 ml-1 rounded-2xl border-2 border-divider
           shadow-none transition-all technical-border
@@ -337,6 +398,9 @@ export function Sidebar({ open, onToggle, spacesState, viewportsState, settings,
                       space={space}
                       spacesState={spacesState}
                       onSpaceClick={handleSpaceClick}
+                      onSpaceDoubleClick={handleSpaceDoubleClick}
+                      isSelected={selectedSpaceIds.includes(space.id)}
+                      selectedSpaceIds={selectedSpaceIds}
                       isFavorite={true}
                     />
                   ))}
@@ -345,7 +409,7 @@ export function Sidebar({ open, onToggle, spacesState, viewportsState, settings,
             )}
 
             {/* File Browser - HIGH DENSITY */}
-            <ScrollShadow className="flex-1 overflow-auto px-2 py-1">
+            <ScrollShadow className="flex-1 overflow-auto px-2 py-1 autohide-scrollbar">
               <div
                 className="cursor-pointer"
                 onClick={() => setSpacesExpanded(!spacesExpanded)}
@@ -360,6 +424,9 @@ export function Sidebar({ open, onToggle, spacesState, viewportsState, settings,
                       space={space}
                       spacesState={spacesState}
                       onSpaceClick={handleSpaceClick}
+                      onSpaceDoubleClick={handleSpaceDoubleClick}
+                      isSelected={selectedSpaceIds.includes(space.id)}
+                      selectedSpaceIds={selectedSpaceIds}
                     />
                   ))}
                 </div>
@@ -392,8 +459,7 @@ export function Sidebar({ open, onToggle, spacesState, viewportsState, settings,
             </div>
           </>
         ) : (
-          // Search Results View
-          <ScrollShadow className="flex-1 overflow-auto px-2 py-2">
+          <ScrollShadow className="flex-1 overflow-auto px-2 py-2 autohide-scrollbar">
             <span className="text-xs font-semibold text-default-500 uppercase px-2 py-1 block">
               Results ({filteredFavorites.length + filteredSpaces.length})
             </span>
@@ -416,8 +482,13 @@ export function Sidebar({ open, onToggle, spacesState, viewportsState, settings,
                 return (
                   <div
                     key={space.id}
-                    onClick={() => handleSpaceClick(space)}
-                    className="flex items-center gap-2 py-1.5 px-2 rounded-lg cursor-pointer hover:bg-default-100 transition-colors"
+                    onClick={(e) => handleSpaceClick(e, space)}
+                    onDoubleClick={() => handleSpaceDoubleClick(space)}
+                    onContextMenu={(e) => {
+                      e.preventDefault();
+                      setSearchResultContextMenu({ x: e.clientX, y: e.clientY, space });
+                    }}
+                    className={`flex items-center gap-2 py-1.5 px-2 rounded-lg cursor-pointer transition-colors ${selectedSpaceIds.includes(space.id) ? 'bg-primary/10 text-primary-900 font-medium' : 'hover:bg-default-100'}`}
                   >
                     {IconComponent ? (
                       <IconComponent
@@ -439,6 +510,8 @@ export function Sidebar({ open, onToggle, spacesState, viewportsState, settings,
                   spaces={filteredSpaces}
                   spacesState={spacesState}
                   onSpaceClick={handleSpaceClick}
+                  onSpaceDoubleClick={handleSpaceDoubleClick}
+                  selectedSpaceIds={selectedSpaceIds}
                 />
               )}
             </div>
@@ -458,9 +531,19 @@ export function Sidebar({ open, onToggle, spacesState, viewportsState, settings,
         onCreate={(type) => {
           const newSpace = spacesState.createSpace(type);
           setNewSpaceModalOpen(false);
-          handleSpaceClick(newSpace);
+          handleSpaceDoubleClick(newSpace);
         }}
       />
+
+      {searchResultContextMenu && (
+        <SpaceContextMenu
+          space={searchResultContextMenu.space}
+          spacesState={spacesState}
+          selectedSpaceIds={selectedSpaceIds}
+          position={{ x: searchResultContextMenu.x, y: searchResultContextMenu.y }}
+          onClose={() => setSearchResultContextMenu(null)}
+        />
+      )}
     </>
   );
 }

@@ -1,6 +1,14 @@
 import { useRef, useState } from 'react';
 import { useDrag, useDrop } from 'react-dnd';
-import { Button } from '@heroui/react';
+import {
+  Button,
+  Modal,
+  ModalContent,
+  ModalHeader,
+  ModalBody,
+  ModalFooter,
+  Input
+} from '@heroui/react';
 import {
   ChevronRight,
   ChevronDown,
@@ -8,7 +16,8 @@ import {
   LayoutDashboard,
   Database,
   Pencil,
-  MoreVertical
+  MoreVertical,
+  Edit2
 } from 'lucide-react';
 import { Space, SpaceType } from '../types';
 import { SpaceContextMenu } from './SpaceContextMenu';
@@ -17,7 +26,10 @@ import * as LucideIcons from 'lucide-react';
 interface DraggableSpaceItemProps {
   space: Space;
   spacesState: any;
-  onSpaceClick: (space: Space) => void;
+  onSpaceClick: (e: React.MouseEvent, space: Space) => void;
+  onSpaceDoubleClick: (space: Space) => void;
+  isSelected?: boolean;
+  selectedSpaceIds?: string[];
   level?: number;
   isFavorite?: boolean;
 }
@@ -32,10 +44,21 @@ const spaceIcons: Record<SpaceType, any> = {
 const ITEM_TYPE = 'SPACE_REORDER';
 const ITEM_TYPE_TO_WORKSPACE = 'SPACE_TO_WORKSPACE';
 
-export function DraggableSpaceItem({ space, spacesState, onSpaceClick, level = 0, isFavorite = false }: DraggableSpaceItemProps) {
+export function DraggableSpaceItem({
+  space,
+  spacesState,
+  onSpaceClick,
+  onSpaceDoubleClick,
+  isSelected = false,
+  selectedSpaceIds = [],
+  level = 0,
+  isFavorite = false
+}: DraggableSpaceItemProps) {
   const [expanded, setExpanded] = useState(false);
   const [showMenu, setShowMenu] = useState(false);
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number } | null>(null);
+  const [renaming, setRenaming] = useState(false);
+  const [renameValue, setRenameValue] = useState('');
   const [dropIndicator, setDropIndicator] = useState<'before' | 'after' | 'inside' | null>(null);
 
   const ref = useRef<HTMLDivElement>(null);
@@ -148,6 +171,21 @@ export function DraggableSpaceItem({ space, spacesState, onSpaceClick, level = 0
 
   drag(drop(ref));
 
+  const handleRename = () => {
+    setShowMenu(false);
+    setContextMenu(null);
+    setRenaming(true);
+    setRenameValue(space.title);
+  };
+
+  const handleRenameSubmit = () => {
+    if (renameValue.trim()) {
+      spacesState.updateSpace(space.id, { title: renameValue.trim() });
+      setRenaming(false);
+      setRenameValue('');
+    }
+  };
+
   const handleContextMenu = (e: React.MouseEvent) => {
     e.preventDefault();
     setContextMenu({ x: e.clientX, y: e.clientY });
@@ -170,7 +208,7 @@ export function DraggableSpaceItem({ space, spacesState, onSpaceClick, level = 0
             relative flex items-center pr-2 py-0.5 rounded-lg cursor-pointer transition-all duration-150 ease-out group
             ${isDragging ? 'opacity-50' : 'opacity-100'}
             ${isOver && dropIndicator === 'inside' ? 'bg-primary/10 border-2 border-dashed border-primary' : 'border-2 border-transparent'}
-            ${!isOver && !isDragging ? 'hover:bg-default-100' : ''}
+            ${isSelected ? 'bg-primary/10 text-primary-900 border-primary/20' : (!isOver && !isDragging ? 'hover:bg-default-100' : '')}
           `}
           style={{ paddingLeft: `${isFavorite ? 4 : level * 12 + 4}px` }}
         >
@@ -193,7 +231,11 @@ export function DraggableSpaceItem({ space, spacesState, onSpaceClick, level = 0
           )}
 
           <div
-            onClick={() => onSpaceClick(space)}
+            onClick={(e) => onSpaceClick(e, space)}
+            onDoubleClick={(e) => {
+              e.stopPropagation();
+              onSpaceDoubleClick(space);
+            }}
             onContextMenu={handleContextMenu}
             className="flex-1 flex items-center gap-2 min-w-0"
           >
@@ -216,7 +258,7 @@ export function DraggableSpaceItem({ space, spacesState, onSpaceClick, level = 0
                 space.icon && <span className="text-base shrink-0">{space.icon}</span>
               );
             })()}
-            <span className="text-small truncate overflow-hidden text-ellipsis whitespace-nowrap">
+            <span className={`text-small truncate overflow-hidden text-ellipsis whitespace-nowrap ${isSelected ? 'font-medium' : ''}`}>
               {space.title || (space.type === 'page' ? 'New page' : `New ${space.type}`)}
             </span>
           </div>
@@ -254,6 +296,9 @@ export function DraggableSpaceItem({ space, spacesState, onSpaceClick, level = 0
                 space={child}
                 spacesState={spacesState}
                 onSpaceClick={onSpaceClick}
+                onSpaceDoubleClick={onSpaceDoubleClick}
+                isSelected={selectedSpaceIds?.includes(child.id)}
+                selectedSpaceIds={selectedSpaceIds}
                 level={level + 1}
               />
             ))}
@@ -266,9 +311,11 @@ export function DraggableSpaceItem({ space, spacesState, onSpaceClick, level = 0
         <SpaceContextMenu
           space={space}
           spacesState={spacesState}
+          selectedSpaceIds={selectedSpaceIds}
           position={{ x: 0, y: 0 }}
           anchorRef={buttonRef}
           onClose={() => setShowMenu(false)}
+          onRename={handleRename}
         />
       )}
 
@@ -276,10 +323,44 @@ export function DraggableSpaceItem({ space, spacesState, onSpaceClick, level = 0
         <SpaceContextMenu
           space={space}
           spacesState={spacesState}
+          selectedSpaceIds={selectedSpaceIds}
           position={contextMenu}
           onClose={() => setContextMenu(null)}
+          onRename={handleRename}
         />
       )}
+
+      {/* Rename modal */}
+      <Modal isOpen={renaming} onClose={() => setRenaming(false)}>
+        <ModalContent>
+          {(onClose) => (
+            <>
+              <ModalHeader className="flex flex-col gap-1">Rename Space</ModalHeader>
+              <ModalBody>
+                <Input
+                  autoFocus
+                  value={renameValue}
+                  onValueChange={setRenameValue}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') handleRenameSubmit();
+                    if (e.key === 'Escape') setRenaming(false);
+                  }}
+                  placeholder="Space name"
+                  variant="bordered"
+                />
+              </ModalBody>
+              <ModalFooter>
+                <Button color="danger" variant="light" onPress={onClose}>
+                  Cancel
+                </Button>
+                <Button color="primary" onPress={handleRenameSubmit}>
+                  Save
+                </Button>
+              </ModalFooter>
+            </>
+          )}
+        </ModalContent>
+      </Modal>
     </>
   );
 }

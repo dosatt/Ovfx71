@@ -1565,7 +1565,9 @@ export function CalendarApp({ spacesState, viewportsState }: CalendarAppProps) {
     spacesStateRef.current.updateSpace(infoSpace.id, {
       title: `${finalTitle} - Info`,
       content: { blocks: [] },
-      metadata: { isInfo: true, eventId: '' } // Will be updated with eventId after block creation
+      icon: 'Calendar',
+      iconColor: '#FF5F56',
+      metadata: { isInfo: true, eventId: '', isHidden: true, isCalendarElement: true } // Hid from sidebar, linked to event
     });
 
     const targetSpace = spacesStateRef.current.getSpace(targetSpaceId);
@@ -1719,10 +1721,11 @@ export function CalendarApp({ spacesState, viewportsState }: CalendarAppProps) {
     const blockIndex = blocks.findIndex((b: any) => b.id === blockId);
     if (blockIndex === -1) return;
 
+    const oldMetadata = blocks[blockIndex].metadata;
     blocks[blockIndex] = {
       ...blocks[blockIndex],
       metadata: {
-        ...blocks[blockIndex].metadata,
+        ...oldMetadata,
         ...updates,
         updatedAt: Date.now() // Track for sort order
       }
@@ -1731,6 +1734,13 @@ export function CalendarApp({ spacesState, viewportsState }: CalendarAppProps) {
     spacesStateRef.current.updateSpace(spaceId, {
       content: { ...space.content, blocks }
     });
+
+    // If title was updated, also update the linked info space title
+    if (updates.title && oldMetadata?.infoSpaceId) {
+      spacesStateRef.current.updateSpace(oldMetadata.infoSpaceId, {
+        title: `${updates.title} - Info`
+      });
+    }
   }, []);
 
   const dragTrackRef = useRef({ mouseDownPos: null as { x: number, y: number } | null, isDragCreation: false });
@@ -2723,7 +2733,9 @@ export function CalendarApp({ spacesState, viewportsState }: CalendarAppProps) {
                                 spacesState.updateSpace(newSpace.id, {
                                   title: infoTitle,
                                   content: { blocks: [] },
-                                  metadata: { isInfo: true, eventId: selectedEvent.id }
+                                  icon: 'Calendar',
+                                  iconColor: '#FF5F56',
+                                  metadata: { isInfo: true, eventId: selectedEvent.id, isHidden: true, isCalendarElement: true }
                                 });
 
                                 handleUpdateEvent(selectedEvent.id, selectedEvent.id, selectedEvent.sourceSpaceId, { infoSpaceId: newSpace.id });
@@ -2751,6 +2763,10 @@ export function CalendarApp({ spacesState, viewportsState }: CalendarAppProps) {
                         onClick={() => {
                           const space = spacesState.spaces.find((s: any) => s.id === selectedEvent.sourceSpaceId);
                           if (space) {
+                            // Also delete associated info space if it exists
+                            if (selectedEvent.metadata?.infoSpaceId) {
+                              spacesState.deleteSpace(selectedEvent.metadata.infoSpaceId);
+                            }
                             const blocks = space.content?.blocks.filter((b: any) => b.id !== selectedEvent.id);
                             spacesState.updateSpace(selectedEvent.sourceSpaceId, { content: { ...space.content, blocks } });
                             handleToggleEventSelection(null);
