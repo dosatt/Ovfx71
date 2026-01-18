@@ -2455,10 +2455,10 @@ export function CalendarApp({ spacesState, viewportsState }: CalendarAppProps) {
           >
             <div className="pointer-events-auto w-[280px] relative mt-[10px] group filter drop-shadow-2xl">
               {/* Speech Bubble Arrow (SVG for perfect crispness) */}
-              <div className="absolute left-8 w-6 h-[11px] pointer-events-none z-20" style={{ top: '-15px' }}>
+              <div className="absolute left-8 w-6 h-[11px] pointer-events-none z-20" style={{ top: '-10px' }}>
                 <svg width="24" height="11" viewBox="0 0 24 11" fill="none" xmlns="http://www.w3.org/2000/svg" className="overflow-visible">
                   <path d="M0 11L12 0L24 11" fill="white" />
-                  <path d="M0 11L12 0L24 11" stroke="rgba(0,0,0,0.1)" strokeWidth="1" strokeLinejoin="round" fill="none" />
+                  <path d="M0 11L12 0L24 11" stroke="#e4e4e7" strokeWidth="1.5" strokeLinejoin="round" fill="none" />
                 </svg>
               </div>
 
@@ -2468,7 +2468,7 @@ export function CalendarApp({ spacesState, viewportsState }: CalendarAppProps) {
                 </Button>
               </div>
 
-              <div className="relative z-10 bg-white rounded-[24px] border border-divider flex flex-col overflow-hidden">
+              <div className="relative z-10 bg-white border border-divider flex flex-col overflow-hidden" style={{ borderRadius: '24px' }}>
                 <div className="p-3 flex flex-col gap-3">
                   <div className="pt-2 px-1">
                     <Input
@@ -2518,7 +2518,7 @@ export function CalendarApp({ spacesState, viewportsState }: CalendarAppProps) {
                   </div>
                 </div>
 
-                <div className="flex gap-2 p-3 bg-gradient-to-t from-white to-white/50 backdrop-blur-md pt-2">
+                <div className="flex gap-2 p-3 bg-gradient-to-t from-white to-white/50 backdrop-blur-md pt-2" style={{ borderBottomLeftRadius: '24px', borderBottomRightRadius: '24px' }}>
                   <Button size="sm" fullWidth variant="flat" className="font-semibold h-7 text-[10px] bg-default-100/50 text-default-600 rounded-lg" onClick={() => { setPopoverAnchor(null); onOpen(); }}>
                     More details
                   </Button>
@@ -2545,12 +2545,13 @@ export function CalendarApp({ spacesState, viewportsState }: CalendarAppProps) {
           >
             <div className="pointer-events-auto w-[300px] relative mt-[10px] group filter drop-shadow-2xl">
               {/* Speech Bubble Arrow (SVG for perfect crispness) */}
-              <div className="absolute left-8 w-6 h-[11px] pointer-events-none z-20" style={{ top: '-15px' }}>
+              <div className="absolute left-8 w-6 h-[11px] pointer-events-none z-20" style={{ top: '-10px' }}>
                 <svg width="24" height="11" viewBox="0 0 24 11" fill="none" xmlns="http://www.w3.org/2000/svg" className="overflow-visible">
                   <path d="M0 11L12 0L24 11" fill="white" />
-                  <path d="M0 11L12 0L24 11" stroke="rgba(0,0,0,0.1)" strokeWidth="1" strokeLinejoin="round" fill="none" />
+                  <path d="M0 11L12 0L24 11" stroke="#e4e4e7" strokeWidth="1.5" strokeLinejoin="round" fill="none" />
                 </svg>
               </div>
+
 
               <div className="absolute -right-10 top-0 z-20">
                 <Button size="sm" isIconOnly variant="light" radius="full" className="h-8 w-8 min-w-8 text-default-400 hover:text-default-800 bg-white shadow-sm hover:shadow-md" onClick={() => handleToggleEventSelection(null)}>
@@ -2558,7 +2559,7 @@ export function CalendarApp({ spacesState, viewportsState }: CalendarAppProps) {
                 </Button>
               </div>
 
-              <div className="relative z-10 bg-white rounded-[24px] border border-divider flex flex-col overflow-hidden">
+              <div className="relative z-10 bg-white border border-divider flex flex-col overflow-hidden" style={{ borderRadius: '24px' }}>
                 <div className="px-5 pt-5 pb-2">
                   <Input
                     placeholder="Event title"
@@ -2660,7 +2661,7 @@ export function CalendarApp({ spacesState, viewportsState }: CalendarAppProps) {
                   </div>
                 </div>
 
-                <div className="flex justify-end items-center p-3 bg-default-50/50 border-t border-divider/50 backdrop-blur-md mt-auto">
+                <div className="flex justify-end items-center p-3 bg-default-50/50 border-t border-divider/50 backdrop-blur-md mt-auto" style={{ borderBottomLeftRadius: '24px', borderBottomRightRadius: '24px' }}>
                   <Button
                     size="sm"
                     variant="light"
@@ -2680,90 +2681,103 @@ export function CalendarApp({ spacesState, viewportsState }: CalendarAppProps) {
                 </div>
               </div>
             </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+          </motion.div >
+        )
+        }
+      </AnimatePresence >
 
       {/* Event Drawer (replaces Modal) */}
       <AnimatePresence>
-        {isOpen && (
-          <>
-            {/* Backdrop */}
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              className="absolute inset-0 bg-transparent pointer-events-none z-[500]"
-            />
-            {/* Right Drawer */}
-            <motion.div
-              initial={{ x: '100%' }}
-              animate={{ x: 0 }}
-              exit={{ x: '100%' }}
-              transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-              className="absolute top-0 right-0 bottom-0 w-[400px] bg-white shadow-lg z-[501] border-l border-default-200 flex flex-col"
-            >
-              <div className="flex items-center justify-between p-4 border-b border-divider bg-white">
-                <h2 className="text-lg font-bold">Create New Event</h2>
-                <Button isIconOnly size="sm" variant="light" onClick={onClose}><X size={18} /></Button>
-              </div>
-
-              <div className="flex-1 overflow-y-auto p-5 flex flex-col gap-5">
-                <Input
-                  label="Title"
-                  placeholder="Event name"
-                  variant="bordered"
-                  value={newEvent.title}
-                  onValueChange={(v) => setNewEvent(prev => ({ ...prev, title: v }))}
-                  classNames={{ input: "font-bold text-lg" }}
-                />
-                <div className="flex gap-2">
-                  <Input
-                    type="datetime-local"
-                    label="Start"
-                    variant="bordered"
-                    value={newEvent.startDate}
-                    onValueChange={(v) => setNewEvent(prev => ({ ...prev, startDate: v }))}
-                  />
-                  <Input
-                    type="datetime-local"
-                    label="End"
-                    variant="bordered"
-                    value={newEvent.endDate}
-                    onValueChange={(v) => setNewEvent(prev => ({ ...prev, endDate: v }))}
-                  />
+        {
+          isOpen && (
+            <>
+              {/* Backdrop */}
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                className="absolute inset-0 bg-transparent pointer-events-none z-[500]"
+              />
+              {/* Right Drawer */}
+              <motion.div
+                initial={{ x: '100%' }}
+                animate={{ x: 0 }}
+                exit={{ x: '100%' }}
+                transition={{ type: 'spring', damping: 25, stiffness: 200 }}
+                className="absolute top-0 right-0 bottom-0 w-[400px] bg-white shadow-lg z-[501] border-l border-default-200 flex flex-col"
+              >
+                <div className="flex items-center justify-between p-4 border-b border-divider bg-white">
+                  <h2 className="text-lg font-bold">Create New Event</h2>
+                  <Button isIconOnly size="sm" variant="light" onClick={onClose}><X size={18} /></Button>
                 </div>
-                <Select
-                  label="Destination"
-                  placeholder="Choose a space"
-                  variant="bordered"
-                  selectedKeys={newEvent.spaceId ? [newEvent.spaceId] : []}
-                  onSelectionChange={(keys: any) => setNewEvent(prev => ({ ...prev, spaceId: Array.from(keys)[0] as string }))}
-                >
-                  {spacesState.spaces.filter((s: any) => s.type === 'page').map((space: any) => (
-                    <SelectItem key={space.id}>
-                      {space.title}
-                    </SelectItem>
-                  ))}
-                </Select>
-                <Textarea
-                  label="Note"
-                  placeholder="Additional details..."
-                  variant="bordered"
-                  value={newEvent.notes}
-                  onValueChange={(v) => setNewEvent(prev => ({ ...prev, notes: v }))}
-                  minRows={3}
-                />
-              </div>
 
-              <div className="p-4 border-t border-divider bg-default-50 flex justify-end gap-2">
-                <Button variant="light" onPress={onClose}>Cancel</Button>
-                <Button color="primary" onPress={() => { handleCreateEvent(); onClose(); }}>Save Event</Button>
-              </div>
-            </motion.div>
-          </>
-        )}
-      </AnimatePresence>
+                <div className="flex-1 overflow-y-auto p-5 flex flex-col gap-6">
+                  <div className="flex flex-col gap-2">
+                    <label className="text-sm font-semibold text-default-700">Title</label>
+                    <Input
+                      placeholder="Event name"
+                      variant="bordered"
+                      value={newEvent.title}
+                      onValueChange={(v) => setNewEvent(prev => ({ ...prev, title: v }))}
+                      classNames={{ input: "font-bold text-lg" }}
+                    />
+                  </div>
+                  <div className="flex gap-3">
+                    <div className="flex-1 flex flex-col gap-2">
+                      <label className="text-sm font-semibold text-default-700">Start</label>
+                      <Input
+                        type="datetime-local"
+                        variant="bordered"
+                        value={newEvent.startDate}
+                        onValueChange={(v) => setNewEvent(prev => ({ ...prev, startDate: v }))}
+                      />
+                    </div>
+                    <div className="flex-1 flex flex-col gap-2">
+                      <label className="text-sm font-semibold text-default-700">End</label>
+                      <Input
+                        type="datetime-local"
+                        variant="bordered"
+                        value={newEvent.endDate}
+                        onValueChange={(v) => setNewEvent(prev => ({ ...prev, endDate: v }))}
+                      />
+                    </div>
+                  </div>
+                  <div className="flex flex-col gap-2">
+                    <label className="text-sm font-semibold text-default-700">Destination</label>
+                    <Select
+                      placeholder="Choose a space"
+                      variant="bordered"
+                      selectedKeys={newEvent.spaceId ? [newEvent.spaceId] : []}
+                      onSelectionChange={(keys: any) => setNewEvent(prev => ({ ...prev, spaceId: Array.from(keys)[0] as string }))}
+                    >
+                      {spacesState.spaces.filter((s: any) => s.type === 'page').map((space: any) => (
+                        <SelectItem key={space.id}>
+                          {space.title}
+                        </SelectItem>
+                      ))}
+                    </Select>
+                  </div>
+                  <div className="flex flex-col gap-2">
+                    <label className="text-sm font-semibold text-default-700">Note</label>
+                    <Textarea
+                      placeholder="Additional details..."
+                      variant="bordered"
+                      value={newEvent.notes}
+                      onValueChange={(v) => setNewEvent(prev => ({ ...prev, notes: v }))}
+                      minRows={3}
+                    />
+                  </div>
+                </div>
+
+                <div className="p-4 border-t border-divider bg-default-50 flex justify-end gap-2">
+                  <Button variant="light" onPress={onClose}>Cancel</Button>
+                  <Button color="primary" onPress={() => { handleCreateEvent(); onClose(); }}>Save Event</Button>
+                </div>
+              </motion.div>
+            </>
+          )
+        }
+      </AnimatePresence >
     </div >
   );
 }
