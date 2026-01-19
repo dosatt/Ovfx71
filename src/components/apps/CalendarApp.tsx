@@ -55,11 +55,13 @@ import { PageEditor } from '../spaces/PageEditor';
 import { useDrag, useDrop, useDragLayer } from 'react-dnd';
 import { getEmptyImage } from 'react-dnd-html5-backend';
 
+import { SortableListItem } from './SortableListItem';
+
 const daysOfWeek = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 const daysOfWeekShort = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
 const months = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
 
-type CalendarView = 'month' | 'week' | 'day' | 'year' | 'timeline' | 'ndays';
+type CalendarView = 'month' | 'week' | 'day' | 'year' | 'list' | 'ndays';
 
 
 interface CalendarAppProps {
@@ -941,7 +943,7 @@ export function CalendarApp({ spacesState, viewportsState }: CalendarAppProps) {
   const [view, setView] = useState<CalendarView>(() => {
     if (typeof localStorage !== 'undefined') {
       const saved = localStorage.getItem('calendar_current_view');
-      if (saved && ['month', 'week', 'day', 'ndays', 'year', 'timeline'].includes(saved)) {
+      if (saved && ['month', 'week', 'day', 'ndays', 'year', 'list'].includes(saved)) {
         return saved as CalendarView;
       }
     }
@@ -981,6 +983,28 @@ export function CalendarApp({ spacesState, viewportsState }: CalendarAppProps) {
   const [popoverAnchor, setPopoverAnchor] = useState<{ x: number; y: number; elementCenterX?: number } | null>(null);
   const [hoveredResizeDate, setHoveredResizeDate] = useState<Date | null>(null);
   const [activeResize, setActiveResize] = useState<{ id: string, direction: 'left' | 'right', offset: number } | null>(null);
+
+  // List View State
+  const [listSearch, setListSearch] = useState('');
+  const [listSort, setListSort] = useState<'date-asc' | 'date-desc' | 'title-asc' | 'title-desc' | 'manual'>('date-asc');
+  const [manualOrderIDs, setManualOrderIDs] = useState<string[]>([]);
+  const [savedOrders, setSavedOrders] = useState<Record<string, string[]>>(() => {
+    if (typeof localStorage !== 'undefined') {
+      const s = localStorage.getItem('calendar_saved_orders');
+      return s ? JSON.parse(s) : {};
+    }
+    return {};
+  });
+  const [activeOrderName, setActiveOrderName] = useState<string>('');
+  const [filterSpaceId, setFilterSpaceId] = useState<string>('all');
+
+  useEffect(() => {
+    if (typeof localStorage !== 'undefined') {
+      localStorage.setItem('calendar_saved_orders', JSON.stringify(savedOrders));
+    }
+  }, [savedOrders]);
+
+
   const [dragGhostDate, setDragGhostDate] = useState<Date | null>(null);
   const [dragGhostItem, setDragGhostItem] = useState<any | null>(null);
   const [hoveredEventId, setHoveredEventId] = useState<string | null>(null);
@@ -1403,6 +1427,7 @@ export function CalendarApp({ spacesState, viewportsState }: CalendarAppProps) {
     const events: any[] = [];
     const seenIds = new Set<string>(); // Deduplicate by block ID
     spacesState.spaces.forEach((space: any) => {
+      if (filterSpaceId !== 'all' && space.id !== filterSpaceId) return;
       if (space.content?.blocks) {
         space.content.blocks.forEach((block: any) => {
           // Skip if already seen (prevents duplicates)
@@ -1443,7 +1468,41 @@ export function CalendarApp({ spacesState, viewportsState }: CalendarAppProps) {
     }
 
     return prevEventsRef.current;
-  }, [spacesState.spaces]);
+  }, [spacesState.spaces, filterSpaceId]);
+
+  // --- List View Logic (Moved to here to be after allEvents definition) ---
+  const filteredListEvents = useMemo(() => {
+    return allEvents.filter(e => {
+      const text = (e.metadata?.title || '') + ' ' + (e.metadata?.notes || '');
+      return text.toLowerCase().includes(listSearch.toLowerCase());
+    });
+  }, [allEvents, listSearch]);
+
+  const sortedListEvents = useMemo(() => {
+    const list = [...filteredListEvents];
+    return list.sort((a, b) => {
+      if (listSort === 'manual') {
+        const idxA = manualOrderIDs.indexOf(a.id);
+        const idxB = manualOrderIDs.indexOf(b.id);
+        // If both unknown, sort by date? Or keep stable?
+        if (idxA === -1 && idxB === -1) return new Date(a.start).getTime() - new Date(b.start).getTime();
+        if (idxA === -1) return 1;
+        if (idxB === -1) return -1;
+        return idxA - idxB;
+      }
+      if (listSort === 'date-asc') return new Date(a.start).getTime() - new Date(b.start).getTime();
+      if (listSort === 'date-desc') return new Date(b.start).getTime() - new Date(a.start).getTime();
+      if (listSort === 'title-asc') return (a.metadata?.title || '').localeCompare(b.metadata?.title || '');
+      return (b.metadata?.title || '').localeCompare(a.metadata?.title || '');
+    });
+  }, [filteredListEvents, listSort, manualOrderIDs]);
+
+  const moveListItem = useCallback((dragIndex: number, hoverIndex: number) => {
+    const newSorted = [...sortedListEvents];
+    const [moved] = newSorted.splice(dragIndex, 1);
+    newSorted.splice(hoverIndex, 0, moved);
+    setManualOrderIDs(newSorted.map(e => e.id));
+  }, [sortedListEvents]);
 
   const prevPeriod = useCallback(() => {
     setCurrentDate(prev => {
@@ -1896,8 +1955,20 @@ export function CalendarApp({ spacesState, viewportsState }: CalendarAppProps) {
       setSelectedEventId(null);
       setEditPopoverAnchor(null);
     } else if (isRangeSelectKey && lastSelectedEventId) {
-      // Range selection based on start time
-      const sortedEvents = [...allEvents].sort((a, b) => a.start.getTime() - b.start.getTime());
+      // Range selection based on current view sorting
+      const sortedEvents = [...allEvents];
+
+      if (view === 'list') {
+        sortedEvents.sort((a, b) => {
+          if (listSort === 'date-asc') return new Date(a.start).getTime() - new Date(b.start).getTime();
+          if (listSort === 'date-desc') return new Date(b.start).getTime() - new Date(a.start).getTime();
+          if (listSort === 'title-asc') return (a.metadata?.title || '').localeCompare(b.metadata?.title || '');
+          return (b.metadata?.title || '').localeCompare(a.metadata?.title || '');
+        });
+      } else {
+        sortedEvents.sort((a, b) => a.start.getTime() - b.start.getTime());
+      }
+
       const lastIdx = sortedEvents.findIndex(e => e.id === lastSelectedEventId);
       const currIdx = sortedEvents.findIndex(e => e.id === eventId);
 
@@ -1915,7 +1986,7 @@ export function CalendarApp({ spacesState, viewportsState }: CalendarAppProps) {
       setSelectedEventId(eventId);
       if (anchor) setEditPopoverAnchor(anchor);
     }
-  }, [allEvents, lastSelectedEventId]);
+  }, [allEvents, lastSelectedEventId, view, listSort]);
 
   // Handler for right-click context menu on events
   const handleEventContextMenu = useCallback((e: React.MouseEvent, eventId: string) => {
@@ -2129,7 +2200,7 @@ export function CalendarApp({ spacesState, viewportsState }: CalendarAppProps) {
       return `${format(currentDate, 'd MMM')} - ${format(end, 'd MMM yyyy')}`;
     }
     if (view === 'year') return `${currentDate.getFullYear()}`;
-    if (view === 'timeline') return `Timeline - ${format(currentDate, 'MMMM yyyy', { locale: enUS })}`;
+    if (view === 'list') return `List - ${format(currentDate, 'MMMM yyyy', { locale: enUS })}`;
     return '';
   };
 
@@ -2390,61 +2461,97 @@ export function CalendarApp({ spacesState, viewportsState }: CalendarAppProps) {
     );
   };
 
-  const renderTimelineView = () => {
-    const startDate = subDays(currentDate, 7);
-    const timelineDays = Array.from({ length: 30 }, (_, i) => addDays(startDate, i));
-
+  const renderListView = () => {
     return (
-      <div
-        className="h-full overflow-x-auto overflow-y-hidden select-none whitespace-nowrap p-4 flex gap-1"
-        onMouseUp={(e) => isSelecting && handleEndSelectionStable(e)}
-        onMouseLeave={() => isSelecting && handleEndSelectionStable()}
-      >
-        {timelineDays.map((day, i) => {
-          const isToday = isSameDay(day, new Date());
-          const dayEvents = allEvents.filter(event => isSameDay(event.start, day));
-          const isSelected = selectionRange && (
-            (day >= selectionRange.start && day <= selectionRange.end) ||
-            (day <= selectionRange.start && day >= selectionRange.end)
-          );
+      <div className="flex flex-col h-full bg-white overflow-hidden">
+        {/* Toolbar */}
+        <div className="flex gap-2 p-4 border-b border-divider items-center shrink-0 flex-wrap">
+          <div className="relative flex-1 min-w-[200px]">
+            <Search className="absolute left-2 top-1/2 -translate-y-1/2 text-default-400" size={16} />
+            <Input
+              value={listSearch}
+              onValueChange={setListSearch}
+              placeholder="Search events..."
+              className="w-full"
+              classNames={{ inputWrapper: "pl-8" }}
+              size="sm"
+              variant="bordered"
+            />
+          </div>
+          <Select
+            selectedKeys={[listSort]}
+            onChange={(e: any) => setListSort(e.target.value as any)}
+            className="w-[160px] shrink-0"
+            size="sm"
+            variant="bordered"
+            aria-label="Sort by"
+          >
+            <SelectItem key="date-asc" value="date-asc">Date (Oldest)</SelectItem>
+            <SelectItem key="date-desc" value="date-desc">Date (Newest)</SelectItem>
+            <SelectItem key="title-asc" value="title-asc">Title (A-Z)</SelectItem>
+            <SelectItem key="title-desc" value="title-desc">Title (Z-A)</SelectItem>
+            <SelectItem key="manual" value="manual">Manual Order</SelectItem>
+          </Select>
 
-          return (
-            <div
-              key={i}
-              className={`
-                min-w-[140px] h-full border border-divider rounded-xl flex flex-col transition-colors cursor-pointer
-                ${isToday ? 'bg-primary/5 ring-1 ring-primary/20' : 'bg-white'}
-                ${isSelected ? 'bg-primary/10 border-primary ring-2 ring-primary/30 z-10' : ''}
-              `}
-              onMouseDown={(e) => {
-                if (e.button !== 0 || isAnyDraggingGlobal) return;
-                const d = new Date(day);
-                d.setHours(9, 0, 0, 0);
-                handleStartSelection(d, { x: e.clientX, y: e.clientY });
-              }}
-              onMouseEnter={() => {
-                if (!isSelecting || isAnyDraggingGlobal) return;
-                const d = new Date(day);
-                d.setHours(10, 0, 0, 0);
-                handleUpdateSelection(d);
-              }}
-            >
-              <div className="p-3 border-b border-divider flex flex-col items-center">
-                <span className="text-[10px] uppercase font-bold text-default-400">{format(day, 'EEE', { locale: enUS })}</span>
-                <span className={`text-lg font-bold ${isToday ? 'text-primary' : ''}`}>{format(day, 'd')}</span>
-                <span className="text-[10px] text-default-400">{format(day, 'MMM', { locale: enUS })}</span>
-              </div>
-              <div className="flex-1 p-2 flex flex-col gap-1 overflow-y-auto no-scrollbar">
-                {dayEvents.map((event, idx) => (
-                  <div key={idx} className="p-2 rounded-lg bg-primary/10 text-primary-800 text-[10px] border-l-2 border-primary font-medium whitespace-normal">
-                    <div className="font-bold">{event.metadata?.title}</div>
-                    <div className="opacity-70">{format(event.start, 'HH:mm')}</div>
-                  </div>
+          {listSort === 'manual' && (
+            <div className="flex gap-2 items-center">
+              <Select
+                placeholder="Load Order"
+                selectedKeys={activeOrderName ? [activeOrderName] : []}
+                onChange={(e: any) => {
+                  const name = e.target.value;
+                  if (name && savedOrders[name]) {
+                    setActiveOrderName(name);
+                    setManualOrderIDs(savedOrders[name]);
+                  }
+                }}
+                className="w-[140px]"
+                size="sm"
+                variant="bordered"
+              >
+                {Object.keys(savedOrders).map(name => (
+                  <SelectItem key={name} value={name}>{name}</SelectItem>
                 ))}
-              </div>
+              </Select>
+              <Button
+                size="sm"
+                variant="flat"
+                onPress={() => {
+                  const name = prompt("Enter name for this order:", activeOrderName || "My Order");
+                  if (name) {
+                    setSavedOrders(prev => ({ ...prev, [name]: manualOrderIDs }));
+                    setActiveOrderName(name);
+                  }
+                }}
+              >
+                Save
+              </Button>
             </div>
-          );
-        })}
+          )}
+        </div>
+
+        {/* List Content - CSS Columns for responsive multi-column layout with vertical dividers */}
+        <div className="flex-1 overflow-y-auto p-4 custom-scrollbar">
+          <div className="flex flex-col gap-4 max-w-3xl mx-auto w-full">
+            {sortedListEvents.map((event, index) => (
+              <SortableListItem
+                key={event.id}
+                index={index}
+                event={event}
+                moveItem={moveListItem}
+                onSelect={(e: any) => handleToggleEventSelection(event.id, null, e)}
+                isManual={listSort === 'manual'}
+                isSelected={selectedEventId === event.id || selectedEventIds.has(event.id)}
+                onContextMenu={(e: any) => handleEventContextMenu(e, event.id)}
+              />
+            ))}
+            {sortedListEvents.length === 0 && (
+              <div className="text-center text-default-400 py-10 w-full col-span-full">
+                No events found matching your search.
+              </div>
+            )}
+          </div>
+        </div>
       </div>
     );
   };
@@ -2676,11 +2783,27 @@ export function CalendarApp({ spacesState, viewportsState }: CalendarAppProps) {
             </Button>
           </div>
           <Button size="sm" variant="light" onPress={goToToday} className="h-8 font-medium text-default-600">Today</Button>
+          <div className="w-px h-4 bg-default-300 mx-1" />
+          <Select
+            aria-label="Filter by space"
+            placeholder="All Spaces"
+            selectedKeys={filterSpaceId === 'all' ? [] : [filterSpaceId]} // If 'all', empty selection or specialized Item? Actually better to have 'All Spaces' item.
+            onChange={(e: any) => setFilterSpaceId(e.target.value || 'all')}
+            className="w-[140px]"
+            size="sm"
+            variant="bordered"
+            classNames={{ trigger: "h-8 min-h-8 border-default-200" }}
+          >
+            <SelectItem key="all" value="all">All Spaces</SelectItem>
+            {spacesState.spaces.map((space: any) => (
+              <SelectItem key={space.id} value={space.id}>{space.title}</SelectItem>
+            ))}
+          </Select>
         </div>
 
         <div className="flex gap-2 items-center">
           <div className="flex gap-0.5 bg-default-100 p-0.5 rounded-lg border border-default-200/50">
-            {(['month', 'week', 'day', 'ndays', 'year', 'timeline'] as const).map((v) => (
+            {(['month', 'week', 'day', 'ndays', 'year', 'list'] as const).map((v) => (
               <Button
                 key={v}
                 size="sm"
@@ -2692,7 +2815,7 @@ export function CalendarApp({ spacesState, viewportsState }: CalendarAppProps) {
                 className={`capitalize text-xs h-7 px-3 rounded-md transition-all ${view === v ? 'bg-white text-default-900 font-bold shadow-sm' : 'text-default-500 hover:text-default-700'}`}
                 disableAnimation
               >
-                {v === 'month' ? 'Month' : v === 'week' ? 'Week' : v === 'day' ? 'Day' : v === 'ndays' ? `${nDays} Days` : v === 'year' ? 'Year' : 'Timeline'}
+                {v === 'month' ? 'Month' : v === 'week' ? 'Week' : v === 'day' ? 'Day' : v === 'ndays' ? `${nDays} Days` : v === 'year' ? 'Year' : 'List'}
               </Button>
             ))}
           </div>
@@ -2741,7 +2864,7 @@ export function CalendarApp({ spacesState, viewportsState }: CalendarAppProps) {
         {view === 'day' && renderDayView()}
         {view === 'ndays' && renderNDaysView()}
         {view === 'year' && renderYearView()}
-        {view === 'timeline' && renderTimelineView()}
+        {view === 'list' && renderListView()}
       </div>
 
       {/* Quick Create UI */}
