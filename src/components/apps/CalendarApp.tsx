@@ -937,24 +937,7 @@ const MonthWeekRow = memo(({
 });
 
 export function CalendarApp({ spacesState, viewportsState }: CalendarAppProps) {
-  const [currentDate, setCurrentDate] = useState(() => {
-    if (typeof localStorage !== 'undefined') {
-      const saved = localStorage.getItem('calendar_current_date');
-      if (saved) {
-        const date = new Date(saved);
-        if (!isNaN(date.getTime())) {
-          return date;
-        }
-      }
-    }
-    return new Date();
-  });
-
-  useEffect(() => {
-    if (typeof localStorage !== 'undefined') {
-      localStorage.setItem('calendar_current_date', currentDate.toISOString());
-    }
-  }, [currentDate]);
+  const [currentDate, setCurrentDate] = useState(() => new Date());
   const [view, setView] = useState<CalendarView>(() => {
     if (typeof localStorage !== 'undefined') {
       const saved = localStorage.getItem('calendar_current_view');
@@ -1558,16 +1541,47 @@ export function CalendarApp({ spacesState, viewportsState }: CalendarAppProps) {
   }, [allEvents, weeksInRange]);
 
   // Scroll to "today" or current month on mount
-  useEffect(() => {
-    if (containerRef && view === 'month') {
+  // Scroll to "today" or current month on mount/view change
+  useLayoutEffect(() => {
+    if (!containerRef) return;
+
+    if (view === 'month') {
       const today = new Date();
       const todayWeek = startOfWeek(today, { weekStartsOn: 1 });
       const weekElement = containerRef.querySelector(`[data-week="${todayWeek.getTime()}"]`);
       if (weekElement) {
         weekElement.scrollIntoView({ block: 'center', behavior: 'instant' });
       }
+    } else if (['week', 'day', 'ndays'].includes(view)) {
+      // Horizontal Scroll for Week/NDays (renderHorizontalGrid with Buffer of 60)
+      if (view === 'week' || view === 'ndays') {
+        const n = view === 'week' ? 7 : nDays;
+        // BUFFER = 60. Visible area covers 'n' days. Scroll matching 60 days width.
+        if (containerRef.clientWidth) {
+          containerRef.scrollLeft = (60 / n) * containerRef.clientWidth;
+        }
+      }
+
+      // Horizontal Scroll for Week/NDays
+      if (view === 'week' || view === 'ndays') {
+        const n = view === 'week' ? 7 : nDays;
+        // Buffer is 60. Total days = n + 120.
+        const totalDays = n + 120;
+        if (containerRef.scrollWidth) {
+          const trackWidth = containerRef.scrollWidth;
+          const dayWidth = (trackWidth - 60) / totalDays;
+          const targetScrollLeft = 60 * dayWidth;
+          containerRef.scrollTo({ left: targetScrollLeft, behavior: 'instant' });
+        }
+      }
+
+      // Scroll to current time (1 hour before current hour for context)
+      const now = new Date();
+      const currentHour = now.getHours();
+      const targetScroll = Math.max(0, (currentHour - 1) * hourHeight);
+      containerRef.scrollTo({ top: targetScroll, behavior: 'instant' });
     }
-  }, [containerRef, view]);
+  }, [containerRef, view, hourHeight, nDays]);
 
   const handleCreateEvent = useCallback(() => {
     // We now allow 'New' as fallback title
@@ -1666,11 +1680,16 @@ export function CalendarApp({ spacesState, viewportsState }: CalendarAppProps) {
     const start = range.start < range.end ? range.start : range.end;
     const end = range.start < range.end ? range.end : range.start;
 
-    // "Drag-only" creation: If start === end, it's a click. Cancel creation.
+    // If start === end (single click or single cell drag), ensure at least default duration
+    let effectiveEnd = end;
     if (start.getTime() === end.getTime()) {
-      setIsSelecting(false);
-      setSelectionRange(null);
-      return;
+      if (view === 'month') {
+        // For month view, single day is just start date (start == end).
+        // Do NOT add a day, otherwise it spans 2 days (inclusive logic).
+        effectiveEnd = end;
+      } else {
+        effectiveEnd = addMinutes(start, 60);
+      }
     }
 
     // Calculate anchor position for popover
@@ -1696,7 +1715,7 @@ export function CalendarApp({ spacesState, viewportsState }: CalendarAppProps) {
     setNewEvent({
       title: '',
       startDate: format(start, "yyyy-MM-dd'T'HH:mm"),
-      endDate: format(end, "yyyy-MM-dd'T'HH:mm"),
+      endDate: format(effectiveEnd, "yyyy-MM-dd'T'HH:mm"),
       notes: '',
       spaceId: spacesStateRef.current.focusedSpaceId || (spacesStateRef.current.spaces[0]?.id || '')
     });
@@ -2666,7 +2685,10 @@ export function CalendarApp({ spacesState, viewportsState }: CalendarAppProps) {
                 key={v}
                 size="sm"
                 variant={view === v ? 'light' : 'light'}
-                onPress={() => setView(v)}
+                onPress={() => {
+                  setView(v);
+                  setCurrentDate(new Date());
+                }}
                 className={`capitalize text-xs h-7 px-3 rounded-md transition-all ${view === v ? 'bg-white text-default-900 font-bold shadow-sm' : 'text-default-500 hover:text-default-700'}`}
                 disableAnimation
               >
