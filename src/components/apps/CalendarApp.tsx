@@ -2485,6 +2485,7 @@ export function CalendarApp({ spacesState, viewportsState }: CalendarAppProps) {
             size="sm"
             variant="bordered"
             aria-label="Sort by"
+            popoverProps={{ className: "min-w-[180px]" }}
           >
             <SelectItem key="date-asc" value="date-asc">Date (Oldest)</SelectItem>
             <SelectItem key="date-desc" value="date-desc">Date (Newest)</SelectItem>
@@ -2508,6 +2509,7 @@ export function CalendarApp({ spacesState, viewportsState }: CalendarAppProps) {
                 className="w-[140px]"
                 size="sm"
                 variant="bordered"
+                popoverProps={{ className: "min-w-[160px]" }}
               >
                 {Object.keys(savedOrders).map(name => (
                   <SelectItem key={name} value={name}>{name}</SelectItem>
@@ -2787,12 +2789,13 @@ export function CalendarApp({ spacesState, viewportsState }: CalendarAppProps) {
           <Select
             aria-label="Filter by space"
             placeholder="All Spaces"
-            selectedKeys={filterSpaceId === 'all' ? [] : [filterSpaceId]} // If 'all', empty selection or specialized Item? Actually better to have 'All Spaces' item.
+            selectedKeys={filterSpaceId === 'all' ? [] : [filterSpaceId]}
             onChange={(e: any) => setFilterSpaceId(e.target.value || 'all')}
             className="w-[140px]"
             size="sm"
             variant="bordered"
             classNames={{ trigger: "h-8 min-h-8 border-default-200" }}
+            popoverProps={{ className: "min-w-[180px]" }}
           >
             <SelectItem key="all" value="all">All Spaces</SelectItem>
             {spacesState.spaces.map((space: any) => (
@@ -3088,11 +3091,13 @@ export function CalendarApp({ spacesState, viewportsState }: CalendarAppProps) {
                           if (infoSpace) {
                             return (
                               <div className="h-[200px] overflow-y-auto border border-divider rounded-xl bg-white shadow-inner">
-                                <PageEditor
-                                  space={infoSpace}
-                                  spacesState={spacesState}
-                                  isEmbedded={true}
-                                />
+                                <div style={{ transform: 'scale(0.66)', transformOrigin: 'top left', width: '151.5%' }}>
+                                  <PageEditor
+                                    space={infoSpace}
+                                    spacesState={spacesState}
+                                    isEmbedded={true}
+                                  />
+                                </div>
                               </div>
                             );
                           }
@@ -3251,11 +3256,13 @@ export function CalendarApp({ spacesState, viewportsState }: CalendarAppProps) {
                         if (infoSpace) {
                           return (
                             <div className="h-[300px] overflow-y-auto border border-divider rounded-xl bg-white shadow-inner">
-                              <PageEditor
-                                space={infoSpace}
-                                spacesState={spacesState}
-                                isEmbedded={true}
-                              />
+                              <div style={{ transform: 'scale(0.66)', transformOrigin: 'top left', width: '151.5%' }}>
+                                <PageEditor
+                                  space={infoSpace}
+                                  spacesState={spacesState}
+                                  isEmbedded={true}
+                                />
+                              </div>
                             </div>
                           );
                         }
