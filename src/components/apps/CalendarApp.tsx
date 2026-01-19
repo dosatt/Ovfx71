@@ -48,7 +48,8 @@ import {
   FileText,
   ExternalLink,
   Layout,
-  X
+  X,
+  Copy
 } from 'lucide-react';
 import { PageEditor } from '../spaces/PageEditor';
 import { useDrag, useDrop, useDragLayer } from 'react-dnd';
@@ -74,6 +75,7 @@ interface DraggableEventProps {
   onHoverEvent: (id: string | null) => void;
   isHovered: boolean;
   onOpenDrawer?: (event: any) => void;
+  onSelect?: (id: string | null, anchor?: { x: number; y: number; elementCenterX?: number }, mouseEvent?: React.MouseEvent) => void;
 }
 
 interface DraggableMultiDayEventProps extends Omit<DraggableEventProps, 'onNavigate'> {
@@ -204,7 +206,8 @@ interface DraggableMultiDayEventProps extends Omit<DraggableEventProps, 'onNavig
   isResizing: boolean;
   onActiveResizeChange: (resize: { id: string, direction: 'left' | 'right', offset: number } | null) => void;
   isSelected: boolean;
-  onSelect: (id: string, anchor: { x: number; y: number }) => void;
+  onSelect: (id: string | null, anchor?: { x: number; y: number; elementCenterX?: number }, mouseEvent?: React.MouseEvent) => void;
+  onContextMenu?: (e: React.MouseEvent, eventId: string) => void;
   onOpenDrawer: (event: any) => void;
   eventHeight?: number;
   topOffset?: number;
@@ -225,13 +228,16 @@ const DraggableMultiDayEvent = memo(({
   isEnd,
   isSelected,
   onSelect,
+  onContextMenu,
   onDragEnd,
   eventHeight = 24,
   topOffset = 26,
   onHoverEvent,
-  isHovered
+  isHovered,
+  onOpenDrawer
 }: DraggableMultiDayEventProps) => {
   const containerRef = useRef<HTMLDivElement>(null);
+
 
   const [{ isDragging }, drag, preview] = useDrag(() => ({
     type: 'CALENDAR_EVENT',
@@ -351,11 +357,13 @@ const DraggableMultiDayEvent = memo(({
         transition: isResizing ? 'none' : 'all 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275)',
         overflow: 'hidden',
         opacity: isResizing ? 0.05 : 1,
+        boxShadow: isSelected ? '0 0 0 2px #3b82f6' : undefined, // Blue ring for selected
       }}
       className={`
         text-[10px] px-1.5 rounded-sm truncate select-none shadow-sm
         flex items-center gap-1 group calendar-event-item
-        ${isSelected ? 'ring-2 ring-primary bg-primary/30 text-primary-900 z-[110]' : (isResizing ? 'bg-primary/5 ring-1 ring-primary/10' : 'bg-primary/15 text-primary-700 hover:bg-primary/25')}
+        ${isResizing ? 'bg-primary/5 ring-1 ring-primary/10' : 'bg-primary/15 text-primary-700 hover:bg-primary/25'}
+        ${isSelected ? 'z-[110]' : ''}
         ${isHovered && !isSelected && !isResizing ? 'ring-2 ring-primary/50 bg-primary/20' : ''}
         ${isStart ? 'rounded-l border-l-2 border-primary' : ''}
         ${isEnd ? 'rounded-r' : ''}
@@ -368,11 +376,14 @@ const DraggableMultiDayEvent = memo(({
         const target = e.currentTarget as HTMLElement;
         const rect = target.getBoundingClientRect();
         const elementCenterX = rect.left + rect.width / 2;
-        onSelect(event.id, { x: e.clientX, y: e.clientY, elementCenterX });
+        onSelect(event.id, { x: e.clientX, y: e.clientY, elementCenterX }, e);
       }}
       onDoubleClick={(e) => {
         e.stopPropagation();
         onOpenDrawer(event);
+      }}
+      onContextMenu={(e) => {
+        if (onContextMenu) onContextMenu(e, event.id);
       }}
     >
       {isResizing && isStart && (
@@ -547,7 +558,9 @@ interface MonthWeekRowProps {
   currentMonth: Date;
   selectionRange: { start: Date; end: Date } | null;
   selectedEventId: string | null;
-  onSelectEvent: (id: string | null) => void;
+  selectedEventIds: Set<string>;
+  onSelectEvent: (id: string | null, anchor?: { x: number, y: number; elementCenterX?: number }, mouseEvent?: React.MouseEvent) => void;
+  onContextMenu?: (e: React.MouseEvent, eventId: string) => void;
   onStartSelection: (date: Date) => void;
   onUpdateSelection: (date: Date) => void;
   onUpdateEvent: (eventId: string, blockId: string, spaceId: string, updates: any) => void;
@@ -675,7 +688,9 @@ const MonthWeekRow = memo(({
   currentMonth,
   selectionRange,
   selectedEventId,
+  selectedEventIds,
   onSelectEvent,
+  onContextMenu,
   onStartSelection,
   onUpdateSelection,
   onUpdateEvent,
@@ -854,16 +869,17 @@ const MonthWeekRow = memo(({
 
       {/* Events Overlay */}
       <div className="absolute inset-0 z-10 pointer-events-none">
-        {layout.map((item) => (
-          <div key={`${item.event.id}-${weekStart.getTime()}`} className="pointer-events-auto">
+        {layout.map((item, idx) => (
+          <div key={`${item.event.id}-${weekStart.getTime()}-${idx}`} className="pointer-events-auto">
             <DraggableMultiDayEvent
               {...item}
               onUpdate={(id, updates) => onUpdateEvent(id, item.event.id, item.event.sourceSpaceId, updates)}
               onHoverDateChange={onHoverDateChange}
               isResizing={activeResize?.id === item.event.id}
               onActiveResizeChange={onActiveResizeChange}
-              isSelected={selectedEventId === item.event.id}
+              isSelected={selectedEventId === item.event.id || selectedEventIds.has(item.event.id)}
               onSelect={onSelectEvent}
+              onContextMenu={onContextMenu}
               onOpenDrawer={onOpenDrawer}
               onDragEnd={onDragLeave}
               eventHeight={eventHeight}
@@ -987,12 +1003,17 @@ export function CalendarApp({ spacesState, viewportsState }: CalendarAppProps) {
   const [hoveredEventId, setHoveredEventId] = useState<string | null>(null);
   const [editPopoverAnchor, setEditPopoverAnchor] = useState<{ x: number, y: number; elementCenterX?: number } | null>(null);
 
+  // Multi-selection state
+  const [selectedEventIds, setSelectedEventIds] = useState<Set<string>>(new Set());
+  const [lastSelectedEventId, setLastSelectedEventId] = useState<string | null>(null);
+  const [contextMenu, setContextMenu] = useState<{ x: number; y: number } | null>(null);
+
   // New event state
   const [newEvent, setNewEvent] = useState({
     title: '',
     startDate: format(new Date(), "yyyy-MM-dd'T'HH:mm"),
     endDate: format(new Date(Date.now() + 3600000), "yyyy-MM-dd'T'HH:mm"),
-    info: '',
+    notes: '',
     spaceId: ''
   });
   const [editingEventId, setEditingEventId] = useState<string | null>(null);
@@ -1316,6 +1337,11 @@ export function CalendarApp({ spacesState, viewportsState }: CalendarAppProps) {
       const currentPopoverAnchor = popoverAnchorRef.current;
       const currentEditPopoverAnchor = editPopoverAnchorRef.current;
 
+      // Always let contextmenu events on calendar items propagate to local handlers
+      if (e.type === 'contextmenu' && target.closest('.calendar-event-item')) {
+        return;
+      }
+
       // If no popover is open, we only care about clearing ghosts
       if (!currentPopoverAnchor && !currentEditPopoverAnchor) {
         setDragGhostDate(null);
@@ -1346,7 +1372,7 @@ export function CalendarApp({ spacesState, viewportsState }: CalendarAppProps) {
 
       // Handle outside interactions
       if (currentPopoverAnchor || currentEditPopoverAnchor) {
-        // If clicking on an event item, let that handler deal with it
+        // If clicking or right-clicking on an event item, let that handler deal with it
         if (target.closest('.calendar-event-item')) return;
 
         if (currentPopoverAnchor) {
@@ -1392,9 +1418,14 @@ export function CalendarApp({ spacesState, viewportsState }: CalendarAppProps) {
   const prevEventsRef = useRef<any[]>([]);
   const allEvents = useMemo(() => {
     const events: any[] = [];
+    const seenIds = new Set<string>(); // Deduplicate by block ID
     spacesState.spaces.forEach((space: any) => {
       if (space.content?.blocks) {
         space.content.blocks.forEach((block: any) => {
+          // Skip if already seen (prevents duplicates)
+          if (seenIds.has(block.id)) return;
+          seenIds.add(block.id);
+
           if (block.type === 'calendar') {
             const start = new Date(block.metadata?.startDate || Date.now());
             const end = block.metadata?.endDate ? new Date(block.metadata.endDate) : null;
@@ -1603,7 +1634,7 @@ export function CalendarApp({ spacesState, viewportsState }: CalendarAppProps) {
       title: '',
       startDate: format(new Date(), "yyyy-MM-dd'T'HH:mm"),
       endDate: format(new Date(Date.now() + 3600000), "yyyy-MM-dd'T'HH:mm"),
-      info: '',
+      notes: '',
       spaceId: ''
     });
   }, [newEvent, onClose]);
@@ -1743,6 +1774,148 @@ export function CalendarApp({ spacesState, viewportsState }: CalendarAppProps) {
     }
   }, []);
 
+  // Handler for deleting multiple events
+  const handleDeleteEvents = useCallback((eventIds: string[]) => {
+    // Group events by source space for efficient batch updates
+    const eventsBySpace = new Map<string, string[]>();
+
+    eventIds.forEach(eventId => {
+      const event = allEvents.find(e => e.id === eventId);
+      if (event) {
+        const existing = eventsBySpace.get(event.sourceSpaceId) || [];
+        existing.push(eventId);
+        eventsBySpace.set(event.sourceSpaceId, existing);
+
+        // Delete associated info space
+        if (event.metadata?.infoSpaceId) {
+          spacesStateRef.current.deleteSpace(event.metadata.infoSpaceId);
+        }
+      }
+    });
+
+    // Update each space once with filtered blocks
+    eventsBySpace.forEach((idsToDelete, spaceId) => {
+      const space = spacesStateRef.current.spaces.find((s: any) => s.id === spaceId);
+      if (space) {
+        const blocks = space.content?.blocks.filter((b: any) => !idsToDelete.includes(b.id));
+        spacesStateRef.current.updateSpace(spaceId, { content: { ...space.content, blocks } });
+      }
+    });
+
+    setSelectedEventIds(new Set());
+    setSelectedEventId(null);
+    setEditPopoverAnchor(null);
+    setContextMenu(null);
+  }, [allEvents]);
+
+  // Handler for duplicating multiple events
+  const handleDuplicateEvents = useCallback((eventIds: string[]) => {
+    eventIds.forEach(eventId => {
+      const event = allEvents.find(e => e.id === eventId);
+      if (!event) return;
+
+      const space = spacesStateRef.current.spaces.find((s: any) => s.id === event.sourceSpaceId);
+      if (!space) return;
+
+      // Create new info space for duplicate
+      const infoSpace = spacesStateRef.current.createSpace('page');
+      spacesStateRef.current.updateSpace(infoSpace.id, {
+        title: `${event.metadata?.title || 'Untitled'} (Copy) - Info`,
+        content: { blocks: [] },
+        icon: 'Calendar',
+        iconColor: '#FF5F56',
+        metadata: { isInfo: true, isHidden: true, isCalendarElement: true }
+      });
+
+      const newBlock = {
+        id: `block_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+        type: 'calendar',
+        content: '',
+        metadata: {
+          ...event.metadata,
+          title: `${event.metadata?.title || 'Untitled'} (Copy)`,
+          infoSpaceId: infoSpace.id,
+          updatedAt: Date.now()
+        }
+      };
+
+      const updatedBlocks = [...(space.content?.blocks || []), newBlock];
+      spacesStateRef.current.updateSpace(event.sourceSpaceId, {
+        content: { ...space.content, blocks: updatedBlocks }
+      });
+    });
+
+    setSelectedEventIds(new Set());
+    setContextMenu(null);
+  }, [allEvents]);
+
+  // Handler for event clicks with multi-selection support
+  const handleEventClick = useCallback((e: React.MouseEvent, eventId: string, anchor?: { x: number; y: number; elementCenterX?: number }) => {
+    e.stopPropagation();
+
+    const isMac = navigator.platform.toUpperCase().indexOf('MAC') >= 0;
+    const isMultiSelectKey = isMac ? e.metaKey : e.ctrlKey;
+    const isRangeSelectKey = e.shiftKey;
+
+    // Close creation popover
+    setPopoverAnchor(null);
+    setIsSelecting(false);
+    setSelectionRange(null);
+
+    if (isMultiSelectKey) {
+      // Toggle selection
+      setSelectedEventIds(prev => {
+        const next = new Set(prev);
+        if (next.has(eventId)) {
+          next.delete(eventId);
+        } else {
+          next.add(eventId);
+        }
+        return next;
+      });
+      setLastSelectedEventId(eventId);
+      setSelectedEventId(null);
+      setEditPopoverAnchor(null);
+    } else if (isRangeSelectKey && lastSelectedEventId) {
+      // Range selection based on start time
+      const sortedEvents = [...allEvents].sort((a, b) => a.start.getTime() - b.start.getTime());
+      const lastIdx = sortedEvents.findIndex(e => e.id === lastSelectedEventId);
+      const currIdx = sortedEvents.findIndex(e => e.id === eventId);
+
+      if (lastIdx !== -1 && currIdx !== -1) {
+        const [fromIdx, toIdx] = lastIdx < currIdx ? [lastIdx, currIdx] : [currIdx, lastIdx];
+        const rangeIds = sortedEvents.slice(fromIdx, toIdx + 1).map(e => e.id);
+        setSelectedEventIds(new Set(rangeIds));
+      }
+      setSelectedEventId(null);
+      setEditPopoverAnchor(null);
+    } else {
+      // Single selection - show popover
+      setSelectedEventIds(new Set([eventId]));
+      setLastSelectedEventId(eventId);
+      setSelectedEventId(eventId);
+      if (anchor) setEditPopoverAnchor(anchor);
+    }
+  }, [allEvents, lastSelectedEventId]);
+
+  // Handler for right-click context menu on events
+  const handleEventContextMenu = useCallback((e: React.MouseEvent, eventId: string) => {
+    e.preventDefault();
+    e.stopPropagation();
+
+    // If right-clicked event is not in selection, make it the only selection
+    if (!selectedEventIds.has(eventId)) {
+      setSelectedEventIds(new Set([eventId]));
+      setLastSelectedEventId(eventId);
+    }
+
+    // Close single-select popover
+    setSelectedEventId(null);
+    setEditPopoverAnchor(null);
+
+    setContextMenu({ x: e.clientX, y: e.clientY });
+  }, [selectedEventIds]);
+
   const dragTrackRef = useRef({ mouseDownPos: null as { x: number, y: number } | null, isDragCreation: false });
   // Helper ref to access current value in callbacks without recreating them if not needed, though dragTrackRef is stable.
   const prevDragTrackRef = dragTrackRef;
@@ -1763,6 +1936,13 @@ export function CalendarApp({ spacesState, viewportsState }: CalendarAppProps) {
         }
         if (activeResize) {
           setActiveResize(null);
+        }
+        // Clear multi-selection and context menu
+        if (selectedEventIds.size > 0) {
+          setSelectedEventIds(new Set());
+        }
+        if (contextMenu) {
+          setContextMenu(null);
         }
       }
     };
@@ -1831,7 +2011,7 @@ export function CalendarApp({ spacesState, viewportsState }: CalendarAppProps) {
   // Removed from here, moved to the top of the component body for hoisting safety
 
 
-  const handleToggleEventSelection = useCallback((id: string | null, anchor?: { x: number, y: number; elementCenterX?: number }) => {
+  const handleToggleEventSelection = useCallback((id: string | null, anchor?: { x: number, y: number; elementCenterX?: number }, mouseEvent?: React.MouseEvent) => {
     // Always close creation state when interacting with an existing element or clearing selection
     setPopoverAnchor(null);
     popoverAnchorRef.current = null;
@@ -1842,17 +2022,63 @@ export function CalendarApp({ spacesState, viewportsState }: CalendarAppProps) {
       handleCreateEventRef.current();
     }
 
+    // Check for Ctrl/Cmd modifier for multi-selection
+    if (mouseEvent && id) {
+      const isMac = navigator.platform.toUpperCase().indexOf('MAC') >= 0;
+      const isMultiSelectKey = isMac ? mouseEvent.metaKey : mouseEvent.ctrlKey;
+      const isRangeSelectKey = mouseEvent.shiftKey;
+
+      if (isMultiSelectKey) {
+        // Toggle selection
+        setSelectedEventIds(prev => {
+          const next = new Set(prev);
+          if (next.has(id)) {
+            next.delete(id);
+          } else {
+            next.add(id);
+          }
+          return next;
+        });
+        setLastSelectedEventId(id);
+        setSelectedEventId(null);
+        setEditPopoverAnchor(null);
+        return;
+      } else if (isRangeSelectKey && lastSelectedEventId) {
+        // Range selection based on start time
+        const sortedEvents = [...allEvents].sort((a, b) => a.start.getTime() - b.start.getTime());
+        const lastIdx = sortedEvents.findIndex(e => e.id === lastSelectedEventId);
+        const currIdx = sortedEvents.findIndex(e => e.id === id);
+
+        if (lastIdx !== -1 && currIdx !== -1) {
+          const [fromIdx, toIdx] = lastIdx < currIdx ? [lastIdx, currIdx] : [currIdx, lastIdx];
+          const rangeIds = sortedEvents.slice(fromIdx, toIdx + 1).map(e => e.id);
+          setSelectedEventIds(new Set(rangeIds));
+        }
+        setSelectedEventId(null);
+        setEditPopoverAnchor(null);
+        return;
+      }
+    }
+
+    // Normal single selection
+    if (id) {
+      setSelectedEventIds(new Set([id]));
+      setLastSelectedEventId(id);
+    } else {
+      setSelectedEventIds(new Set());
+    }
+
     setSelectedEventId(id);
     if (anchor) setEditPopoverAnchor(anchor);
     else setEditPopoverAnchor(null);
-  }, []);
+  }, [allEvents, lastSelectedEventId]);
 
   const handleOpenDrawer = useCallback((event: any) => {
     setNewEvent({
       title: event.metadata?.title || '',
       startDate: format(event.start, "yyyy-MM-dd'T'HH:mm"),
       endDate: event.end ? format(event.end, "yyyy-MM-dd'T'HH:mm") : format(event.start, "yyyy-MM-dd'T'HH:mm"),
-      info: '',
+      notes: '',
       spaceId: event.sourceSpaceId
     });
     setEditingEventId(event.id);
@@ -1953,7 +2179,9 @@ export function CalendarApp({ spacesState, viewportsState }: CalendarAppProps) {
                   currentMonth={monthOfThisWeek}
                   selectionRange={selectionRange}
                   selectedEventId={selectedEventId}
+                  selectedEventIds={selectedEventIds}
                   onSelectEvent={handleToggleEventSelection}
+                  onContextMenu={handleEventContextMenu}
                   onStartSelection={handleStartSelection}
                   onUpdateSelection={handleUpdateSelection}
                   onUpdateEvent={handleUpdateEvent}
@@ -2061,8 +2289,10 @@ export function CalendarApp({ spacesState, viewportsState }: CalendarAppProps) {
                 }}
                 isHovered={hoveredEventId === item.id}
                 onSelect={handleToggleEventSelection}
+                onContextMenu={handleEventContextMenu}
                 onOpenDrawer={handleOpenDrawer}
                 hourHeight={hourHeight}
+                isSelected={selectedEventId === item.id || selectedEventIds.has(item.id)}
               />
             ))}
           </div>
@@ -2367,8 +2597,10 @@ export function CalendarApp({ spacesState, viewportsState }: CalendarAppProps) {
                             }}
                             isHovered={hoveredEventId === item.id}
                             onSelect={handleToggleEventSelection}
+                            onContextMenu={handleEventContextMenu}
                             onOpenDrawer={handleOpenDrawer}
                             hourHeight={hourHeight}
+                            isSelected={selectedEventId === item.id || selectedEventIds.has(item.id)}
                           />
                         ))}
                       </div>
@@ -2785,7 +3017,7 @@ export function CalendarApp({ spacesState, viewportsState }: CalendarAppProps) {
                             title: selectedEvent.metadata?.title || '',
                             startDate: format(selectedEvent.start, "yyyy-MM-dd'T'HH:mm"),
                             endDate: selectedEvent.end ? format(selectedEvent.end, "yyyy-MM-dd'T'HH:mm") : format(selectedEvent.start, "yyyy-MM-dd'T'HH:mm"),
-                            info: '',
+                            notes: '',
                             spaceId: selectedEvent.sourceSpaceId
                           });
                           setEditingEventId(selectedEvent.id);
@@ -2924,6 +3156,42 @@ export function CalendarApp({ spacesState, viewportsState }: CalendarAppProps) {
           )
         }
       </AnimatePresence >
+
+      {/* Context Menu for Events */}
+      {contextMenu && selectedEventIds.size > 0 && (
+        <div
+          className="fixed z-[9999]"
+          style={{ left: contextMenu.x, top: contextMenu.y }}
+          onClick={(e) => e.stopPropagation()}
+        >
+          <div className="bg-white border border-divider rounded-lg shadow-xl py-1 min-w-[180px] overflow-hidden">
+            <button
+              className="w-full px-3 py-2 text-left text-sm hover:bg-default-100 flex items-center gap-2.5 transition-colors"
+              onClick={() => handleDuplicateEvents(Array.from(selectedEventIds))}
+            >
+              <Copy size={14} className="text-default-500" />
+              <span>Duplicate{selectedEventIds.size > 1 ? ` (${selectedEventIds.size})` : ''}</span>
+            </button>
+            <div className="h-px bg-divider mx-2 my-1" />
+            <button
+              className="w-full px-3 py-2 text-left text-sm text-red-600 hover:bg-red-50 flex items-center gap-2.5 transition-colors"
+              onClick={() => handleDeleteEvents(Array.from(selectedEventIds))}
+            >
+              <Trash2 size={14} />
+              <span>Delete{selectedEventIds.size > 1 ? ` (${selectedEventIds.size})` : ''}</span>
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Click outside to close context menu */}
+      {contextMenu && (
+        <div
+          className="fixed inset-0 z-[9998]"
+          onClick={() => setContextMenu(null)}
+          onContextMenu={(e) => { e.preventDefault(); setContextMenu(null); }}
+        />
+      )}
     </div >
   );
 }
@@ -3173,7 +3441,7 @@ function calculateTimelineLayout(events: any[], hourHeight: number, referenceDat
   return result;
 }
 
-function DraggableTimelineEvent({ event, top, height, left = 0, width = 100, onUpdate, onNavigate, onHoverEvent, isHovered, onSelect, onOpenDrawer, hourHeight }: any) {
+function DraggableTimelineEvent({ event, top, height, left = 0, width = 100, onUpdate, onNavigate, onHoverEvent, isHovered, onSelect, onContextMenu, onOpenDrawer, hourHeight, isSelected }: any) {
   const dragOccurredRef = useRef(false);
   const mouseMovedRef = useRef(false);
 
@@ -3289,15 +3557,16 @@ function DraggableTimelineEvent({ event, top, height, left = 0, width = 100, onU
   return (
     <div
       ref={setDragRef}
-      className={`absolute rounded bg-primary text-white p-2 text-xs shadow-md overflow-hidden cursor-grab active:cursor-grabbing group calendar-event-item ${isDragging ? 'opacity-0 is-dragging-now' : ''} ${isHovered ? 'ring-2 ring-primary-300' : ''}`}
+      className={`absolute rounded bg-primary text-white p-2 text-xs shadow-md overflow-hidden cursor-grab active:cursor-grabbing group calendar-event-item ${isDragging ? 'opacity-0 is-dragging-now' : ''} ${isHovered && !isSelected ? 'ring-2 ring-primary-300' : ''}`}
       style={{
         top: `${top}px`,
         height: `${height}px`,
         left: `calc(${left}% + 2px)`,
         width: `calc(${width}% - 4px)`,
-        zIndex: isDragging ? -1 : 50,
+        zIndex: isDragging ? -1 : (isSelected ? 60 : 50),
         pointerEvents: isDragging ? 'none' : 'auto',
-        visibility: isDragging ? 'hidden' : 'visible'
+        visibility: isDragging ? 'hidden' : 'visible',
+        boxShadow: isSelected ? '0 0 0 2px #3b82f6' : undefined, // Blue ring for selected
       }}
       onMouseDown={(e) => {
         e.stopPropagation();
@@ -3324,12 +3593,15 @@ function DraggableTimelineEvent({ event, top, height, left = 0, width = 100, onU
         if (dragOccurredRef.current || mouseMovedRef.current) {
           return;
         }
-        if (onSelect) onSelect(event.id, { x: e.clientX, y: e.clientY });
+        if (onSelect) onSelect(event.id, { x: e.clientX, y: e.clientY }, e);
         else if (onNavigate) onNavigate(event.sourceSpaceId, event.sourceSpaceTitle);
       }}
       onDoubleClick={(e) => {
         e.stopPropagation();
         if (onOpenDrawer) onOpenDrawer(event);
+      }}
+      onContextMenu={(e) => {
+        if (onContextMenu) onContextMenu(e, event.id);
       }}
     >
       {/* Top Resizer Handle */}
