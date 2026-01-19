@@ -3091,6 +3091,7 @@ export function CalendarApp({ spacesState, viewportsState }: CalendarAppProps) {
                                 <PageEditor
                                   space={infoSpace}
                                   spacesState={spacesState}
+                                  isEmbedded={true}
                                 />
                               </div>
                             );
@@ -3253,6 +3254,7 @@ export function CalendarApp({ spacesState, viewportsState }: CalendarAppProps) {
                               <PageEditor
                                 space={infoSpace}
                                 spacesState={spacesState}
+                                isEmbedded={true}
                               />
                             </div>
                           );

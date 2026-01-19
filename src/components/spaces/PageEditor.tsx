@@ -38,6 +38,7 @@ interface PageEditorProps {
   brokenLinksVersion?: number;
   settings?: Settings;
   onUpdateSettings?: (updates: Partial<Settings>) => void;
+  isEmbedded?: boolean;
 }
 
 export function PageEditor({
@@ -49,7 +50,8 @@ export function PageEditor({
   brokenLinks,
   brokenLinksVersion,
   settings,
-  onUpdateSettings
+  onUpdateSettings,
+  isEmbedded = false
 }: PageEditorProps) {
   const [selectedBlockIds, setSelectedBlockIds] = useState<string[]>([]);
   const [menuAnchor, setMenuAnchor] = useState<{ anchor: HTMLElement; afterBlockId?: string } | null>(null);
@@ -1047,7 +1049,7 @@ export function PageEditor({
               selectedBlockIds={selectedBlockIds}
 
               onToggleSelection={onToggleSelection}
-              isEventPage={space.metadata?.isEventPage}
+              isEventPage={isCalendarEmbed}
             />
           );
           i = j;
@@ -1102,7 +1104,7 @@ export function PageEditor({
           selectedBlockIds={selectedBlockIds}
 
           onToggleSelection={onToggleSelection}
-          isEventPage={space.metadata?.isEventPage}
+          isEventPage={isCalendarEmbed}
         />
       );
       i++;
@@ -1128,14 +1130,16 @@ export function PageEditor({
     }
   };
 
+  const isCalendarEmbed = isEmbedded || space.metadata?.isEventPage || space.metadata?.isCalendarElement || space.metadata?.isInfo;
+
   return (
     <div
       ref={dropRef}
-      className={`flex-1 h-full min-h-[500px] overflow-y-auto no-scrollbar pb-32 transition-colors duration-200 ${isOver ? 'bg-primary/5' : ''}`}
+      className={`flex-1 h-full overflow-y-auto no-scrollbar transition-colors duration-200 ${isCalendarEmbed ? '' : 'min-h-[500px] pb-32'} ${isOver ? 'bg-primary/5' : ''}`}
     >
       <div
-        className={`max-w-4xl mx-auto flex flex-col transition-all duration-300 ${space.metadata?.isEventPage
-          ? 'p-2 pt-2'
+        className={`max-w-4xl mx-auto flex flex-col transition-all duration-300 ${isCalendarEmbed
+          ? 'p-0'
           : `pb-8 px-8 ${showProperties ? 'pt-6' : 'pt-[15vh]'}`
           }`}
       >
@@ -1150,30 +1154,32 @@ export function PageEditor({
         )}
 
         {/* Actions Bar */}
-        <div className="flex justify-end mb-4 opacity-0 hover:opacity-100 transition-opacity">
-          <Button
-            isIconOnly
-            size="sm"
-            variant="light"
-            onPress={() => fileInputRef.current?.click()}
-            className="text-default-400 hover:text-default-600"
-            title="Carica più file"
-          >
-            <Upload size={18} />
-          </Button>
-          <input
-            type="file"
-            ref={fileInputRef}
-            className="hidden"
-            multiple
-            onChange={(e) => {
-              if (e.target.files && e.target.files.length > 0) {
-                handleFileDrop(Array.from(e.target.files));
-                e.target.value = '';
-              }
-            }}
-          />
-        </div>
+        {!isCalendarEmbed && (
+          <div className="flex justify-end mb-4 opacity-0 hover:opacity-100 transition-opacity">
+            <Button
+              isIconOnly
+              size="sm"
+              variant="light"
+              onPress={() => fileInputRef.current?.click()}
+              className="text-default-400 hover:text-default-600"
+              title="Carica più file"
+            >
+              <Upload size={18} />
+            </Button>
+            <input
+              type="file"
+              ref={fileInputRef}
+              className="hidden"
+              multiple
+              onChange={(e) => {
+                if (e.target.files && e.target.files.length > 0) {
+                  handleFileDrop(Array.from(e.target.files));
+                  e.target.value = '';
+                }
+              }}
+            />
+          </div>
+        )}
 
         {/* Editor Blocks */}
         <div className="flex flex-col relative">
