@@ -3909,9 +3909,12 @@ function DraggableTimelineEvent({ event, top, height, left = 0, width = 100, onU
       data-event-id={event.id}
       onClick={(e) => {
         e.stopPropagation();
-        // The selection logic is now handled in onMouseDown's mouseUp handler
-        // This onClick can be used for other purposes if needed, or removed if redundant.
-        // For now, we'll keep it but it won't trigger selection if onMouseDown handled it.
+        // If we dragged, don't select (the drag already handled the interaction)
+        if (dragOccurredRef.current || mouseMovedRef.current) return;
+        // Get element center for proper popover arrow positioning
+        const rect = e.currentTarget.getBoundingClientRect();
+        const elementCenterX = rect.left + rect.width / 2;
+        if (onSelect) onSelect(event.id, { x: e.clientX, y: e.clientY, elementCenterX }, e);
       }}
       onDoubleClick={(e) => {
         e.stopPropagation();
