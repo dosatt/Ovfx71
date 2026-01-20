@@ -60,6 +60,16 @@ export function PageEditor({
   const titleInputRef = useRef<HTMLInputElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { pushAction } = useHistory();
+  const [isScrolling, setIsScrolling] = useState(false);
+  const scrollTimeoutRef = useRef<any>(null);
+
+  const handleScroll = useCallback(() => {
+    setIsScrolling(true);
+    if (scrollTimeoutRef.current) clearTimeout(scrollTimeoutRef.current);
+    scrollTimeoutRef.current = setTimeout(() => {
+      setIsScrolling(false);
+    }, 2000);
+  }, []);
 
   const content = space.content as PageContent;
   const blocks = content?.blocks || [];
@@ -1135,10 +1145,11 @@ export function PageEditor({
   return (
     <div
       ref={dropRef}
-      className={`flex-1 h-full overflow-y-auto no-scrollbar transition-colors duration-200 ${isCalendarEmbed ? '' : 'min-h-[500px] pb-32'} ${isOver ? 'bg-primary/5' : ''}`}
+      onScroll={handleScroll}
+      className={`flex-1 h-full overflow-y-auto overflow-x-hidden transition-colors duration-200 ${isScrolling ? 'autohide-scrollbar' : 'no-scrollbar'} ${isCalendarEmbed ? '' : 'min-h-[500px] pb-32'} ${isOver ? 'bg-primary/5' : ''}`}
     >
       <div
-        className={`max-w-4xl mx-auto flex flex-col transition-all duration-300 ${isCalendarEmbed
+        className={`${isCalendarEmbed ? 'w-full' : 'max-w-4xl mx-auto'} flex flex-col transition-all duration-300 ${isCalendarEmbed
           ? 'p-0'
           : `pb-8 px-8 ${showProperties ? 'pt-6' : 'pt-[15vh]'}`
           }`}

@@ -3090,8 +3090,8 @@ export function CalendarApp({ spacesState, viewportsState }: CalendarAppProps) {
 
                           if (infoSpace) {
                             return (
-                              <div className="h-[200px] overflow-y-auto border border-divider rounded-xl bg-white shadow-inner">
-                                <div style={{ transform: 'scale(0.66)', transformOrigin: 'top left', width: '151.5%' }}>
+                              <div className="h-[200px] overflow-y-auto overflow-x-hidden bg-white">
+                                <div style={{ zoom: 0.8, paddingTop: '10px', paddingBottom: '12px' }}>
                                   <PageEditor
                                     space={infoSpace}
                                     spacesState={spacesState}
@@ -3255,8 +3255,8 @@ export function CalendarApp({ spacesState, viewportsState }: CalendarAppProps) {
 
                         if (infoSpace) {
                           return (
-                            <div className="h-[300px] overflow-y-auto border border-divider rounded-xl bg-white shadow-inner">
-                              <div style={{ transform: 'scale(0.66)', transformOrigin: 'top left', width: '151.5%' }}>
+                            <div className="h-[300px] overflow-y-auto overflow-x-hidden bg-white">
+                              <div style={{ zoom: 0.8, paddingTop: '10px', paddingBottom: '12px' }}>
                                 <PageEditor
                                   space={infoSpace}
                                   spacesState={spacesState}

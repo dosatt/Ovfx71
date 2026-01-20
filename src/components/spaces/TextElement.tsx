@@ -1155,15 +1155,15 @@ export function TextElement({
   const getBlockStyles = () => {
     let styles = '';
     switch (effectiveBlock.type) {
-      case 'heading1': styles = 'text-4xl font-bold'; break;
-      case 'heading2': styles = 'text-3xl font-semibold'; break;
-      case 'heading3': styles = 'text-2xl font-semibold'; break;
-      case 'heading4': styles = 'text-xl font-semibold'; break;
-      case 'quote': styles = 'border-l-4 border-default-300 pl-4 py-1 italic text-default-500'; break;
-      case 'code': styles = 'font-mono text-sm bg-default-100 p-3 rounded-md'; break;
-      case 'math': styles = 'font-mono bg-default-50 p-3 rounded-md border-l-4 border-primary'; break;
-      case 'callout': styles = 'bg-default-100 p-4 rounded-lg flex gap-3 items-start border border-default-200'; break;
-      default: styles = 'text-base'; break;
+      case 'heading1': styles = 'text-4xl font-bold leading-tight'; break;
+      case 'heading2': styles = 'text-3xl font-semibold leading-tight'; break;
+      case 'heading3': styles = 'text-2xl font-semibold leading-tight'; break;
+      case 'heading4': styles = 'text-xl font-semibold leading-tight'; break;
+      case 'quote': styles = 'border-l-4 border-default-300 pl-4 py-1 italic text-default-500 leading-relaxed'; break;
+      case 'code': styles = 'font-mono text-sm bg-default-100 p-3 rounded-md leading-normal'; break;
+      case 'math': styles = 'font-mono bg-default-50 p-3 rounded-md border-l-4 border-primary leading-normal'; break;
+      case 'callout': styles = 'bg-default-100 p-4 rounded-lg flex gap-3 items-start border border-default-200 leading-relaxed'; break;
+      default: styles = 'text-base leading-relaxed'; break;
     }
 
     // Alignment logic
@@ -1614,23 +1614,23 @@ export function TextElement({
 
             {effectiveBlock.type === 'text' ? (
               <div className="flex items-start gap-2 w-full group/text relative">
-                <div className="flex-1 min-w-0 relative">
+                <div className={`flex-1 min-w-0 relative ${!block.content && (isFocused || isDropdownOpen) ? 'mt-[-1.6em]' : ''}`}>
                   {renderRichText(" ", getTextAlignmentClass())}
 
                   {/* Custom Placeholder and Insert Button */}
                   {!block.content && (isFocused || isDropdownOpen) && (
-                    <div className={`absolute top-0 left-0 w-full pointer-events-none pb-1 select-none px-0 leading-[1.8] ${getTextAlignmentClass()}`}>
-                      <span className="text-default-400 opacity-50 font-normal font-sans text-base">{index === 0 ? 'Type "#" to add a title' : (activeConfig.placeholder || "Type something")}</span>
-                      <span className="text-default-400 opacity-50 font-normal font-sans text-base"> or </span>
-                      <div className="pointer-events-auto inline-block align-baseline">
+                    <div className={`relative w-full pointer-events-none pb-1 select-none px-0 leading-relaxed ${getTextAlignmentClass()}`}>
+                      <span className="text-default-400 opacity-60 font-normal font-sans text-base">{index === 0 ? 'Type "#" to add a title' : (activeConfig.placeholder || "Type something")}</span>
+                      <span className="text-default-400 opacity-60 font-normal font-sans text-base"> or </span>
+                      <div className="pointer-events-auto inline-flex align-baseline">
                         <DropdownMenu onOpenChange={setIsDropdownOpen} modal={false}>
                           <DropdownMenuTrigger asChild>
                             <button
                               type="button"
                               onMouseDown={(e) => e.preventDefault()}
-                              className="relative z-10 bg-neutral-200 hover:bg-neutral-300 cursor-pointer border-none rounded-full px-3 py-1 flex items-center gap-1 leading-none text-neutral-600 font-normal text-[14px] transition-colors"
+                              className="inline-flex items-center gap-0.5 text-primary-500 hover:text-primary-600 font-medium transition-colors cursor-pointer border-none bg-transparent p-0 leading-none underline decoration-primary-500/30 underline-offset-4"
                             >
-                              an element <ChevronDown className="h-3 w-3" />
+                              an element <ChevronDown size={12} className="opacity-70" />
                             </button>
                           </DropdownMenuTrigger>
                           <DropdownMenuContent
