@@ -1614,23 +1614,23 @@ export function TextElement({
 
             {effectiveBlock.type === 'text' ? (
               <div className="flex items-start gap-2 w-full group/text relative">
-                <div className={`flex-1 min-w-0 relative ${!block.content && (isFocused || isDropdownOpen) ? 'mt-[-1.6em]' : ''}`}>
+                <div className="flex-1 min-w-0 relative">
                   {renderRichText(" ", getTextAlignmentClass())}
 
                   {/* Custom Placeholder and Insert Button */}
                   {!block.content && (isFocused || isDropdownOpen) && (
-                    <div className={`relative w-full pointer-events-none pb-1 select-none px-0 leading-relaxed ${getTextAlignmentClass()}`}>
-                      <span className="text-default-400 opacity-60 font-normal font-sans text-base">{index === 0 ? 'Type "#" to add a title' : (activeConfig.placeholder || "Type something")}</span>
-                      <span className="text-default-400 opacity-60 font-normal font-sans text-base"> or </span>
-                      <div className="pointer-events-auto inline-flex align-baseline">
+                    <div className={`absolute top-0 left-0 w-full pointer-events-none pb-1 select-none px-0 leading-[1.8] ${getTextAlignmentClass()}`}>
+                      <span className="text-default-400 opacity-50 font-normal font-sans text-base">{index === 0 ? 'Type "#" to add a title' : (activeConfig.placeholder || "Type something")}</span>
+                      <span className="text-default-400 opacity-50 font-normal font-sans text-base"> or </span>
+                      <div className="pointer-events-auto inline-block align-baseline">
                         <DropdownMenu onOpenChange={setIsDropdownOpen} modal={false}>
                           <DropdownMenuTrigger asChild>
                             <button
                               type="button"
                               onMouseDown={(e) => e.preventDefault()}
-                              className="inline-flex items-center gap-0.5 text-primary-500 hover:text-primary-600 font-medium transition-colors cursor-pointer border-none bg-transparent p-0 leading-none underline decoration-primary-500/30 underline-offset-4"
+                              className="relative z-10 bg-neutral-200 hover:bg-neutral-300 cursor-pointer border-none rounded-full px-3 py-1 flex items-center gap-1 leading-none text-neutral-600 font-normal text-[14px] transition-colors"
                             >
-                              an element <ChevronDown size={12} className="opacity-70" />
+                              an element <ChevronDown className="h-3 w-3" />
                             </button>
                           </DropdownMenuTrigger>
                           <DropdownMenuContent

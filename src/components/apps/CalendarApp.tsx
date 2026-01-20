@@ -49,7 +49,12 @@ import {
   ExternalLink,
   Layout,
   X,
-  Copy
+  Copy,
+  Check,
+  Users,
+  Tag,
+  Timer,
+  Circle
 } from 'lucide-react';
 import { PageEditor } from '../spaces/PageEditor';
 import { useDrag, useDrop, useDragLayer } from 'react-dnd';
@@ -62,6 +67,64 @@ const daysOfWeekShort = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
 const months = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
 
 type CalendarView = 'month' | 'week' | 'day' | 'year' | 'list' | 'ndays' | 'timeline';
+
+// ===== CALENDAR EVENT TYPES =====
+type CalendarEventType = 'event' | 'task' | 'timeblock' | 'meeting' | 'deadline';
+
+interface RecurrenceRule {
+  frequency: 'daily' | 'weekly' | 'monthly' | 'yearly';
+  interval: number;
+  endDate?: string;
+  count?: number;
+  byDay?: number[]; // 1=Mon..7=Sun
+}
+
+interface EventReminder {
+  type: 'notification' | 'email';
+  offsetMinutes: number; // negative = before event
+}
+
+interface CustomProperty {
+  key: string;
+  value: string | number | boolean;
+  type: 'text' | 'number' | 'checkbox' | 'date' | 'url';
+}
+
+interface EventLabel {
+  text: string;
+  color: string;
+}
+
+interface CalendarEventMetadata {
+  // Core (existing)
+  startDate: string;
+  endDate: string;
+  title: string;
+  infoSpaceId?: string;
+  displayMode?: 'card' | 'compact' | 'minimal';
+  updatedAt: number;
+
+  // New fields
+  eventType: CalendarEventType;
+  isCompleted?: boolean; // For tasks
+
+  // WIP fields
+  timezone?: string;
+  location?: string;
+  locationCoords?: { lat: number; lng: number };
+  attendees?: string[];
+
+  // Reminders & Recurrence
+  reminders?: EventReminder[];
+  recurrence?: RecurrenceRule;
+
+  // Custom properties & Labels
+  customProperties?: CustomProperty[];
+  labels?: EventLabel[];
+
+  // Project link
+  projectId?: string;
+}
 
 
 interface CalendarAppProps {
@@ -357,6 +420,27 @@ const DraggableMultiDayEvent = memo(({
     }
   }, [drag]);
 
+  // Extract event type info
+  const eventType = event.metadata?.eventType || 'event';
+  const isCompleted = event.metadata?.isCompleted || false;
+  const labels = event.metadata?.labels || [];
+
+  // Get type-specific styles
+  const getTypeStyles = () => {
+    switch (eventType) {
+      case 'task':
+        return isCompleted ? 'bg-success/20 text-success-700' : 'bg-primary/15 text-primary-700';
+      case 'timeblock':
+        return 'bg-default-200/50 text-default-600 border-dashed';
+      case 'meeting':
+        return 'bg-secondary/15 text-secondary-700';
+      case 'deadline':
+        return 'bg-danger/15 text-danger-700 border-l-4 border-l-danger';
+      default:
+        return 'bg-primary/15 text-primary-700';
+    }
+  };
+
   const eventContent = (
     <div
       ref={setRefs}
@@ -369,24 +453,26 @@ const DraggableMultiDayEvent = memo(({
         zIndex: isResizing || isSelected ? 35 : 20,
         transition: isResizing ? 'none' : 'all 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275)',
         overflow: 'hidden',
-        opacity: isResizing ? 0.05 : 1,
-        boxShadow: isSelected ? '0 0 0 2px #3b82f6' : undefined, // Blue ring for selected
+        opacity: isResizing ? 0.05 : (eventType === 'timeblock' ? 0.6 : 1),
+        boxShadow: isSelected ? '0 0 0 2px #3b82f6' : undefined,
       }}
       className={`
         text-[10px] px-1.5 rounded-sm truncate select-none shadow-sm
         flex items-center gap-1 group calendar-event-item
-        ${isResizing ? 'bg-primary/5 ring-1 ring-primary/10' : 'bg-primary/15 text-primary-700 hover:bg-primary/25'}
+        ${isResizing ? 'bg-primary/5 ring-1 ring-primary/10' : getTypeStyles()}
         ${isSelected ? 'z-[110]' : ''}
-        ${isHovered && !isSelected && !isResizing ? 'ring-2 ring-primary/50 bg-primary/20' : ''}
-        ${isStart ? 'rounded-l border-l-2 border-primary' : ''}
+        ${isHovered && !isSelected && !isResizing ? 'ring-2 ring-primary/50' : ''}
+        ${isStart ? 'rounded-l' : ''}
         ${isEnd ? 'rounded-r' : ''}
-        ${isDragging ? 'opacity-50 scale-95' : 'opacity-100 scale-100'}
+        ${isDragging ? 'opacity-50 scale-95' : ''}
+        ${eventType !== 'deadline' && isStart ? 'border-l-2 border-primary' : ''}
+        ${isCompleted ? 'line-through opacity-60' : ''}
       `}
       onMouseEnter={() => onHoverEvent(event.id)}
       onMouseLeave={() => onHoverEvent(null)}
       data-event-id={event.id}
       onMouseDown={(e) => {
-        if (e.shiftKey) return; // Allow marquee
+        if (e.shiftKey) return;
         e.stopPropagation();
       }}
       onClick={(e) => {
@@ -405,12 +491,30 @@ const DraggableMultiDayEvent = memo(({
         if (onContextMenu) onContextMenu(e, event.id);
       }}
     >
+      {/* Labels in corner */}
+      {labels.length > 0 && isEnd && (
+        <div className="absolute top-0 right-0 flex">
+          {labels.slice(0, 2).map((label: EventLabel, idx: number) => (
+            <div
+              key={idx}
+              className="w-3 h-full"
+              style={{
+                backgroundColor: label.color,
+                clipPath: idx === 0 ? 'polygon(100% 0, 0 100%, 100% 100%)' : 'polygon(0 0, 100% 0, 100% 100%, 0 100%)'
+              }}
+              title={label.text}
+            />
+          ))}
+        </div>
+      )}
+
       {isResizing && isStart && (
         <div className="absolute -top-8 left-1/2 -translate-x-1/2 bg-primary-800 text-white text-[9px] px-2 py-1 rounded shadow-lg font-bold whitespace-nowrap z-[100] border border-primary-600">
           Resizing...
           <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-2 h-2 bg-primary-800 rotate-45 border-r border-b border-primary-600" />
         </div>
       )}
+
       {isStart && eventHeight > 12 && (
         <div
           className="absolute left-0 top-0 bottom-0 w-3 cursor-ew-resize opacity-0 group-hover:opacity-100 bg-primary/40 flex items-center justify-center rounded-l z-30 transition-opacity"
@@ -419,8 +523,40 @@ const DraggableMultiDayEvent = memo(({
           <div className="w-1 h-3 bg-white rounded-full shadow-sm" />
         </div>
       )}
-      {isStart && eventHeight > 16 && <GripVertical size={10} className="opacity-0 group-hover:opacity-40 shrink-0" />}
-      {eventHeight > 10 && <span className="truncate flex-1 font-medium">{event.metadata?.title || 'Untitled'}</span>}
+
+      {/* Task checkbox */}
+      {isStart && eventType === 'task' && (
+        <div
+          className={`w-3.5 h-3.5 rounded-full border-2 flex-shrink-0 flex items-center justify-center cursor-pointer transition-all ${isCompleted ? 'bg-success border-success' : 'border-primary hover:bg-primary/20'}`}
+          onClick={(e) => {
+            e.stopPropagation();
+            onUpdate(event.id, { isCompleted: !isCompleted });
+          }}
+        >
+          {isCompleted && <Check size={8} className="text-white" />}
+        </div>
+      )}
+
+      {/* Meeting icon */}
+      {isStart && eventType === 'meeting' && eventHeight > 16 && (
+        <Users size={10} className="shrink-0 opacity-70" />
+      )}
+
+      {/* Timeblock icon */}
+      {isStart && eventType === 'timeblock' && eventHeight > 16 && (
+        <Timer size={10} className="shrink-0 opacity-50" />
+      )}
+
+      {isStart && eventHeight > 16 && eventType !== 'task' && eventType !== 'meeting' && eventType !== 'timeblock' && (
+        <GripVertical size={10} className="opacity-0 group-hover:opacity-40 shrink-0" />
+      )}
+
+      {eventHeight > 10 && (
+        <span className={`truncate flex-1 font-medium ${isCompleted ? 'line-through' : ''}`}>
+          {event.metadata?.title || 'Untitled'}
+        </span>
+      )}
+
       {isEnd && eventHeight > 12 && (
         <div
           className="absolute right-0 top-0 bottom-0 w-3 cursor-ew-resize opacity-0 group-hover:opacity-100 bg-primary/40 flex items-center justify-center rounded-r z-30 transition-opacity"
@@ -1064,7 +1200,9 @@ export function CalendarApp({ spacesState, viewportsState }: CalendarAppProps) {
     startDate: format(new Date(), "yyyy-MM-dd'T'HH:mm"),
     endDate: format(new Date(Date.now() + 3600000), "yyyy-MM-dd'T'HH:mm"),
     notes: '',
-    spaceId: ''
+    spaceId: '',
+    eventType: 'event' as CalendarEventType,
+    labels: [] as EventLabel[]
   });
   const [editingEventId, setEditingEventId] = useState<string | null>(null);
 
@@ -1807,7 +1945,10 @@ export function CalendarApp({ spacesState, viewportsState }: CalendarAppProps) {
           title: finalTitle,
           infoSpaceId: infoSpace.id,
           displayMode: 'card',
-          updatedAt: Date.now()
+          updatedAt: Date.now(),
+          eventType: newEvent.eventType,
+          isCompleted: false,
+          labels: newEvent.labels || []
         }
       };
 
@@ -1829,7 +1970,9 @@ export function CalendarApp({ spacesState, viewportsState }: CalendarAppProps) {
       startDate: format(new Date(), "yyyy-MM-dd'T'HH:mm"),
       endDate: format(new Date(Date.now() + 3600000), "yyyy-MM-dd'T'HH:mm"),
       notes: '',
-      spaceId: ''
+      spaceId: '',
+      eventType: 'event' as CalendarEventType,
+      labels: []
     });
   }, [newEvent, onClose]);
 
@@ -3105,6 +3248,31 @@ export function CalendarApp({ spacesState, viewportsState }: CalendarAppProps) {
                         <div className="h-0.5 w-10 bg-primary rounded-full mt-1.5 opacity-20" />
                       </div>
 
+                      {/* Event Type Selector */}
+                      <div className="px-3 py-2">
+                        <div className="flex gap-1 flex-wrap">
+                          {[
+                            { type: 'event' as CalendarEventType, icon: CalendarIcon, label: 'Event' },
+                            { type: 'task' as CalendarEventType, icon: Check, label: 'Task' },
+                            { type: 'timeblock' as CalendarEventType, icon: Timer, label: 'Block' },
+                            { type: 'meeting' as CalendarEventType, icon: Users, label: 'Meet' },
+                            { type: 'deadline' as CalendarEventType, icon: Circle, label: 'Due' },
+                          ].map(({ type, icon: Icon, label }) => (
+                            <button
+                              key={type}
+                              onClick={() => setNewEvent(prev => ({ ...prev, eventType: type }))}
+                              className={`flex items-center gap-1 px-2 py-1 rounded-md text-[10px] font-medium transition-all ${newEvent.eventType === type
+                                ? 'bg-primary text-white shadow-sm'
+                                : 'bg-default-100 text-default-600 hover:bg-default-200'
+                                }`}
+                            >
+                              <Icon size={10} />
+                              {label}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+
                       <div className="flex flex-col gap-2">
                         <div className="grid grid-cols-2 gap-2">
                           <Input
@@ -3211,6 +3379,47 @@ export function CalendarApp({ spacesState, viewportsState }: CalendarAppProps) {
                         }}
                       />
                       <div className="h-0.5 w-10 bg-primary rounded-full mt-2 opacity-20" />
+                    </div>
+
+                    {/* Event Type Selector */}
+                    <div className="px-5 py-2 border-b border-divider/50">
+                      <div className="flex gap-1 flex-wrap">
+                        {[
+                          { type: 'event' as CalendarEventType, icon: CalendarIcon, label: 'Event' },
+                          { type: 'task' as CalendarEventType, icon: Check, label: 'Task' },
+                          { type: 'timeblock' as CalendarEventType, icon: Timer, label: 'Block' },
+                          { type: 'meeting' as CalendarEventType, icon: Users, label: 'Meet' },
+                          { type: 'deadline' as CalendarEventType, icon: Circle, label: 'Due' },
+                        ].map(({ type, icon: Icon, label }) => (
+                          <button
+                            key={type}
+                            onClick={() => handleUpdateEvent(selectedEvent.id, selectedEvent.id, selectedEvent.sourceSpaceId, { eventType: type })}
+                            className={`flex items-center gap-1 px-2 py-1 rounded-md text-[10px] font-medium transition-all ${(selectedEvent.metadata?.eventType || 'event') === type
+                                ? 'bg-primary text-white shadow-sm'
+                                : 'bg-default-100 text-default-600 hover:bg-default-200'
+                              }`}
+                          >
+                            <Icon size={10} />
+                            {label}
+                          </button>
+                        ))}
+                      </div>
+
+                      {/* Labels Display */}
+                      {selectedEvent.metadata?.labels?.length > 0 && (
+                        <div className="flex gap-1 mt-2 flex-wrap">
+                          {selectedEvent.metadata.labels.map((label: EventLabel, idx: number) => (
+                            <Chip
+                              key={idx}
+                              size="sm"
+                              style={{ backgroundColor: label.color, color: 'white' }}
+                              className="text-[9px] h-5"
+                            >
+                              {label.text}
+                            </Chip>
+                          ))}
+                        </div>
+                      )}
                     </div>
 
                     <div className="px-5 py-1.5 flex flex-col gap-4">
@@ -3872,10 +4081,31 @@ function DraggableTimelineEvent({ event, top, height, left = 0, width = 100, onU
     drag(el);
   }, [drag]);
 
+  // Extract event type info
+  const eventType = event.metadata?.eventType || 'event';
+  const isCompleted = event.metadata?.isCompleted || false;
+  const labels = event.metadata?.labels || [];
+
+  // Get type-specific background
+  const getTypeBgClass = () => {
+    switch (eventType) {
+      case 'task':
+        return isCompleted ? 'bg-success' : 'bg-primary';
+      case 'timeblock':
+        return 'bg-default-400';
+      case 'meeting':
+        return 'bg-secondary';
+      case 'deadline':
+        return 'bg-danger';
+      default:
+        return 'bg-primary';
+    }
+  };
+
   return (
     <div
       ref={setDragRef}
-      className={`absolute rounded bg-primary text-white p-2 text-xs shadow-md overflow-hidden cursor-grab active:cursor-grabbing group calendar-event-item ${isDragging ? 'opacity-0 is-dragging-now' : ''} ${isHovered && !isSelected ? 'ring-2 ring-primary-300' : ''}`}
+      className={`absolute rounded text-white p-2 text-xs shadow-md overflow-hidden cursor-grab active:cursor-grabbing group calendar-event-item ${getTypeBgClass()} ${isDragging ? 'opacity-0 is-dragging-now' : ''} ${isHovered && !isSelected ? 'ring-2 ring-primary-300' : ''} ${eventType === 'timeblock' ? 'opacity-60' : ''} ${isCompleted ? 'opacity-60' : ''}`}
       style={{
         top: `${top}px`,
         height: `${height}px`,
@@ -3884,12 +4114,11 @@ function DraggableTimelineEvent({ event, top, height, left = 0, width = 100, onU
         zIndex: isDragging ? -1 : (isSelected ? 60 : 50),
         pointerEvents: isDragging ? 'none' : 'auto',
         visibility: isDragging ? 'hidden' : 'visible',
-        boxShadow: isSelected ? '0 0 0 2px #3b82f6' : undefined, // Blue ring for selected
+        boxShadow: isSelected ? '0 0 0 2px #3b82f6' : undefined,
       }}
       onMouseDown={(e) => {
-        if (e.shiftKey) return; // Allow marquee
+        if (e.shiftKey) return;
         e.stopPropagation();
-        // Track that mouse was pressed on this event
         mouseMovedRef.current = false;
 
         const handleMouseMove = () => {
@@ -3909,9 +4138,7 @@ function DraggableTimelineEvent({ event, top, height, left = 0, width = 100, onU
       data-event-id={event.id}
       onClick={(e) => {
         e.stopPropagation();
-        // If we dragged, don't select (the drag already handled the interaction)
         if (dragOccurredRef.current || mouseMovedRef.current) return;
-        // Get element center for proper popover arrow positioning
         const rect = e.currentTarget.getBoundingClientRect();
         const elementCenterX = rect.left + rect.width / 2;
         if (onSelect) onSelect(event.id, { x: e.clientX, y: e.clientY, elementCenterX }, e);
@@ -3924,6 +4151,23 @@ function DraggableTimelineEvent({ event, top, height, left = 0, width = 100, onU
         if (onContextMenu) onContextMenu(e, event.id);
       }}
     >
+      {/* Labels in corner */}
+      {labels.length > 0 && (
+        <div className="absolute top-0 right-0 flex">
+          {labels.slice(0, 2).map((label: EventLabel, idx: number) => (
+            <div
+              key={idx}
+              className="w-4 h-4"
+              style={{
+                backgroundColor: label.color,
+                clipPath: 'polygon(100% 0, 0 0, 100% 100%)'
+              }}
+              title={label.text}
+            />
+          ))}
+        </div>
+      )}
+
       {/* Top Resizer Handle */}
       <div
         className="absolute top-0 left-0 right-0 h-2 cursor-ns-resize opacity-0 group-hover:opacity-100 bg-white/20 flex items-center justify-center transition-all z-20"
@@ -3934,10 +4178,39 @@ function DraggableTimelineEvent({ event, top, height, left = 0, width = 100, onU
       </div>
 
       <div className="flex justify-between items-start gap-1 pt-1">
-        <div className="font-bold truncate flex-1">{event.metadata?.title}</div>
-        <GripVertical size={12} className="opacity-40 shrink-0" />
+        {/* Task checkbox */}
+        {eventType === 'task' && (
+          <div
+            className={`w-4 h-4 rounded-full border-2 flex-shrink-0 flex items-center justify-center cursor-pointer transition-all ${isCompleted ? 'bg-white border-white' : 'border-white/70 hover:bg-white/20'}`}
+            onClick={(e) => {
+              e.stopPropagation();
+              onUpdate(event.id, { isCompleted: !isCompleted });
+            }}
+          >
+            {isCompleted && <Check size={10} className="text-success" />}
+          </div>
+        )}
+
+        {/* Meeting icon */}
+        {eventType === 'meeting' && height > 30 && (
+          <Users size={12} className="shrink-0 opacity-70" />
+        )}
+
+        {/* Timeblock icon */}
+        {eventType === 'timeblock' && height > 30 && (
+          <Timer size={12} className="shrink-0 opacity-70" />
+        )}
+
+        <div className={`font-bold truncate flex-1 ${isCompleted ? 'line-through' : ''}`}>{event.metadata?.title}</div>
+
+        {eventType !== 'task' && eventType !== 'meeting' && eventType !== 'timeblock' && (
+          <GripVertical size={12} className="opacity-40 shrink-0" />
+        )}
       </div>
-      <div className="opacity-80 text-[10px]">{format(event.start, 'HH:mm')} - {event.end ? format(event.end, 'HH:mm') : ''}</div>
+
+      {height > 35 && (
+        <div className="opacity-80 text-[10px]">{format(event.start, 'HH:mm')} - {event.end ? format(event.end, 'HH:mm') : ''}</div>
+      )}
 
       {/* Vertical Resizer Handle (Bottom) */}
       <div
