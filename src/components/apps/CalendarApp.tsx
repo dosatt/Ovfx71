@@ -61,7 +61,7 @@ const daysOfWeek = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 const daysOfWeekShort = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
 const months = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
 
-type CalendarView = 'month' | 'week' | 'day' | 'year' | 'list' | 'ndays';
+type CalendarView = 'month' | 'week' | 'day' | 'year' | 'list' | 'ndays' | 'timeline';
 
 
 interface CalendarAppProps {
@@ -76,6 +76,7 @@ interface DraggableEventProps {
   onDragEnd?: () => void;
   onHoverEvent: (id: string | null) => void;
   isHovered: boolean;
+  isSelected: boolean;
   onOpenDrawer?: (event: any) => void;
   onSelect?: (id: string | null, anchor?: { x: number; y: number; elementCenterX?: number }, mouseEvent?: React.MouseEvent) => void;
 }
@@ -89,7 +90,7 @@ interface DraggableMultiDayEventProps extends Omit<DraggableEventProps, 'onNavig
   onHoverDateChange?: (date: Date | null) => void;
 }
 
-function DraggableCalendarEvent({ event, onUpdate, onNavigate, onDragEnd, onHoverEvent, isHovered, onSelect, onOpenDrawer }: DraggableEventProps) {
+function DraggableCalendarEvent({ event, onUpdate, onNavigate, onDragEnd, onHoverEvent, isHovered, isSelected, onSelect, onOpenDrawer }: DraggableEventProps) {
   const [{ isDragging }, drag, preview] = useDrag(() => ({
     type: 'CALENDAR_EVENT',
     item: {
@@ -157,13 +158,23 @@ function DraggableCalendarEvent({ event, onUpdate, onNavigate, onDragEnd, onHove
         text-[10px] p-1.5 rounded bg-primary/10 text-primary-700 truncate border-l-2 border-primary 
         hover:bg-primary/20 transition-all cursor-grab active:cursor-grabbing
         flex items-center gap-1 group relative h-7 select-none calendar-event-item
-        ${isHovered ? 'ring-2 ring-primary/50 bg-primary/20 shadow-md' : ''}
+        ${isHovered || isSelected ? 'ring-2 ring-primary bg-primary/20 shadow-md' : 'border-l-2 border-primary'}
         ${isDragging ? 'opacity-20 scale-95' : 'opacity-100 scale-100'}
+        ${isSelected ? 'z-[60]' : ''}
       `}
       onMouseEnter={() => onHoverEvent(event.id)}
       onMouseLeave={() => onHoverEvent(null)}
       title={`${event.metadata?.title || 'Event'}`}
+      data-event-id={event.id}
+      onMouseDown={(e) => {
+        if (e.shiftKey) {
+          // Don't stop propagation so marquee can start
+          return;
+        }
+        e.stopPropagation();
+      }}
       onClick={(e) => {
+        if (e.shiftKey) return;
         e.stopPropagation();
         if (onSelect) onSelect(event.id, { x: e.clientX, y: e.clientY });
         else onNavigate(event.sourceSpaceId, event.sourceSpaceTitle);
@@ -373,7 +384,13 @@ const DraggableMultiDayEvent = memo(({
       `}
       onMouseEnter={() => onHoverEvent(event.id)}
       onMouseLeave={() => onHoverEvent(null)}
+      data-event-id={event.id}
+      onMouseDown={(e) => {
+        if (e.shiftKey) return; // Allow marquee
+        e.stopPropagation();
+      }}
       onClick={(e) => {
+        if (e.shiftKey) return;
         e.stopPropagation();
         const target = e.currentTarget as HTMLElement;
         const rect = target.getBoundingClientRect();
@@ -434,6 +451,11 @@ interface CalendarDayCellProps {
   onDragLeave?: () => void;
   isAnyDragging?: boolean;
   onOpenDrawer?: (event: any) => void;
+  hoveredEventId: string | null;
+  setHoveredEventId: (id: string | null) => void;
+  selectedEventIds: Set<string>;
+  selectedEventId: string | null;
+  handleToggleEventSelection: (id: string | null, anchor?: { x: number; y: number; elementCenterX?: number }, mouseEvent?: React.MouseEvent) => void;
 }
 
 const CalendarDayCell = memo(({
@@ -451,7 +473,12 @@ const CalendarDayCell = memo(({
   onDragEnter,
   onDragLeave,
   isAnyDragging,
-  onOpenDrawer
+  onOpenDrawer,
+  hoveredEventId,
+  setHoveredEventId,
+  selectedEventIds,
+  selectedEventId,
+  handleToggleEventSelection
 }: CalendarDayCellProps) => {
   const [{ isOver, draggedItem }, drop] = useDrop(() => ({
     accept: 'CALENDAR_EVENT',
@@ -493,6 +520,7 @@ const CalendarDayCell = memo(({
       `}
       onMouseDown={(e) => {
         if (e.button !== 0 || isAnyDragging) return;
+        if (e.shiftKey) return;
         // Don't start cell selection if we're clicking an event or resizing
         if ((e.target as HTMLElement).closest('.calendar-event-item')) return;
 
@@ -540,8 +568,10 @@ const CalendarDayCell = memo(({
             onUpdate={(id, updates) => onUpdateEvent(id, event.id, event.sourceSpaceId, updates)}
             onNavigate={onNavigate}
             onDragEnd={onDragLeave}
-            onHoverEvent={() => { }}
-            isHovered={false}
+            isHovered={hoveredEventId === event.id}
+            onHoverEvent={setHoveredEventId}
+            isSelected={selectedEventIds.has(event.id) || selectedEventId === event.id}
+            onSelect={handleToggleEventSelection}
             onOpenDrawer={onOpenDrawer}
           />
         ))}
@@ -863,6 +893,11 @@ const MonthWeekRow = memo(({
                 onDragLeave={onDragLeave}
                 isAnyDragging={isAnyDragging}
                 onOpenDrawer={onOpenDrawer}
+                hoveredEventId={hoveredEventId}
+                setHoveredEventId={onHoverEvent}
+                selectedEventIds={selectedEventIds}
+                selectedEventId={selectedEventId}
+                handleToggleEventSelection={onSelectEvent}
               />
             </div>
           );
@@ -1015,6 +1050,14 @@ export function CalendarApp({ spacesState, viewportsState }: CalendarAppProps) {
   const [lastSelectedEventId, setLastSelectedEventId] = useState<string | null>(null);
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number } | null>(null);
 
+  // Marquee Selection State
+  const [marqueeRect, setMarqueeRect] = useState<{ startX: number; startY: number; currentX: number; currentY: number } | null>(null);
+  const isMarqueeSelecting = !!marqueeRect;
+  const marqueeRef = useRef<HTMLDivElement>(null);
+  const wasMarqueeRef = useRef(false);
+
+
+
   // New event state
   const [newEvent, setNewEvent] = useState({
     title: '',
@@ -1083,6 +1126,82 @@ export function CalendarApp({ spacesState, viewportsState }: CalendarAppProps) {
   // Scroll horizontal logic with native scroll + virtualization
   // Scroll horizontal logic with native scroll + virtualization
   const skipScrollEvent = useRef(false);
+
+  // Marquee Handlers
+  const handleMarqueeMouseDown = (e: React.MouseEvent) => {
+    if (!e.shiftKey) return;
+    e.preventDefault();
+    const rect = e.currentTarget.getBoundingClientRect();
+    setMarqueeRect({
+      startX: e.clientX - rect.left,
+      startY: e.clientY - rect.top,
+      currentX: e.clientX - rect.left,
+      currentY: e.clientY - rect.top
+    });
+  };
+
+  const handleMarqueeMouseMove = (e: React.MouseEvent) => {
+    if (!marqueeRect) return;
+    const rect = e.currentTarget.getBoundingClientRect();
+    const currentX = e.clientX - rect.left;
+    const currentY = e.clientY - rect.top;
+    setMarqueeRect(prev => prev ? { ...prev, currentX, currentY } : null);
+
+    // Calculate selection in real-time
+    const container = e.currentTarget;
+    const eventElements = container.querySelectorAll('.calendar-event-item');
+    const newSelectedIds = new Set<string>();
+
+    const mLeft = Math.min(marqueeRect.startX, currentX);
+    const mTop = Math.min(marqueeRect.startY, currentY);
+    const mWidth = Math.abs(marqueeRect.startX - currentX);
+    const mHeight = Math.abs(marqueeRect.startY - currentY);
+    const mRight = mLeft + mWidth;
+    const mBottom = mTop + mHeight;
+
+    const isLeftToRight = currentX >= marqueeRect.startX;
+
+    // Convert relative marquee to screen coords for simple getBoundingClientRect comparison
+    const containerRect = container.getBoundingClientRect();
+    const screenM = {
+      left: mLeft + containerRect.left,
+      top: mTop + containerRect.top,
+      right: mRight + containerRect.left,
+      bottom: mBottom + containerRect.top
+    };
+
+    eventElements.forEach((el: any) => {
+      const elRect = el.getBoundingClientRect();
+      const id = el.getAttribute('data-event-id') || el.closest('[data-event-id]')?.getAttribute('data-event-id');
+      if (!id) return;
+
+      if (isLeftToRight) {
+        // Selection by intersection (touches)
+        const intersects = !(elRect.left > screenM.right ||
+          elRect.right < screenM.left ||
+          elRect.top > screenM.bottom ||
+          elRect.bottom < screenM.top);
+        if (intersects) newSelectedIds.add(id);
+      } else {
+        // Selection by inclusion (fully inside)
+        const included = (elRect.left >= screenM.left &&
+          elRect.right <= screenM.right &&
+          elRect.top >= screenM.top &&
+          elRect.bottom <= screenM.bottom);
+        if (included) newSelectedIds.add(id);
+      }
+    });
+
+    setSelectedEventIds(newSelectedIds);
+  };
+
+  const handleMarqueeMouseUp = () => {
+    if (marqueeRect && (Math.abs(marqueeRect.startX - marqueeRect.currentX) > 2 || Math.abs(marqueeRect.startY - marqueeRect.currentY) > 2)) {
+      wasMarqueeRef.current = true;
+      setTimeout(() => { wasMarqueeRef.current = false; }, 100);
+    }
+    setMarqueeRect(null);
+  };
 
   // Sync header scroll with body scroll
   const handleScroll = useCallback((e: React.UIEvent<HTMLDivElement>) => {
@@ -1642,6 +1761,8 @@ export function CalendarApp({ spacesState, viewportsState }: CalendarAppProps) {
     }
   }, [containerRef, view, hourHeight, nDays]);
 
+
+
   const handleCreateEvent = useCallback(() => {
     // We now allow 'New' as fallback title
     const finalTitle = newEvent.title || 'New';
@@ -1885,6 +2006,22 @@ export function CalendarApp({ spacesState, viewportsState }: CalendarAppProps) {
     setEditPopoverAnchor(null);
     setContextMenu(null);
   }, [allEvents]);
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.key === 'Delete' || e.key === 'Backspace') && selectedEventIds.size > 0) {
+        // Prevent deletion if we are typing in an input
+        const target = e.target as HTMLElement;
+        if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.contentEditable === 'true' || target.closest('[contenteditable="true"]')) {
+          return;
+        }
+        e.preventDefault();
+        handleDeleteEvents(Array.from(selectedEventIds));
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [selectedEventIds, handleDeleteEvents]);
 
   // Handler for duplicating multiple events
   const handleDuplicateEvents = useCallback((eventIds: string[]) => {
@@ -2229,7 +2366,7 @@ export function CalendarApp({ spacesState, viewportsState }: CalendarAppProps) {
           }
 
           const target = e.target as HTMLElement;
-          if (!target.closest('.calendar-event-item')) {
+          if (!target.closest('.calendar-event-item') && !wasMarqueeRef.current) {
             handleToggleEventSelection(null);
           }
         }}
@@ -2487,11 +2624,11 @@ export function CalendarApp({ spacesState, viewportsState }: CalendarAppProps) {
             aria-label="Sort by"
             popoverProps={{ className: "min-w-[180px]" }}
           >
-            <SelectItem key="date-asc" value="date-asc">Date (Oldest)</SelectItem>
-            <SelectItem key="date-desc" value="date-desc">Date (Newest)</SelectItem>
-            <SelectItem key="title-asc" value="title-asc">Title (A-Z)</SelectItem>
-            <SelectItem key="title-desc" value="title-desc">Title (Z-A)</SelectItem>
-            <SelectItem key="manual" value="manual">Manual Order</SelectItem>
+            <SelectItem key="date-asc">Date (Oldest)</SelectItem>
+            <SelectItem key="date-desc">Date (Newest)</SelectItem>
+            <SelectItem key="title-asc">Title (A-Z)</SelectItem>
+            <SelectItem key="title-desc">Title (Z-A)</SelectItem>
+            <SelectItem key="manual">Manual Order</SelectItem>
           </Select>
 
           {listSort === 'manual' && (
@@ -2512,7 +2649,7 @@ export function CalendarApp({ spacesState, viewportsState }: CalendarAppProps) {
                 popoverProps={{ className: "min-w-[160px]" }}
               >
                 {Object.keys(savedOrders).map(name => (
-                  <SelectItem key={name} value={name}>{name}</SelectItem>
+                  <SelectItem key={name}>{name}</SelectItem>
                 ))}
               </Select>
               <Button
@@ -2541,7 +2678,7 @@ export function CalendarApp({ spacesState, viewportsState }: CalendarAppProps) {
                 index={index}
                 event={event}
                 moveItem={moveListItem}
-                onSelect={(e: any) => handleToggleEventSelection(event.id, null, e)}
+                onSelect={(e: any) => handleToggleEventSelection(event.id, undefined, e)}
                 isManual={listSort === 'manual'}
                 isSelected={selectedEventId === event.id || selectedEventIds.has(event.id)}
                 onContextMenu={(e: any) => handleEventContextMenu(e, event.id)}
@@ -2797,9 +2934,9 @@ export function CalendarApp({ spacesState, viewportsState }: CalendarAppProps) {
             classNames={{ trigger: "h-8 min-h-8 border-default-200" }}
             popoverProps={{ className: "min-w-[180px]" }}
           >
-            <SelectItem key="all" value="all">All Spaces</SelectItem>
+            <SelectItem key="all">All Spaces</SelectItem>
             {spacesState.spaces.map((space: any) => (
-              <SelectItem key={space.id} value={space.id}>{space.title}</SelectItem>
+              <SelectItem key={space.id}>{space.title}</SelectItem>
             ))}
           </Select>
         </div>
@@ -2861,13 +2998,39 @@ export function CalendarApp({ spacesState, viewportsState }: CalendarAppProps) {
       </div>
 
       {/* Content */}
-      <div className={`flex-1 overflow-hidden relative z-0 ${dragGhostItem ? 'is-dragging-event' : ''}`}>
+      <div
+        className={`flex-1 overflow-hidden relative z-0 ${dragGhostItem ? 'is-dragging-event' : ''} ${marqueeRect ? 'cursor-crosshair' : ''}`}
+        onMouseDown={handleMarqueeMouseDown}
+        onMouseMove={handleMarqueeMouseMove}
+        onMouseUp={handleMarqueeMouseUp}
+        onMouseLeave={handleMarqueeMouseUp}
+      >
         {view === 'month' && renderMonthView()}
         {view === 'week' && renderWeekView()}
         {view === 'day' && renderDayView()}
         {view === 'ndays' && renderNDaysView()}
         {view === 'year' && renderYearView()}
         {view === 'list' && renderListView()}
+
+        {/* Marquee Visual Rectangle */}
+        {marqueeRect && (
+          <div
+            style={{
+              position: 'absolute',
+              left: Math.min(marqueeRect.startX, marqueeRect.currentX),
+              top: Math.min(marqueeRect.startY, marqueeRect.currentY),
+              width: Math.abs(marqueeRect.startX - marqueeRect.currentX),
+              height: Math.abs(marqueeRect.startY - marqueeRect.currentY),
+              backgroundColor: marqueeRect.currentX >= marqueeRect.startX
+                ? 'rgba(59, 130, 246, 0.15)' // Intersect (Blue)
+                : 'rgba(16, 185, 129, 0.15)', // Enclose (Green)
+              border: `1.5px ${marqueeRect.currentX >= marqueeRect.startX ? 'solid' : 'dashed'} ${marqueeRect.currentX >= marqueeRect.startX ? '#3b82f6' : '#10b981'}`,
+              zIndex: 1000,
+              pointerEvents: 'none',
+              borderRadius: '2px'
+            }}
+          />
+        )}
       </div>
 
       {/* Quick Create UI */}
@@ -3430,6 +3593,7 @@ function CalendarDaySlot({ hour, day, onStartSelection, onUpdateSelection, onUpd
       style={{ height: `${hourHeight}px` }}
       className={`border-t border-divider hover:bg-default-50/50 cursor-crosshair relative ${isOver ? 'bg-primary/10' : ''}`}
       onMouseDown={(e) => {
+        if (e.shiftKey) return;
         if (isAnyDragging) return;
         // Calculate initial minute on mouse down for precise start time
         if (!slotRef.current) {
@@ -3723,6 +3887,7 @@ function DraggableTimelineEvent({ event, top, height, left = 0, width = 100, onU
         boxShadow: isSelected ? '0 0 0 2px #3b82f6' : undefined, // Blue ring for selected
       }}
       onMouseDown={(e) => {
+        if (e.shiftKey) return; // Allow marquee
         e.stopPropagation();
         // Track that mouse was pressed on this event
         mouseMovedRef.current = false;
@@ -3741,14 +3906,12 @@ function DraggableTimelineEvent({ event, top, height, left = 0, width = 100, onU
       }}
       onMouseEnter={() => onHoverEvent && onHoverEvent(event.id)}
       onMouseLeave={() => onHoverEvent && onHoverEvent(null)}
+      data-event-id={event.id}
       onClick={(e) => {
         e.stopPropagation();
-        // Don't open modal if we just finished dragging OR if mouse moved during mousedown
-        if (dragOccurredRef.current || mouseMovedRef.current) {
-          return;
-        }
-        if (onSelect) onSelect(event.id, { x: e.clientX, y: e.clientY }, e);
-        else if (onNavigate) onNavigate(event.sourceSpaceId, event.sourceSpaceTitle);
+        // The selection logic is now handled in onMouseDown's mouseUp handler
+        // This onClick can be used for other purposes if needed, or removed if redundant.
+        // For now, we'll keep it but it won't trigger selection if onMouseDown handled it.
       }}
       onDoubleClick={(e) => {
         e.stopPropagation();
