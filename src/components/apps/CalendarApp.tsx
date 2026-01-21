@@ -651,9 +651,15 @@ const CalendarDayCell = memo(({
       ref={setDropRef}
       className={`
         min-h-[120px] h-full p-1.5 flex flex-col gap-1 transition-colors relative cursor-pointer
-        ${isCurrentMonth ? 'bg-white' : 'bg-default-50/50 text-default-400'}
-        ${isToday ? 'bg-primary/5' : ''}
+        ${!isCurrentMonth ? 'opacity-50' : ''}
       `}
+      style={{
+        backgroundColor: isToday
+          ? 'rgba(59, 130, 246, 0.08)'
+          : ((day.getMonth() + 1) % 2 === 1
+            ? '#f5f5f5'
+            : '#ffffff')
+      }}
       onMouseDown={(e) => {
         if (e.button !== 0 || isAnyDragging) return;
         if (e.shiftKey) return;
@@ -1825,10 +1831,13 @@ export function CalendarApp({ spacesState, viewportsState }: CalendarAppProps) {
       setTimeout(() => scrollToMonth(today), 10);
     }
   }, [view, scrollToMonth]);
+  // Dynamic infinite weeks - start with 24 months and expand on scroll
+  const [weeksBefore, setWeeksBefore] = useState(52); // ~12 months
+  const [weeksAfter, setWeeksAfter] = useState(52); // ~12 months
+
   const weeksInRange = useMemo(() => {
-    // 6 months before and 6 months after current "center" date
-    const startRange = startOfWeek(startOfMonth(subMonths(new Date(), 6)), { weekStartsOn: 1 });
-    const endRange = endOfWeek(endOfMonth(addMonths(new Date(), 6)), { weekStartsOn: 1 });
+    const startRange = startOfWeek(subWeeks(new Date(), weeksBefore), { weekStartsOn: 1 });
+    const endRange = endOfWeek(addWeeks(new Date(), weeksAfter), { weekStartsOn: 1 });
 
     const weeks: Date[] = [];
     let curr = startRange;
@@ -1837,6 +1846,24 @@ export function CalendarApp({ spacesState, viewportsState }: CalendarAppProps) {
       curr = addWeeks(curr, 1);
     }
     return weeks;
+  }, [weeksBefore, weeksAfter]);
+
+  // Infinite scroll handler for month view
+  const handleMonthScroll = useCallback((e: React.UIEvent<HTMLDivElement>) => {
+    const el = e.currentTarget;
+    const scrollTop = el.scrollTop;
+    const scrollHeight = el.scrollHeight;
+    const clientHeight = el.clientHeight;
+
+    // Load more past weeks when near top
+    if (scrollTop < 500) {
+      setWeeksBefore(prev => prev + 26); // Add ~6 months
+    }
+
+    // Load more future weeks when near bottom
+    if (scrollHeight - scrollTop - clientHeight < 500) {
+      setWeeksAfter(prev => prev + 26); // Add ~6 months
+    }
   }, []);
 
   // Optimize: Group events by week for Month view to avoid filtering in every row
@@ -2514,8 +2541,7 @@ export function CalendarApp({ spacesState, viewportsState }: CalendarAppProps) {
           }
         }}
         onScroll={(e) => {
-          // Optional: Update currentDate based on visible month to sync header title
-          // For now we keep header manually navigable or synced on start
+          handleMonthScroll(e);
         }}
       >
         {/* Sticky Day Headers */}
@@ -3395,8 +3421,8 @@ export function CalendarApp({ spacesState, viewportsState }: CalendarAppProps) {
                             key={type}
                             onClick={() => handleUpdateEvent(selectedEvent.id, selectedEvent.id, selectedEvent.sourceSpaceId, { eventType: type })}
                             className={`flex items-center gap-1 px-2 py-1 rounded-md text-[10px] font-medium transition-all ${(selectedEvent.metadata?.eventType || 'event') === type
-                                ? 'bg-primary text-white shadow-sm'
-                                : 'bg-default-100 text-default-600 hover:bg-default-200'
+                              ? 'bg-primary text-white shadow-sm'
+                              : 'bg-default-100 text-default-600 hover:bg-default-200'
                               }`}
                           >
                             <Icon size={10} />
