@@ -38,9 +38,9 @@ export const SortableListItem = ({ event, index, moveItem, onSelect, isManual, i
     drag(drop(ref));
 
     return (
-        <div ref={ref} className={`break-inside-avoid ${isDragging ? 'opacity-50' : ''}`} style={{ cursor: isManual ? 'grab' : 'default' }}>
+        <div ref={ref} className={`calendar-event-item p-2 ${isDragging ? 'opacity-50' : ''}`} style={{ cursor: isManual ? 'grab' : 'default' }} data-event-id={event.id}>
             <div
-                className={`p-3 rounded-lg border bg-white transition-all cursor-pointer group shadow-sm flex flex-col gap-2
+                className={`p-3 rounded-lg border bg-white transition-all cursor-pointer group shadow-sm flex flex-col gap-2 h-full
               ${isSelected ? 'border-primary ring-2 ring-primary/30 z-10 bg-primary/5' : 'border-divider hover:border-primary/50 hover:bg-default-50'}
             `}
                 onClick={onSelect}

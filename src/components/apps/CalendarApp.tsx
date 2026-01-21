@@ -54,7 +54,9 @@ import {
   Users,
   Tag,
   Timer,
-  Circle
+  Circle,
+  SlidersHorizontal,
+  Minus
 } from 'lucide-react';
 import { PageEditor } from '../spaces/PageEditor';
 import { useDrag, useDrop, useDragLayer } from 'react-dnd';
@@ -1191,6 +1193,21 @@ export function CalendarApp({ spacesState, viewportsState }: CalendarAppProps) {
   const [dragGhostItem, setDragGhostItem] = useState<any | null>(null);
   const [hoveredEventId, setHoveredEventId] = useState<string | null>(null);
   const [editPopoverAnchor, setEditPopoverAnchor] = useState<{ x: number, y: number; elementCenterX?: number } | null>(null);
+  const [isCompact, setIsCompact] = useState(false);
+  const [isUltraCompact, setIsUltraCompact] = useState(false);
+  const toolbarRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!toolbarRef.current) return;
+    const observer = new ResizeObserver((entries) => {
+      for (const entry of entries) {
+        setIsCompact(entry.contentRect.width < 768);
+        setIsUltraCompact(entry.contentRect.width < 480);
+      }
+    });
+    observer.observe(toolbarRef.current);
+    return () => observer.disconnect();
+  }, []);
 
   // Multi-selection state
   const [selectedEventIds, setSelectedEventIds] = useState<Set<string>>(new Set());
@@ -2523,19 +2540,20 @@ export function CalendarApp({ spacesState, viewportsState }: CalendarAppProps) {
   }, []);
 
   const getViewTitle = () => {
-    if (view === 'month') return format(currentDate, 'MMMM yyyy', { locale: enUS });
+    if (isUltraCompact) return format(currentDate, 'yyyy');
+    if (view === 'month') return format(currentDate, 'MMM yyyy', { locale: enUS });
     if (view === 'week') {
       const start = startOfWeek(currentDate, { weekStartsOn: 1 });
       const end = endOfWeek(currentDate, { weekStartsOn: 1 });
       return `${format(start, 'd MMM')} - ${format(end, 'd MMM yyyy')}`;
     }
-    if (view === 'day') return format(currentDate, 'd MMMM yyyy', { locale: enUS });
+    if (view === 'day') return format(currentDate, 'd MMM yyyy', { locale: enUS });
     if (view === 'ndays') {
       const end = addDays(currentDate, nDays - 1);
       return `${format(currentDate, 'd MMM')} - ${format(end, 'd MMM yyyy')}`;
     }
     if (view === 'year') return `${currentDate.getFullYear()}`;
-    if (view === 'list') return `List - ${format(currentDate, 'MMMM yyyy', { locale: enUS })}`;
+    if (view === 'list') return `List - ${format(currentDate, 'MMM yyyy', { locale: enUS })}`;
     return '';
   };
 
@@ -2734,7 +2752,7 @@ export function CalendarApp({ spacesState, viewportsState }: CalendarAppProps) {
         <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-8">
           {monthsInYear.map((month, mIdx) => {
             const monthDays = eachDayOfInterval({ start: startOfMonth(month), end: endOfMonth(month) });
-            const monthStartDay = (startOfWeek(startOfMonth(month), { weekStartsOn: 1 }).getDay() + 6) % 7;
+            const monthStartDay = (startOfMonth(month).getDay() + 6) % 7;
 
             return (
               <div key={mIdx} className="flex flex-col gap-2">
@@ -2866,20 +2884,26 @@ export function CalendarApp({ spacesState, viewportsState }: CalendarAppProps) {
           )}
         </div>
 
-        {/* List Content - CSS Columns for responsive multi-column layout with vertical dividers */}
-        <div className="flex-1 overflow-y-auto p-4 custom-scrollbar">
-          <div className="flex flex-col gap-4 max-w-3xl mx-auto w-full">
+        {/* List Content - Fluid Grid layout for responsive multi-column with vertical dividers */}
+        <div className="flex-1 overflow-auto custom-scrollbar">
+          <div
+            className="grid grid-flow-row auto-rows-max w-full"
+            style={{
+              gridTemplateColumns: 'repeat(auto-fill, minmax(350px, 1fr))',
+            }}
+          >
             {sortedListEvents.map((event, index) => (
-              <SortableListItem
-                key={event.id}
-                index={index}
-                event={event}
-                moveItem={moveListItem}
-                onSelect={(e: any) => handleToggleEventSelection(event.id, undefined, e)}
-                isManual={listSort === 'manual'}
-                isSelected={selectedEventId === event.id || selectedEventIds.has(event.id)}
-                onContextMenu={(e: any) => handleEventContextMenu(e, event.id)}
-              />
+              <div key={event.id} className="min-h-0">
+                <SortableListItem
+                  index={index}
+                  event={event}
+                  moveItem={moveListItem}
+                  onSelect={(e: any) => handleToggleEventSelection(event.id, { x: e.clientX, y: e.clientY }, e)}
+                  isManual={listSort === 'manual'}
+                  isSelected={selectedEventId === event.id || selectedEventIds.has(event.id)}
+                  onContextMenu={(e: any) => handleEventContextMenu(e, event.id)}
+                />
+              </div>
             ))}
             {sortedListEvents.length === 0 && (
               <div className="text-center text-default-400 py-10 w-full col-span-full">
@@ -3104,99 +3128,232 @@ export function CalendarApp({ spacesState, viewportsState }: CalendarAppProps) {
         }
       `}</style>
       {/* Header */}
-      {/* Header */}
-      <div className="flex justify-between items-center px-4 py-2 border-b border-divider shrink-0 bg-background/80 backdrop-blur-md z-20 relative">
-        <div className="flex items-center gap-2">
-          <div className="flex items-center bg-default-100 rounded-lg p-0.5">
-            <Button isIconOnly size="sm" variant="light" onPress={prevPeriod} className="h-7 w-7 min-w-7 data-[hover=true]:bg-white rounded-md">
-              <ChevronLeft size={16} className="text-default-500" />
-            </Button>
-            <div className="px-3 font-bold text-sm min-w-[120px] text-center text-default-700">
-              {getViewTitle()}
+      <div className="w-full" ref={toolbarRef}>
+        <div className={`flex justify-between items-center ${isUltraCompact ? 'px-2' : 'px-4'} py-2 border-b border-divider shrink-0 bg-background/80 backdrop-blur-md z-20 relative overflow-x-auto no-scrollbar`}>
+          <div className={`flex items-center ${isUltraCompact ? 'gap-1' : 'gap-1.5'}`}>
+            <div className={`flex items-center bg-default-100 rounded-full p-0.5 border border-default-200/50 ${isUltraCompact ? 'px-1' : ''}`}>
+              {!isUltraCompact && (
+                <Button isIconOnly size="sm" variant="light" radius="full" onPress={prevPeriod} className="h-7 w-7 min-w-7 data-[hover=true]:bg-white">
+                  <ChevronLeft size={16} className="text-default-500" />
+                </Button>
+              )}
+              <div className={`px-2 text-xs ${isUltraCompact ? 'min-w-[40px] px-2 font-medium normal-case tracking-normal' : 'min-w-[110px] font-bold uppercase tracking-tight'} text-center text-default-700 whitespace-nowrap`}>
+                {getViewTitle()}
+              </div>
+              {!isUltraCompact && (
+                <Button isIconOnly size="sm" variant="light" radius="full" onPress={nextPeriod} className="h-7 w-7 min-w-7 data-[hover=true]:bg-white">
+                  <ChevronRight size={16} className="text-default-500" />
+                </Button>
+              )}
             </div>
-            <Button isIconOnly size="sm" variant="light" onPress={nextPeriod} className="h-7 w-7 min-w-7 data-[hover=true]:bg-white rounded-md">
-              <ChevronRight size={16} className="text-default-500" />
+            <Button
+              isIconOnly
+              size="sm"
+              variant="light"
+              radius="full"
+              onPress={goToToday}
+              className={`h-8 w-8 font-medium text-default-600 shrink-0 ${isUltraCompact ? 'pl-[2px]' : ''}`}
+            >
+              <CalendarIcon size={16} />
             </Button>
-          </div>
-          <Button size="sm" variant="light" onPress={goToToday} className="h-8 font-medium text-default-600">Today</Button>
-          <div className="w-px h-4 bg-default-300 mx-1" />
-          <Select
-            aria-label="Filter by space"
-            placeholder="All Spaces"
-            selectedKeys={filterSpaceId === 'all' ? [] : [filterSpaceId]}
-            onChange={(e: any) => setFilterSpaceId(e.target.value || 'all')}
-            className="w-[140px]"
-            size="sm"
-            variant="bordered"
-            classNames={{ trigger: "h-8 min-h-8 border-default-200" }}
-            popoverProps={{ className: "min-w-[180px]" }}
-          >
-            <SelectItem key="all">All Spaces</SelectItem>
-            {spacesState.spaces.map((space: any) => (
-              <SelectItem key={space.id}>{space.title}</SelectItem>
-            ))}
-          </Select>
-        </div>
+            {!isUltraCompact && <div className={`w-px h-4 bg-default-300 ${isUltraCompact ? 'mx-0' : 'mx-0.5'}`} />}
 
-        <div className="flex gap-2 items-center">
-          <div className="flex gap-0.5 bg-default-100 p-0.5 rounded-lg border border-default-200/50">
-            {(['month', 'week', 'day', 'ndays', 'year', 'list'] as const).map((v) => (
-              <Button
-                key={v}
-                size="sm"
-                variant={view === v ? 'light' : 'light'}
-                onPress={() => {
-                  setView(v);
-                  setCurrentDate(new Date());
-                }}
-                className={`capitalize text-xs h-7 px-3 rounded-md transition-all ${view === v ? 'bg-white text-default-900 font-bold shadow-sm' : 'text-default-500 hover:text-default-700'}`}
-                disableAnimation
-              >
-                {v === 'month' ? 'Month' : v === 'week' ? 'Week' : v === 'day' ? 'Day' : v === 'ndays' ? `${nDays} Days` : v === 'year' ? 'Year' : 'List'}
-              </Button>
-            ))}
+            <Popover placement="bottom-start" shadow="lg" className="rounded-xl">
+              <PopoverTrigger>
+                <Button
+                  isIconOnly={isUltraCompact}
+                  size="sm"
+                  variant="light"
+                  radius="full"
+                  className={`h-8 hover:bg-default-100 shrink-0 ${isUltraCompact ? 'w-8' : 'px-3 gap-1.5'}`}
+                >
+                  <SlidersHorizontal size={14} className="text-default-600" />
+                  {!isUltraCompact && <span className="text-xs font-medium text-default-600">Filter</span>}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="p-1 min-w-[180px] bg-white border border-divider">
+                <div className="flex flex-col w-full gap-0.5">
+                  <div
+                    className={`px-3 py-2 rounded-lg cursor-pointer text-sm font-medium transition-colors ${filterSpaceId === 'all' ? 'bg-primary/10 text-primary' : 'hover:bg-default-100 text-default-600'}`}
+                    onClick={() => setFilterSpaceId('all')}
+                  >
+                    All Spaces
+                  </div>
+                  {spacesState.spaces.map((space: any) => (
+                    <div
+                      key={space.id}
+                      className={`px-3 py-2 rounded-lg cursor-pointer text-sm font-medium transition-colors ${filterSpaceId === space.id ? 'bg-primary/10 text-primary' : 'hover:bg-default-100 text-default-600'}`}
+                      onClick={() => setFilterSpaceId(space.id)}
+                    >
+                      {space.title}
+                    </div>
+                  ))}
+                </div>
+              </PopoverContent>
+            </Popover>
           </div>
-          {view === 'ndays' && (
-            <div className="w-[60px] ml-2">
-              <Input
-                type="number"
-                size="sm"
-                min={1}
-                max={90}
-                value={nDays.toString()}
-                onValueChange={(v) => {
-                  const val = parseInt(v);
-                  if (!isNaN(val)) setNDays(Math.max(1, Math.min(90, val)));
-                }}
-                classNames={{ input: "text-right font-bold text-xs", inputWrapper: "h-7 min-h-7 px-1" }}
-              />
-            </div>
-          )}
-          <div className="w-px h-4 bg-default-300 mx-1" />
-          <Button
-            isIconOnly
-            size="sm"
-            color="primary"
-            className="font-bold shadow-lg"
-            onPress={(e) => {
-              setNewEvent({
-                title: '',
-                startDate: format(new Date(), "yyyy-MM-dd'T'HH:mm"),
-                endDate: format(new Date(Date.now() + 3600000), "yyyy-MM-dd'T'HH:mm"),
-                notes: '',
-                spaceId: spacesStateRef.current.focusedSpaceId || (spacesStateRef.current.spaces[0]?.id || '')
-              });
-              onOpen(); // Open the Drawer directly
-            }}
-          >
-            <Plus size={18} />
-          </Button>
-        </div>
-      </div>
+
+          <div className={`flex items-center ${isUltraCompact ? 'gap-1' : 'gap-2'}`}>
+            {/* Desktop View Switcher - Switches at exactly 768px component width */}
+            {!isCompact && (
+              <div className="flex gap-0.5 bg-default-100 p-0.5 rounded-full border border-default-200/50 shrink-0">
+                {(['month', 'week', 'day', 'ndays', 'year', 'list'] as const).map((v) => (
+                  v === 'ndays' ? (
+                    <Popover key={v} placement="top" offset={10}>
+                      <PopoverTrigger>
+                        <Button
+                          size="sm"
+                          variant="light"
+                          radius="full"
+                          onPress={() => {
+                            setView(v);
+                            setCurrentDate(new Date());
+                          }}
+                          className={`capitalize text-xs h-7 px-3 rounded-full transition-all ${view === v ? 'bg-white text-default-900 font-bold shadow-sm' : 'text-default-500 hover:text-default-700'}`}
+                          disableAnimation
+                        >
+                          {nDays} Days
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="p-2 min-w-[100px] bg-white border border-divider rounded-xl shadow-lg">
+                        <div className="flex flex-col gap-1">
+                          <span className="text-[10px] font-bold text-default-400 uppercase ml-1">Days</span>
+                          <Input
+                            type="number"
+                            size="sm"
+                            min={1}
+                            max={90}
+                            autoFocus
+                            value={nDays.toString()}
+                            onValueChange={(val) => {
+                              const num = parseInt(val);
+                              if (!isNaN(num)) setNDays(Math.max(1, Math.min(90, num)));
+                            }}
+                            classNames={{ input: "text-right font-bold text-xs", inputWrapper: "h-8 min-h-8 px-2 rounded-lg" }}
+                          />
+                        </div>
+                      </PopoverContent>
+                    </Popover>
+                  ) : (
+                    <Button
+                      key={v}
+                      size="sm"
+                      variant="light"
+                      radius="full"
+                      onPress={() => {
+                        setView(v);
+                        setCurrentDate(new Date());
+                      }}
+                      className={`capitalize text-xs h-7 px-3 rounded-full transition-all ${view === v ? 'bg-white text-default-900 font-bold shadow-sm' : 'text-default-500 hover:text-default-700'}`}
+                      disableAnimation
+                    >
+                      {v}
+                    </Button>
+                  )
+                ))}
+              </div>
+            )}
+
+            {/* Mobile View Selector - Fallback when component width is < 768px */}
+            {isCompact && (
+              <div className="flex shrink-0">
+                <Popover placement="bottom-end" shadow="lg" className="rounded-xl">
+                  <PopoverTrigger>
+                    <Button
+                      size="sm"
+                      variant="flat"
+                      radius="full"
+                      className="h-8 font-bold capitalize bg-default-100 border border-default-200/50"
+                    >
+                      {view === 'ndays' ? `${nDays} Days` : view}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="p-1 min-w-[160px] bg-white border border-divider">
+                    <div className="flex flex-col w-full gap-0.5">
+                      {(['month', 'week', 'day', 'ndays', 'year', 'list'] as const).map((v) => (
+                        <div
+                          key={v}
+                          className={`px-3 py-2 rounded-lg cursor-pointer text-sm font-medium transition-colors flex justify-between items-center ${view === v ? 'bg-primary/10 text-primary' : 'hover:bg-default-100 text-default-600'}`}
+                          onClick={() => {
+                            setView(v);
+                            setCurrentDate(new Date());
+                          }}
+                        >
+                          {v === 'ndays' ? (
+                            <div className="flex items-center justify-between w-full gap-2">
+                              <div className="flex items-center gap-2">
+                                <Button
+                                  isIconOnly
+                                  size="sm"
+                                  variant="flat"
+                                  className="h-6 w-6 min-w-6 bg-default-200/50 hover:bg-default-300 transition-colors"
+                                  onPress={(e) => {
+                                    e.stopPropagation();
+                                    setNDays(Math.max(1, nDays - 1));
+                                  }}
+                                >
+                                  <Minus size={12} />
+                                </Button>
+                                <span className="capitalize w-14 text-center">{nDays} Days</span>
+                                <Button
+                                  isIconOnly
+                                  size="sm"
+                                  variant="flat"
+                                  className="h-6 w-6 min-w-6 bg-default-200/50 hover:bg-default-300 transition-colors"
+                                  onPress={(e) => {
+                                    e.stopPropagation();
+                                    setNDays(Math.min(90, nDays + 1));
+                                  }}
+                                >
+                                  <Plus size={12} />
+                                </Button>
+                              </div>
+                              {view === v && <Check size={14} />}
+                            </div>
+                          ) : (
+                            <>
+                              <span className="capitalize">{v}</span>
+                              {view === v && <Check size={14} />}
+                            </>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </PopoverContent>
+                </Popover>
+              </div>
+            )}
+
+
+
+            {!isUltraCompact && <div className={`w-px h-4 bg-default-300 ${isUltraCompact ? 'mx-0' : 'mx-1'}`} />}
+            <Button
+              isIconOnly
+              size="sm"
+              color="primary"
+              radius="full"
+              className="font-bold shadow-lg h-8 w-8 min-w-8"
+              onPress={(e) => {
+                setNewEvent({
+                  title: '',
+                  startDate: format(new Date(), "yyyy-MM-dd'T'HH:mm"),
+                  endDate: format(new Date(Date.now() + 3600000), "yyyy-MM-dd'T'HH:mm"),
+                  notes: '',
+                  spaceId: spacesStateRef.current.focusedSpaceId || (spacesStateRef.current.spaces[0]?.id || '')
+                });
+                onOpen(); // Open the Drawer directly
+              }}
+            >
+              <Plus size={18} />
+            </Button>
+          </div >
+        </div >
+      </div >
 
       {/* Content */}
-      <div
-        className={`flex-1 overflow-hidden relative z-0 ${dragGhostItem ? 'is-dragging-event' : ''} ${marqueeRect ? 'cursor-crosshair' : ''}`}
+      < div
+        className={`flex-1 overflow-hidden relative z-0 ${dragGhostItem ? 'is-dragging-event' : ''} ${marqueeRect ? 'cursor-crosshair' : ''}`
+        }
         onMouseDown={handleMarqueeMouseDown}
         onMouseMove={handleMarqueeMouseMove}
         onMouseUp={handleMarqueeMouseUp}
@@ -3210,100 +3367,282 @@ export function CalendarApp({ spacesState, viewportsState }: CalendarAppProps) {
         {view === 'list' && renderListView()}
 
         {/* Marquee Visual Rectangle */}
-        {marqueeRect && (
-          <div
-            style={{
-              position: 'absolute',
-              left: Math.min(marqueeRect.startX, marqueeRect.currentX),
-              top: Math.min(marqueeRect.startY, marqueeRect.currentY),
-              width: Math.abs(marqueeRect.startX - marqueeRect.currentX),
-              height: Math.abs(marqueeRect.startY - marqueeRect.currentY),
-              backgroundColor: marqueeRect.currentX >= marqueeRect.startX
-                ? 'rgba(59, 130, 246, 0.15)' // Intersect (Blue)
-                : 'rgba(16, 185, 129, 0.15)', // Enclose (Green)
-              border: `1.5px ${marqueeRect.currentX >= marqueeRect.startX ? 'solid' : 'dashed'} ${marqueeRect.currentX >= marqueeRect.startX ? '#3b82f6' : '#10b981'}`,
-              zIndex: 1000,
-              pointerEvents: 'none',
-              borderRadius: '2px'
-            }}
-          />
-        )}
-      </div>
+        {
+          marqueeRect && (
+            <div
+              style={{
+                position: 'absolute',
+                left: Math.min(marqueeRect.startX, marqueeRect.currentX),
+                top: Math.min(marqueeRect.startY, marqueeRect.currentY),
+                width: Math.abs(marqueeRect.startX - marqueeRect.currentX),
+                height: Math.abs(marqueeRect.startY - marqueeRect.currentY),
+                backgroundColor: marqueeRect.currentX >= marqueeRect.startX
+                  ? 'rgba(59, 130, 246, 0.15)' // Intersect (Blue)
+                  : 'rgba(16, 185, 129, 0.15)', // Enclose (Green)
+                border: `1.5px ${marqueeRect.currentX >= marqueeRect.startX ? 'solid' : 'dashed'} ${marqueeRect.currentX >= marqueeRect.startX ? '#3b82f6' : '#10b981'}`,
+                zIndex: 1000,
+                pointerEvents: 'none',
+                borderRadius: '2px'
+              }}
+            />
+          )
+        }
+      </div >
 
       {/* Quick Create UI */}
       <AnimatePresence>
-        {popoverAnchor && (
-          <motion.div
-            ref={popoverRef}
-            initial={{ opacity: 0, scale: 0.95, y: 10 }}
-            animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.95, y: 10 }}
-            className="fixed z-[9999] pointer-events-none"
-            style={{
-              left: popoverAnchor.x,
-              top: popoverAnchor.y
-            }}
-          >
-            {(() => {
-              // Calculate arrow position to point at element center
-              // Popover width is 280px, arrow width is 24px
-              // We want the arrow centered on the element, but clamped within rounded corners (12px to 268px)
-              const popoverWidth = 280;
-              const arrowWidth = 24;
-              const minArrowLeft = 12; // Stay inside left rounded corner
-              const maxArrowLeft = popoverWidth - arrowWidth - 12; // Stay inside right rounded corner
+        {
+          popoverAnchor && (
+            <motion.div
+              ref={popoverRef}
+              initial={{ opacity: 0, scale: 0.95, y: 10 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 10 }}
+              className="fixed z-[9999] pointer-events-none"
+              style={{
+                left: popoverAnchor.x,
+                top: popoverAnchor.y
+              }}
+            >
+              {(() => {
+                // Calculate arrow position to point at element center
+                // Popover width is 280px, arrow width is 24px
+                // We want the arrow centered on the element, but clamped within rounded corners (12px to 268px)
+                const popoverWidth = 280;
+                const arrowWidth = 24;
+                const minArrowLeft = 12; // Stay inside left rounded corner
+                const maxArrowLeft = popoverWidth - arrowWidth - 12; // Stay inside right rounded corner
 
-              let arrowLeft = 32; // Default position (left-8)
+                let arrowLeft = 32; // Default position (left-8)
 
-              if (popoverAnchor.elementCenterX !== undefined) {
-                // Calculate offset from popover left edge to element center
-                const offset = popoverAnchor.elementCenterX - popoverAnchor.x;
-                // Center the arrow on that offset
-                arrowLeft = offset - (arrowWidth / 2);
-                // Clamp to stay within rounded corners
-                arrowLeft = Math.max(minArrowLeft, Math.min(maxArrowLeft, arrowLeft));
-              }
+                if (popoverAnchor.elementCenterX !== undefined) {
+                  // Calculate offset from popover left edge to element center
+                  const offset = popoverAnchor.elementCenterX - popoverAnchor.x;
+                  // Center the arrow on that offset
+                  arrowLeft = offset - (arrowWidth / 2);
+                  // Clamp to stay within rounded corners
+                  arrowLeft = Math.max(minArrowLeft, Math.min(maxArrowLeft, arrowLeft));
+                }
 
-              return (
-                <div className="pointer-events-auto w-[280px] relative mt-[10px] group filter drop-shadow-2xl">
-                  {/* Speech Bubble Arrow (SVG for perfect crispness) */}
-                  <div className="absolute w-6 h-[11px] pointer-events-none z-20" style={{ left: `${arrowLeft}px`, top: '-10px' }}>
-                    <svg width="24" height="11" viewBox="0 0 24 11" fill="none" xmlns="http://www.w3.org/2000/svg" className="overflow-visible">
-                      <path d="M0 11L12 0L24 11" fill="white" />
-                      <path d="M0 11L12 0L24 11" stroke="#e4e4e7" strokeWidth="1.5" strokeLinejoin="round" fill="none" />
-                    </svg>
+                return (
+                  <div className="pointer-events-auto w-[280px] relative mt-[10px] group filter drop-shadow-2xl">
+                    {/* Speech Bubble Arrow (SVG for perfect crispness) */}
+                    <div className="absolute w-6 h-[11px] pointer-events-none z-20" style={{ left: `${arrowLeft}px`, top: '-10px' }}>
+                      <svg width="24" height="11" viewBox="0 0 24 11" fill="none" xmlns="http://www.w3.org/2000/svg" className="overflow-visible">
+                        <path d="M0 11L12 0L24 11" fill="white" />
+                        <path d="M0 11L12 0L24 11" stroke="#e4e4e7" strokeWidth="1.5" strokeLinejoin="round" fill="none" />
+                      </svg>
+                    </div>
+
+                    <div className="absolute -right-10 top-0 z-20">
+                      <Button size="sm" isIconOnly variant="light" radius="full" className="h-8 w-8 min-w-8 text-default-400 hover:text-default-800 bg-white shadow-sm hover:shadow-md" onClick={() => setPopoverAnchor(null)}>
+                        <Plus size={18} className="rotate-45" />
+                      </Button>
+                    </div>
+
+                    <div className="relative z-10 bg-white border border-divider flex flex-col overflow-hidden shadow-xl" style={{ borderRadius: '12px' }}>
+                      <div className="p-3 flex flex-col gap-1.5">
+                        <div className="pt-3 px-4">
+                          <Input
+                            autoFocus
+                            placeholder="New"
+                            variant="flat"
+                            size="sm"
+                            value={newEvent.title}
+                            onValueChange={(v) => setNewEvent(prev => ({ ...prev, title: v }))}
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter') handleQuickCreate();
+                              if (e.key === 'Escape') setPopoverAnchor(null);
+                            }}
+                            classNames={{
+                              inputWrapper: "bg-transparent px-4 shadow-none data-[hover=true]:bg-transparent group-data-[focus=true]:bg-transparent h-auto min-h-0",
+                              input: "text-lg font-bold text-default-900 placeholder:text-default-300 tracking-tight py-0"
+                            }}
+                          />
+                          <div className="h-0.5 w-10 bg-primary rounded-full mt-1.5 opacity-20" />
+                        </div>
+
+                        {/* Event Type Selector */}
+                        <div className="px-3 py-2">
+                          <div className="flex gap-1 flex-wrap">
+                            {[
+                              { type: 'event' as CalendarEventType, icon: CalendarIcon, label: 'Event' },
+                              { type: 'task' as CalendarEventType, icon: Check, label: 'Task' },
+                              { type: 'timeblock' as CalendarEventType, icon: Timer, label: 'Block' },
+                              { type: 'meeting' as CalendarEventType, icon: Users, label: 'Meet' },
+                              { type: 'deadline' as CalendarEventType, icon: Circle, label: 'Due' },
+                            ].map(({ type, icon: Icon, label }) => (
+                              <button
+                                key={type}
+                                onClick={() => setNewEvent(prev => ({ ...prev, eventType: type }))}
+                                className={`flex items-center gap-1 px-2 py-1 rounded-md text-[10px] font-medium transition-all ${newEvent.eventType === type
+                                  ? 'bg-primary text-white shadow-sm'
+                                  : 'bg-default-100 text-default-600 hover:bg-default-200'
+                                  }`}
+                              >
+                                <Icon size={10} />
+                                {label}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+
+                        <div className="flex flex-col gap-2">
+                          {newEvent.eventType === 'deadline' ? (
+                            /* Deadline-specific UI */
+                            <div className="flex flex-col gap-2">
+                              <div className="flex items-center gap-2">
+                                <Input
+                                  type="date"
+                                  variant="faded"
+                                  size="sm"
+                                  label="Deadline Date"
+                                  value={newEvent.deadlineDate}
+                                  onChange={(e) => setNewEvent(prev => ({ ...prev, deadlineDate: e.target.value }))}
+                                  classNames={{
+                                    inputWrapper: "h-9 px-2 bg-default-50/50 hover:bg-default-100 border-transparent transition-colors rounded-lg shadow-none",
+                                    input: "text-xs font-medium text-default-600"
+                                  }}
+                                />
+                              </div>
+                              <div className="flex items-center gap-2">
+                                <input
+                                  type="checkbox"
+                                  id="deadlineHasTime"
+                                  checked={newEvent.deadlineHasTime}
+                                  onChange={(e) => setNewEvent(prev => ({ ...prev, deadlineHasTime: e.target.checked }))}
+                                  className="w-4 h-4 rounded border-default-300"
+                                />
+                                <label htmlFor="deadlineHasTime" className="text-xs text-default-600">Include time</label>
+                                {newEvent.deadlineHasTime && (
+                                  <Input
+                                    type="time"
+                                    variant="faded"
+                                    size="sm"
+                                    value={newEvent.deadlineTime}
+                                    onChange={(e) => setNewEvent(prev => ({ ...prev, deadlineTime: e.target.value }))}
+                                    classNames={{
+                                      inputWrapper: "h-7 px-2 bg-default-50/50 hover:bg-default-100 border-transparent transition-colors rounded-lg shadow-none w-24",
+                                      input: "text-xs font-medium text-default-600"
+                                    }}
+                                  />
+                                )}
+                              </div>
+                            </div>
+                          ) : (
+                            /* Regular event UI */
+                            <div className="grid grid-cols-2 gap-2">
+                              <Input
+                                type="datetime-local"
+                                variant="faded"
+                                size="sm"
+                                value={format(new Date(newEvent.startDate), "yyyy-MM-dd'T'HH:mm")}
+                                onChange={(e) => setNewEvent(prev => ({ ...prev, startDate: e.target.value }))}
+                                classNames={{
+                                  inputWrapper: "h-7 px-2 bg-default-50/50 hover:bg-default-100 border-transparent transition-colors rounded-lg shadow-none",
+                                  input: "text-xs font-medium text-default-600"
+                                }}
+                              />
+                              <Input
+                                type="datetime-local"
+                                variant="faded"
+                                size="sm"
+                                value={format(new Date(newEvent.endDate), "yyyy-MM-dd'T'HH:mm")}
+                                onChange={(e) => setNewEvent(prev => ({ ...prev, endDate: e.target.value }))}
+                                classNames={{
+                                  inputWrapper: "h-7 px-2 bg-default-50/50 hover:bg-default-100 border-transparent transition-colors rounded-lg shadow-none",
+                                  input: "text-xs font-medium text-default-600"
+                                }}
+                              />
+                            </div>
+                          )}
+                        </div>
+                      </div>
+
+                      <div className="flex gap-2 p-3 bg-gradient-to-t from-white to-white/50 backdrop-blur-md pt-2" style={{ borderBottomLeftRadius: '12px', borderBottomRightRadius: '12px' }}>
+                        <Button size="sm" fullWidth variant="flat" className="font-semibold h-7 text-[10px] bg-default-100/50 text-default-600 rounded-lg" onClick={() => { setPopoverAnchor(null); onOpen(); }}>
+                          More details
+                        </Button>
+                        <Button size="sm" fullWidth color="primary" className="font-bold h-7 text-[10px] shadow-lg shadow-primary/25 rounded-lg text-white" onClick={handleQuickCreate}>
+                          Create Event
+                        </Button>
+                      </div>
+                    </div>
                   </div>
+                );
+              })()}
+            </motion.div>
+          )
+        }
 
-                  <div className="absolute -right-10 top-0 z-20">
-                    <Button size="sm" isIconOnly variant="light" radius="full" className="h-8 w-8 min-w-8 text-default-400 hover:text-default-800 bg-white shadow-sm hover:shadow-md" onClick={() => setPopoverAnchor(null)}>
-                      <Plus size={18} className="rotate-45" />
-                    </Button>
-                  </div>
+        {
+          selectedEvent && editPopoverAnchor && (
+            <motion.div
+              ref={editPopoverRef}
+              initial={{ opacity: 0, scale: 0.95, y: 10 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 10 }}
+              className="fixed z-[9999] pointer-events-none"
+              style={{
+                left: editPopoverAnchor.x,
+                top: editPopoverAnchor.y
+              }}
+            >
+              {(() => {
+                // Calculate arrow position to point at element center
+                // Edit popover width is 300px, arrow width is 24px
+                // We want the arrow centered on the element, but clamped within rounded corners (12px to 288px)
+                const popoverWidth = 300;
+                const arrowWidth = 24;
+                const minArrowLeft = 12; // Stay inside left rounded corner
+                const maxArrowLeft = popoverWidth - arrowWidth - 12; // Stay inside right rounded corner
 
-                  <div className="relative z-10 bg-white border border-divider flex flex-col overflow-hidden shadow-xl" style={{ borderRadius: '12px' }}>
-                    <div className="p-3 flex flex-col gap-1.5">
-                      <div className="pt-3 px-4">
+                let arrowLeft = 32; // Default position (left-8)
+
+                if (editPopoverAnchor.elementCenterX !== undefined) {
+                  // Calculate offset from popover left edge to element center
+                  const offset = editPopoverAnchor.elementCenterX - editPopoverAnchor.x;
+                  // Center the arrow on that offset
+                  arrowLeft = offset - (arrowWidth / 2);
+                  // Clamp to stay within rounded corners
+                  arrowLeft = Math.max(minArrowLeft, Math.min(maxArrowLeft, arrowLeft));
+                }
+
+                return (
+                  <div className="pointer-events-auto w-[300px] relative mt-[10px] group filter drop-shadow-2xl">
+                    {/* Speech Bubble Arrow (SVG for perfect crispness) */}
+                    <div className="absolute w-6 h-[11px] pointer-events-none z-20" style={{ left: `${arrowLeft}px`, top: '-10px' }}>
+                      <svg width="24" height="11" viewBox="0 0 24 11" fill="none" xmlns="http://www.w3.org/2000/svg" className="overflow-visible">
+                        <path d="M0 11L12 0L24 11" fill="white" />
+                        <path d="M0 11L12 0L24 11" stroke="#e4e4e7" strokeWidth="1.5" strokeLinejoin="round" fill="none" />
+                      </svg>
+                    </div>
+
+
+                    <div className="absolute -right-10 top-0 z-20">
+                      <Button size="sm" isIconOnly variant="light" radius="full" className="h-8 w-8 min-w-8 text-default-400 hover:text-default-800 bg-white shadow-sm hover:shadow-md" onClick={() => handleToggleEventSelection(null)}>
+                        <Plus size={18} className="rotate-45" />
+                      </Button>
+                    </div>
+
+                    <div className="relative z-10 bg-white border border-divider flex flex-col overflow-hidden shadow-xl" style={{ borderRadius: '12px' }}>
+                      <div className="px-5 pt-6 pb-2">
                         <Input
-                          autoFocus
-                          placeholder="New"
+                          placeholder="Event title"
                           variant="flat"
-                          size="sm"
-                          value={newEvent.title}
-                          onValueChange={(v) => setNewEvent(prev => ({ ...prev, title: v }))}
-                          onKeyDown={(e) => {
-                            if (e.key === 'Enter') handleQuickCreate();
-                            if (e.key === 'Escape') setPopoverAnchor(null);
-                          }}
+                          size="lg"
+                          value={selectedEvent.metadata?.title || ''}
+                          onValueChange={(v) => handleUpdateEvent(selectedEvent.id, selectedEvent.id, selectedEvent.sourceSpaceId, { title: v })}
                           classNames={{
                             inputWrapper: "bg-transparent px-4 shadow-none data-[hover=true]:bg-transparent group-data-[focus=true]:bg-transparent h-auto min-h-0",
-                            input: "text-lg font-bold text-default-900 placeholder:text-default-300 tracking-tight py-0"
+                            input: "text-xl font-bold text-default-900 placeholder:text-default-300 tracking-tight py-0"
                           }}
                         />
-                        <div className="h-0.5 w-10 bg-primary rounded-full mt-1.5 opacity-20" />
+                        <div className="h-0.5 w-10 bg-primary rounded-full mt-2 opacity-20" />
                       </div>
 
                       {/* Event Type Selector */}
-                      <div className="px-3 py-2">
+                      <div className="px-5 py-2 border-b border-divider/50">
                         <div className="flex gap-1 flex-wrap">
                           {[
                             { type: 'event' as CalendarEventType, icon: CalendarIcon, label: 'Event' },
@@ -3314,8 +3653,8 @@ export function CalendarApp({ spacesState, viewportsState }: CalendarAppProps) {
                           ].map(({ type, icon: Icon, label }) => (
                             <button
                               key={type}
-                              onClick={() => setNewEvent(prev => ({ ...prev, eventType: type }))}
-                              className={`flex items-center gap-1 px-2 py-1 rounded-md text-[10px] font-medium transition-all ${newEvent.eventType === type
+                              onClick={() => handleUpdateEvent(selectedEvent.id, selectedEvent.id, selectedEvent.sourceSpaceId, { eventType: type })}
+                              className={`flex items-center gap-1 px-2 py-1 rounded-md text-[10px] font-medium transition-all ${(selectedEvent.metadata?.eventType || 'event') === type
                                 ? 'bg-primary text-white shadow-sm'
                                 : 'bg-default-100 text-default-600 hover:bg-default-200'
                                 }`}
@@ -3325,61 +3664,36 @@ export function CalendarApp({ spacesState, viewportsState }: CalendarAppProps) {
                             </button>
                           ))}
                         </div>
+
+                        {/* Labels Display */}
+                        {selectedEvent.metadata?.labels?.length > 0 && (
+                          <div className="flex gap-1 mt-2 flex-wrap">
+                            {selectedEvent.metadata.labels.map((label: EventLabel, idx: number) => (
+                              <Chip
+                                key={idx}
+                                size="sm"
+                                style={{ backgroundColor: label.color, color: 'white' }}
+                                className="text-[9px] h-5"
+                              >
+                                {label.text}
+                              </Chip>
+                            ))}
+                          </div>
+                        )}
                       </div>
 
-                      <div className="flex flex-col gap-2">
-                        {newEvent.eventType === 'deadline' ? (
-                          /* Deadline-specific UI */
-                          <div className="flex flex-col gap-2">
-                            <div className="flex items-center gap-2">
-                              <Input
-                                type="date"
-                                variant="faded"
-                                size="sm"
-                                label="Deadline Date"
-                                value={newEvent.deadlineDate}
-                                onChange={(e) => setNewEvent(prev => ({ ...prev, deadlineDate: e.target.value }))}
-                                classNames={{
-                                  inputWrapper: "h-9 px-2 bg-default-50/50 hover:bg-default-100 border-transparent transition-colors rounded-lg shadow-none",
-                                  input: "text-xs font-medium text-default-600"
-                                }}
-                              />
-                            </div>
-                            <div className="flex items-center gap-2">
-                              <input
-                                type="checkbox"
-                                id="deadlineHasTime"
-                                checked={newEvent.deadlineHasTime}
-                                onChange={(e) => setNewEvent(prev => ({ ...prev, deadlineHasTime: e.target.checked }))}
-                                className="w-4 h-4 rounded border-default-300"
-                              />
-                              <label htmlFor="deadlineHasTime" className="text-xs text-default-600">Include time</label>
-                              {newEvent.deadlineHasTime && (
-                                <Input
-                                  type="time"
-                                  variant="faded"
-                                  size="sm"
-                                  value={newEvent.deadlineTime}
-                                  onChange={(e) => setNewEvent(prev => ({ ...prev, deadlineTime: e.target.value }))}
-                                  classNames={{
-                                    inputWrapper: "h-7 px-2 bg-default-50/50 hover:bg-default-100 border-transparent transition-colors rounded-lg shadow-none w-24",
-                                    input: "text-xs font-medium text-default-600"
-                                  }}
-                                />
-                              )}
-                            </div>
-                          </div>
-                        ) : (
-                          /* Regular event UI */
+                      <div className="px-5 py-1.5 flex flex-col gap-4">
+                        {/* Time Section */}
+                        <div className="flex flex-col gap-1.5">
                           <div className="grid grid-cols-2 gap-2">
                             <Input
                               type="datetime-local"
                               variant="faded"
                               size="sm"
-                              value={format(new Date(newEvent.startDate), "yyyy-MM-dd'T'HH:mm")}
-                              onChange={(e) => setNewEvent(prev => ({ ...prev, startDate: e.target.value }))}
+                              value={format(selectedEvent.start, "yyyy-MM-dd'T'HH:mm")}
+                              onChange={(e) => handleUpdateEvent(selectedEvent.id, selectedEvent.id, selectedEvent.sourceSpaceId, { startDate: e.target.value })}
                               classNames={{
-                                inputWrapper: "h-7 px-2 bg-default-50/50 hover:bg-default-100 border-transparent transition-colors rounded-lg shadow-none",
+                                inputWrapper: "h-8 px-2 bg-default-50/50 hover:bg-default-100 border-transparent transition-colors rounded-lg",
                                 input: "text-xs font-medium text-default-600"
                               }}
                             />
@@ -3387,274 +3701,122 @@ export function CalendarApp({ spacesState, viewportsState }: CalendarAppProps) {
                               type="datetime-local"
                               variant="faded"
                               size="sm"
-                              value={format(new Date(newEvent.endDate), "yyyy-MM-dd'T'HH:mm")}
-                              onChange={(e) => setNewEvent(prev => ({ ...prev, endDate: e.target.value }))}
+                              value={selectedEvent.end ? format(selectedEvent.end, "yyyy-MM-dd'T'HH:mm") : ''}
+                              onChange={(e) => handleUpdateEvent(selectedEvent.id, selectedEvent.id, selectedEvent.sourceSpaceId, { endDate: e.target.value })}
                               classNames={{
-                                inputWrapper: "h-7 px-2 bg-default-50/50 hover:bg-default-100 border-transparent transition-colors rounded-lg shadow-none",
+                                inputWrapper: "h-8 px-2 bg-default-50/50 hover:bg-default-100 border-transparent transition-colors rounded-lg",
                                 input: "text-xs font-medium text-default-600"
                               }}
                             />
                           </div>
-                        )}
-                      </div>
-                    </div>
-
-                    <div className="flex gap-2 p-3 bg-gradient-to-t from-white to-white/50 backdrop-blur-md pt-2" style={{ borderBottomLeftRadius: '12px', borderBottomRightRadius: '12px' }}>
-                      <Button size="sm" fullWidth variant="flat" className="font-semibold h-7 text-[10px] bg-default-100/50 text-default-600 rounded-lg" onClick={() => { setPopoverAnchor(null); onOpen(); }}>
-                        More details
-                      </Button>
-                      <Button size="sm" fullWidth color="primary" className="font-bold h-7 text-[10px] shadow-lg shadow-primary/25 rounded-lg text-white" onClick={handleQuickCreate}>
-                        Create Event
-                      </Button>
-                    </div>
-                  </div>
-                </div>
-              );
-            })()}
-          </motion.div>
-        )}
-
-        {selectedEvent && editPopoverAnchor && (
-          <motion.div
-            ref={editPopoverRef}
-            initial={{ opacity: 0, scale: 0.95, y: 10 }}
-            animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.95, y: 10 }}
-            className="fixed z-[9999] pointer-events-none"
-            style={{
-              left: editPopoverAnchor.x,
-              top: editPopoverAnchor.y
-            }}
-          >
-            {(() => {
-              // Calculate arrow position to point at element center
-              // Edit popover width is 300px, arrow width is 24px
-              // We want the arrow centered on the element, but clamped within rounded corners (12px to 288px)
-              const popoverWidth = 300;
-              const arrowWidth = 24;
-              const minArrowLeft = 12; // Stay inside left rounded corner
-              const maxArrowLeft = popoverWidth - arrowWidth - 12; // Stay inside right rounded corner
-
-              let arrowLeft = 32; // Default position (left-8)
-
-              if (editPopoverAnchor.elementCenterX !== undefined) {
-                // Calculate offset from popover left edge to element center
-                const offset = editPopoverAnchor.elementCenterX - editPopoverAnchor.x;
-                // Center the arrow on that offset
-                arrowLeft = offset - (arrowWidth / 2);
-                // Clamp to stay within rounded corners
-                arrowLeft = Math.max(minArrowLeft, Math.min(maxArrowLeft, arrowLeft));
-              }
-
-              return (
-                <div className="pointer-events-auto w-[300px] relative mt-[10px] group filter drop-shadow-2xl">
-                  {/* Speech Bubble Arrow (SVG for perfect crispness) */}
-                  <div className="absolute w-6 h-[11px] pointer-events-none z-20" style={{ left: `${arrowLeft}px`, top: '-10px' }}>
-                    <svg width="24" height="11" viewBox="0 0 24 11" fill="none" xmlns="http://www.w3.org/2000/svg" className="overflow-visible">
-                      <path d="M0 11L12 0L24 11" fill="white" />
-                      <path d="M0 11L12 0L24 11" stroke="#e4e4e7" strokeWidth="1.5" strokeLinejoin="round" fill="none" />
-                    </svg>
-                  </div>
-
-
-                  <div className="absolute -right-10 top-0 z-20">
-                    <Button size="sm" isIconOnly variant="light" radius="full" className="h-8 w-8 min-w-8 text-default-400 hover:text-default-800 bg-white shadow-sm hover:shadow-md" onClick={() => handleToggleEventSelection(null)}>
-                      <Plus size={18} className="rotate-45" />
-                    </Button>
-                  </div>
-
-                  <div className="relative z-10 bg-white border border-divider flex flex-col overflow-hidden shadow-xl" style={{ borderRadius: '12px' }}>
-                    <div className="px-5 pt-6 pb-2">
-                      <Input
-                        placeholder="Event title"
-                        variant="flat"
-                        size="lg"
-                        value={selectedEvent.metadata?.title || ''}
-                        onValueChange={(v) => handleUpdateEvent(selectedEvent.id, selectedEvent.id, selectedEvent.sourceSpaceId, { title: v })}
-                        classNames={{
-                          inputWrapper: "bg-transparent px-4 shadow-none data-[hover=true]:bg-transparent group-data-[focus=true]:bg-transparent h-auto min-h-0",
-                          input: "text-xl font-bold text-default-900 placeholder:text-default-300 tracking-tight py-0"
-                        }}
-                      />
-                      <div className="h-0.5 w-10 bg-primary rounded-full mt-2 opacity-20" />
-                    </div>
-
-                    {/* Event Type Selector */}
-                    <div className="px-5 py-2 border-b border-divider/50">
-                      <div className="flex gap-1 flex-wrap">
-                        {[
-                          { type: 'event' as CalendarEventType, icon: CalendarIcon, label: 'Event' },
-                          { type: 'task' as CalendarEventType, icon: Check, label: 'Task' },
-                          { type: 'timeblock' as CalendarEventType, icon: Timer, label: 'Block' },
-                          { type: 'meeting' as CalendarEventType, icon: Users, label: 'Meet' },
-                          { type: 'deadline' as CalendarEventType, icon: Circle, label: 'Due' },
-                        ].map(({ type, icon: Icon, label }) => (
-                          <button
-                            key={type}
-                            onClick={() => handleUpdateEvent(selectedEvent.id, selectedEvent.id, selectedEvent.sourceSpaceId, { eventType: type })}
-                            className={`flex items-center gap-1 px-2 py-1 rounded-md text-[10px] font-medium transition-all ${(selectedEvent.metadata?.eventType || 'event') === type
-                              ? 'bg-primary text-white shadow-sm'
-                              : 'bg-default-100 text-default-600 hover:bg-default-200'
-                              }`}
-                          >
-                            <Icon size={10} />
-                            {label}
-                          </button>
-                        ))}
-                      </div>
-
-                      {/* Labels Display */}
-                      {selectedEvent.metadata?.labels?.length > 0 && (
-                        <div className="flex gap-1 mt-2 flex-wrap">
-                          {selectedEvent.metadata.labels.map((label: EventLabel, idx: number) => (
-                            <Chip
-                              key={idx}
-                              size="sm"
-                              style={{ backgroundColor: label.color, color: 'white' }}
-                              className="text-[9px] h-5"
-                            >
-                              {label.text}
-                            </Chip>
-                          ))}
                         </div>
-                      )}
-                    </div>
 
-                    <div className="px-5 py-1.5 flex flex-col gap-4">
-                      {/* Time Section */}
-                      <div className="flex flex-col gap-1.5">
-                        <div className="grid grid-cols-2 gap-2">
-                          <Input
-                            type="datetime-local"
-                            variant="faded"
-                            size="sm"
-                            value={format(selectedEvent.start, "yyyy-MM-dd'T'HH:mm")}
-                            onChange={(e) => handleUpdateEvent(selectedEvent.id, selectedEvent.id, selectedEvent.sourceSpaceId, { startDate: e.target.value })}
-                            classNames={{
-                              inputWrapper: "h-8 px-2 bg-default-50/50 hover:bg-default-100 border-transparent transition-colors rounded-lg",
-                              input: "text-xs font-medium text-default-600"
-                            }}
-                          />
-                          <Input
-                            type="datetime-local"
-                            variant="faded"
-                            size="sm"
-                            value={selectedEvent.end ? format(selectedEvent.end, "yyyy-MM-dd'T'HH:mm") : ''}
-                            onChange={(e) => handleUpdateEvent(selectedEvent.id, selectedEvent.id, selectedEvent.sourceSpaceId, { endDate: e.target.value })}
-                            classNames={{
-                              inputWrapper: "h-8 px-2 bg-default-50/50 hover:bg-default-100 border-transparent transition-colors rounded-lg",
-                              input: "text-xs font-medium text-default-600"
-                            }}
-                          />
-                        </div>
-                      </div>
+                        {/* Info Section */}
+                        <div className="flex flex-col gap-1.5">
+                          <div className="flex gap-1.5 items-center text-default-400 text-[10px] font-bold uppercase tracking-wider pl-1">
+                            <span className="w-1 h-1 rounded-full bg-primary" /> INFO
+                          </div>
+                          {(() => {
+                            const infoSpaceId = selectedEvent.metadata?.infoSpaceId;
+                            const infoSpace = infoSpaceId ? spacesState.spaces.find((s: any) => s.id === infoSpaceId) : null;
 
-                      {/* Info Section */}
-                      <div className="flex flex-col gap-1.5">
-                        <div className="flex gap-1.5 items-center text-default-400 text-[10px] font-bold uppercase tracking-wider pl-1">
-                          <span className="w-1 h-1 rounded-full bg-primary" /> INFO
-                        </div>
-                        {(() => {
-                          const infoSpaceId = selectedEvent.metadata?.infoSpaceId;
-                          const infoSpace = infoSpaceId ? spacesState.spaces.find((s: any) => s.id === infoSpaceId) : null;
-
-                          if (infoSpace) {
-                            return (
-                              <div className="h-[200px] overflow-y-auto overflow-x-hidden bg-white">
-                                <div style={{ zoom: 0.8, paddingTop: '10px', paddingBottom: '12px' }}>
-                                  <PageEditor
-                                    space={infoSpace}
-                                    spacesState={spacesState}
-                                    isEmbedded={true}
-                                  />
+                            if (infoSpace) {
+                              return (
+                                <div className="h-[200px] overflow-y-auto overflow-x-hidden bg-white">
+                                  <div style={{ zoom: 0.8, paddingTop: '10px', paddingBottom: '12px' }}>
+                                    <PageEditor
+                                      space={infoSpace}
+                                      spacesState={spacesState}
+                                      isEmbedded={true}
+                                    />
+                                  </div>
                                 </div>
-                              </div>
+                              );
+                            }
+
+                            return (
+                              <Button
+                                size="sm"
+                                variant="flat"
+                                className="w-full justify-between h-12 bg-white border border-default-200/50 shadow-sm hover:border-default-300 hover:shadow transition-all rounded-xl group px-3"
+                                startContent={<div className="p-1.5 bg-primary/10 rounded-md text-primary-600 group-hover:bg-primary/20 transition-colors"><Layout size={16} /></div>}
+                                endContent={<ExternalLink size={14} className="opacity-30 group-hover:opacity-100 transition-opacity" />}
+                                onClick={() => {
+                                  const newSpace = spacesState.createSpace('page');
+                                  const infoTitle = `${selectedEvent.metadata?.title || 'Untitled Event'} - Info`;
+
+                                  spacesState.updateSpace(newSpace.id, {
+                                    title: infoTitle,
+                                    content: { blocks: [] },
+                                    icon: 'Calendar',
+                                    iconColor: '#FF5F56',
+                                    metadata: { isInfo: true, eventId: selectedEvent.id, isHidden: true, isCalendarElement: true }
+                                  });
+
+                                  handleUpdateEvent(selectedEvent.id, selectedEvent.id, selectedEvent.sourceSpaceId, { infoSpaceId: newSpace.id });
+                                }}
+                              >
+                                <div className="flex flex-col items-start gap-0.5 overflow-hidden">
+                                  <span className="font-bold text-default-700 text-[11px] truncate w-full text-left">
+                                    Create Info Page
+                                  </span>
+                                  <span className="text-[9px] text-default-400 font-medium">Click to add event details</span>
+                                </div>
+                              </Button>
                             );
-                          }
+                          })()}
+                        </div>
+                      </div>
 
-                          return (
-                            <Button
-                              size="sm"
-                              variant="flat"
-                              className="w-full justify-between h-12 bg-white border border-default-200/50 shadow-sm hover:border-default-300 hover:shadow transition-all rounded-xl group px-3"
-                              startContent={<div className="p-1.5 bg-primary/10 rounded-md text-primary-600 group-hover:bg-primary/20 transition-colors"><Layout size={16} /></div>}
-                              endContent={<ExternalLink size={14} className="opacity-30 group-hover:opacity-100 transition-opacity" />}
-                              onClick={() => {
-                                const newSpace = spacesState.createSpace('page');
-                                const infoTitle = `${selectedEvent.metadata?.title || 'Untitled Event'} - Info`;
-
-                                spacesState.updateSpace(newSpace.id, {
-                                  title: infoTitle,
-                                  content: { blocks: [] },
-                                  icon: 'Calendar',
-                                  iconColor: '#FF5F56',
-                                  metadata: { isInfo: true, eventId: selectedEvent.id, isHidden: true, isCalendarElement: true }
-                                });
-
-                                handleUpdateEvent(selectedEvent.id, selectedEvent.id, selectedEvent.sourceSpaceId, { infoSpaceId: newSpace.id });
-                              }}
-                            >
-                              <div className="flex flex-col items-start gap-0.5 overflow-hidden">
-                                <span className="font-bold text-default-700 text-[11px] truncate w-full text-left">
-                                  Create Info Page
-                                </span>
-                                <span className="text-[9px] text-default-400 font-medium">Click to add event details</span>
-                              </div>
-                            </Button>
-                          );
-                        })()}
+                      <div className="flex justify-between items-center p-3 bg-default-50/50 border-t border-divider/50 backdrop-blur-md mt-auto" style={{ borderBottomLeftRadius: '12px', borderBottomRightRadius: '12px' }}>
+                        <Button
+                          size="sm"
+                          variant="flat"
+                          color="danger"
+                          className="font-bold text-[10px] h-7 px-3 rounded-lg text-red-600 bg-red-50 hover:bg-red-100 transition-colors"
+                          startContent={<Trash2 size={12} className="text-red-600" />}
+                          onClick={() => {
+                            const space = spacesState.spaces.find((s: any) => s.id === selectedEvent.sourceSpaceId);
+                            if (space) {
+                              // Also delete associated info space if it exists
+                              if (selectedEvent.metadata?.infoSpaceId) {
+                                spacesState.deleteSpace(selectedEvent.metadata.infoSpaceId);
+                              }
+                              const blocks = space.content?.blocks.filter((b: any) => b.id !== selectedEvent.id);
+                              spacesState.updateSpace(selectedEvent.sourceSpaceId, { content: { ...space.content, blocks } });
+                              handleToggleEventSelection(null);
+                            }
+                          }}
+                        >
+                          Delete
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="flat"
+                          className="font-semibold text-[10px] h-7 px-3 rounded-lg"
+                          onClick={() => {
+                            // Sync the selected event's data to the drawer
+                            setNewEvent({
+                              title: selectedEvent.metadata?.title || '',
+                              startDate: format(selectedEvent.start, "yyyy-MM-dd'T'HH:mm"),
+                              endDate: selectedEvent.end ? format(selectedEvent.end, "yyyy-MM-dd'T'HH:mm") : format(selectedEvent.start, "yyyy-MM-dd'T'HH:mm"),
+                              notes: '',
+                              spaceId: selectedEvent.sourceSpaceId
+                            });
+                            setEditingEventId(selectedEvent.id);
+                            handleToggleEventSelection(null);
+                            onOpen();
+                          }}
+                        >
+                          More details
+                        </Button>
                       </div>
                     </div>
-
-                    <div className="flex justify-between items-center p-3 bg-default-50/50 border-t border-divider/50 backdrop-blur-md mt-auto" style={{ borderBottomLeftRadius: '12px', borderBottomRightRadius: '12px' }}>
-                      <Button
-                        size="sm"
-                        variant="flat"
-                        color="danger"
-                        className="font-bold text-[10px] h-7 px-3 rounded-lg text-red-600 bg-red-50 hover:bg-red-100 transition-colors"
-                        startContent={<Trash2 size={12} className="text-red-600" />}
-                        onClick={() => {
-                          const space = spacesState.spaces.find((s: any) => s.id === selectedEvent.sourceSpaceId);
-                          if (space) {
-                            // Also delete associated info space if it exists
-                            if (selectedEvent.metadata?.infoSpaceId) {
-                              spacesState.deleteSpace(selectedEvent.metadata.infoSpaceId);
-                            }
-                            const blocks = space.content?.blocks.filter((b: any) => b.id !== selectedEvent.id);
-                            spacesState.updateSpace(selectedEvent.sourceSpaceId, { content: { ...space.content, blocks } });
-                            handleToggleEventSelection(null);
-                          }
-                        }}
-                      >
-                        Delete
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="flat"
-                        className="font-semibold text-[10px] h-7 px-3 rounded-lg"
-                        onClick={() => {
-                          // Sync the selected event's data to the drawer
-                          setNewEvent({
-                            title: selectedEvent.metadata?.title || '',
-                            startDate: format(selectedEvent.start, "yyyy-MM-dd'T'HH:mm"),
-                            endDate: selectedEvent.end ? format(selectedEvent.end, "yyyy-MM-dd'T'HH:mm") : format(selectedEvent.start, "yyyy-MM-dd'T'HH:mm"),
-                            notes: '',
-                            spaceId: selectedEvent.sourceSpaceId
-                          });
-                          setEditingEventId(selectedEvent.id);
-                          handleToggleEventSelection(null);
-                          onOpen();
-                        }}
-                      >
-                        More details
-                      </Button>
-                    </div>
                   </div>
-                </div>
-              );
-            })()}
-          </motion.div >
-        )
+                );
+              })()}
+            </motion.div >
+          )
         }
       </AnimatePresence >
 
@@ -3676,7 +3838,7 @@ export function CalendarApp({ spacesState, viewportsState }: CalendarAppProps) {
                 animate={{ x: 0 }}
                 exit={{ x: '100%' }}
                 transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-                className="absolute top-0 right-0 bottom-0 w-[400px] bg-white shadow-lg z-[501] border-l border-default-200 flex flex-col"
+                className="absolute top-0 right-0 bottom-0 w-[360px] min-w-[360px] bg-white shadow-lg z-[501] border-l border-default-200 flex flex-col"
               >
                 <div className="flex items-center justify-between p-4 border-b border-divider bg-white">
                   <h2 className="text-lg font-bold">Create New Event</h2>
@@ -3782,40 +3944,44 @@ export function CalendarApp({ spacesState, viewportsState }: CalendarAppProps) {
       </AnimatePresence >
 
       {/* Context Menu for Events */}
-      {contextMenu && selectedEventIds.size > 0 && (
-        <div
-          className="fixed z-[9999]"
-          style={{ left: contextMenu.x, top: contextMenu.y }}
-          onClick={(e) => e.stopPropagation()}
-        >
-          <div className="bg-white border border-divider rounded-lg shadow-xl py-1 min-w-[180px] overflow-hidden">
-            <button
-              className="w-full px-3 py-2 text-left text-sm hover:bg-default-100 flex items-center gap-2.5 transition-colors"
-              onClick={() => handleDuplicateEvents(Array.from(selectedEventIds))}
-            >
-              <Copy size={14} className="text-default-500" />
-              <span>Duplicate{selectedEventIds.size > 1 ? ` (${selectedEventIds.size})` : ''}</span>
-            </button>
-            <div className="h-px bg-divider mx-2 my-1" />
-            <button
-              className="w-full px-3 py-2 text-left text-sm text-red-600 hover:bg-red-50 flex items-center gap-2.5 transition-colors"
-              onClick={() => handleDeleteEvents(Array.from(selectedEventIds))}
-            >
-              <Trash2 size={14} />
-              <span>Delete{selectedEventIds.size > 1 ? ` (${selectedEventIds.size})` : ''}</span>
-            </button>
+      {
+        contextMenu && selectedEventIds.size > 0 && (
+          <div
+            className="fixed z-[9999]"
+            style={{ left: contextMenu.x, top: contextMenu.y }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="bg-white border border-divider rounded-lg shadow-xl py-1 min-w-[180px] overflow-hidden">
+              <button
+                className="w-full px-3 py-2 text-left text-sm hover:bg-default-100 flex items-center gap-2.5 transition-colors"
+                onClick={() => handleDuplicateEvents(Array.from(selectedEventIds))}
+              >
+                <Copy size={14} className="text-default-500" />
+                <span>Duplicate{selectedEventIds.size > 1 ? ` (${selectedEventIds.size})` : ''}</span>
+              </button>
+              <div className="h-px bg-divider mx-2 my-1" />
+              <button
+                className="w-full px-3 py-2 text-left text-sm text-red-600 hover:bg-red-50 flex items-center gap-2.5 transition-colors"
+                onClick={() => handleDeleteEvents(Array.from(selectedEventIds))}
+              >
+                <Trash2 size={14} />
+                <span>Delete{selectedEventIds.size > 1 ? ` (${selectedEventIds.size})` : ''}</span>
+              </button>
+            </div>
           </div>
-        </div>
-      )}
+        )
+      }
 
       {/* Click outside to close context menu */}
-      {contextMenu && (
-        <div
-          className="fixed inset-0 z-[9998]"
-          onClick={() => setContextMenu(null)}
-          onContextMenu={(e) => { e.preventDefault(); setContextMenu(null); }}
-        />
-      )}
+      {
+        contextMenu && (
+          <div
+            className="fixed inset-0 z-[9998]"
+            onClick={() => setContextMenu(null)}
+            onContextMenu={(e) => { e.preventDefault(); setContextMenu(null); }}
+          />
+        )
+      }
     </div >
   );
 }
