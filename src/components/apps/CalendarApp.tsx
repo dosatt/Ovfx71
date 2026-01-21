@@ -108,6 +108,11 @@ interface CalendarEventMetadata {
   eventType: CalendarEventType;
   isCompleted?: boolean; // For tasks
 
+  // Deadline specific fields
+  deadlineDate?: string; // Only date part (yyyy-MM-dd)
+  deadlineTime?: string; // Optional time (HH:mm)
+  deadlineHasTime?: boolean; // Whether time is specified
+
   // WIP fields
   timezone?: string;
   location?: string;
@@ -690,7 +695,7 @@ const CalendarDayCell = memo(({
               lineHeight: '1'
             }}
           >
-            {format(day, 'MMMM', { locale: enUS })}
+            {format(day, 'MMM', { locale: enUS })}
           </span>
         )}
         <span className={`
@@ -1208,7 +1213,10 @@ export function CalendarApp({ spacesState, viewportsState }: CalendarAppProps) {
     notes: '',
     spaceId: '',
     eventType: 'event' as CalendarEventType,
-    labels: [] as EventLabel[]
+    labels: [] as EventLabel[],
+    deadlineDate: format(new Date(), 'yyyy-MM-dd'),
+    deadlineTime: '23:59',
+    deadlineHasTime: false
   });
   const [editingEventId, setEditingEventId] = useState<string | null>(null);
 
@@ -1962,20 +1970,37 @@ export function CalendarApp({ spacesState, viewportsState }: CalendarAppProps) {
 
     const targetSpace = spacesStateRef.current.getSpace(targetSpaceId);
     if (targetSpace) {
+      // Handle deadline events differently
+      let startDate = newEvent.startDate;
+      let endDate = newEvent.endDate;
+
+      if (newEvent.eventType === 'deadline') {
+        // For deadlines, use deadlineDate and optionally deadlineTime
+        const deadlineDateTime = newEvent.deadlineHasTime
+          ? `${newEvent.deadlineDate}T${newEvent.deadlineTime}`
+          : `${newEvent.deadlineDate}T23:59`;
+        startDate = deadlineDateTime;
+        endDate = deadlineDateTime; // Same as start for deadlines
+      }
+
       const newBlock = {
         id: `block_${Date.now()}`,
         type: 'calendar',
         content: '',
         metadata: {
-          startDate: newEvent.startDate,
-          endDate: newEvent.endDate,
+          startDate,
+          endDate,
           title: finalTitle,
           infoSpaceId: infoSpace.id,
           displayMode: 'card',
           updatedAt: Date.now(),
           eventType: newEvent.eventType,
           isCompleted: false,
-          labels: newEvent.labels || []
+          labels: newEvent.labels || [],
+          // Deadline-specific fields
+          deadlineDate: newEvent.eventType === 'deadline' ? newEvent.deadlineDate : undefined,
+          deadlineTime: newEvent.eventType === 'deadline' && newEvent.deadlineHasTime ? newEvent.deadlineTime : undefined,
+          deadlineHasTime: newEvent.eventType === 'deadline' ? newEvent.deadlineHasTime : undefined
         }
       };
 
@@ -1999,7 +2024,10 @@ export function CalendarApp({ spacesState, viewportsState }: CalendarAppProps) {
       notes: '',
       spaceId: '',
       eventType: 'event' as CalendarEventType,
-      labels: []
+      labels: [],
+      deadlineDate: format(new Date(), 'yyyy-MM-dd'),
+      deadlineTime: '23:59',
+      deadlineHasTime: false
     });
   }, [newEvent, onClose]);
 
@@ -3300,30 +3328,74 @@ export function CalendarApp({ spacesState, viewportsState }: CalendarAppProps) {
                       </div>
 
                       <div className="flex flex-col gap-2">
-                        <div className="grid grid-cols-2 gap-2">
-                          <Input
-                            type="datetime-local"
-                            variant="faded"
-                            size="sm"
-                            value={format(new Date(newEvent.startDate), "yyyy-MM-dd'T'HH:mm")}
-                            onChange={(e) => setNewEvent(prev => ({ ...prev, startDate: e.target.value }))}
-                            classNames={{
-                              inputWrapper: "h-7 px-2 bg-default-50/50 hover:bg-default-100 border-transparent transition-colors rounded-lg shadow-none",
-                              input: "text-xs font-medium text-default-600"
-                            }}
-                          />
-                          <Input
-                            type="datetime-local"
-                            variant="faded"
-                            size="sm"
-                            value={format(new Date(newEvent.endDate), "yyyy-MM-dd'T'HH:mm")}
-                            onChange={(e) => setNewEvent(prev => ({ ...prev, endDate: e.target.value }))}
-                            classNames={{
-                              inputWrapper: "h-7 px-2 bg-default-50/50 hover:bg-default-100 border-transparent transition-colors rounded-lg shadow-none",
-                              input: "text-xs font-medium text-default-600"
-                            }}
-                          />
-                        </div>
+                        {newEvent.eventType === 'deadline' ? (
+                          /* Deadline-specific UI */
+                          <div className="flex flex-col gap-2">
+                            <div className="flex items-center gap-2">
+                              <Input
+                                type="date"
+                                variant="faded"
+                                size="sm"
+                                label="Deadline Date"
+                                value={newEvent.deadlineDate}
+                                onChange={(e) => setNewEvent(prev => ({ ...prev, deadlineDate: e.target.value }))}
+                                classNames={{
+                                  inputWrapper: "h-9 px-2 bg-default-50/50 hover:bg-default-100 border-transparent transition-colors rounded-lg shadow-none",
+                                  input: "text-xs font-medium text-default-600"
+                                }}
+                              />
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <input
+                                type="checkbox"
+                                id="deadlineHasTime"
+                                checked={newEvent.deadlineHasTime}
+                                onChange={(e) => setNewEvent(prev => ({ ...prev, deadlineHasTime: e.target.checked }))}
+                                className="w-4 h-4 rounded border-default-300"
+                              />
+                              <label htmlFor="deadlineHasTime" className="text-xs text-default-600">Include time</label>
+                              {newEvent.deadlineHasTime && (
+                                <Input
+                                  type="time"
+                                  variant="faded"
+                                  size="sm"
+                                  value={newEvent.deadlineTime}
+                                  onChange={(e) => setNewEvent(prev => ({ ...prev, deadlineTime: e.target.value }))}
+                                  classNames={{
+                                    inputWrapper: "h-7 px-2 bg-default-50/50 hover:bg-default-100 border-transparent transition-colors rounded-lg shadow-none w-24",
+                                    input: "text-xs font-medium text-default-600"
+                                  }}
+                                />
+                              )}
+                            </div>
+                          </div>
+                        ) : (
+                          /* Regular event UI */
+                          <div className="grid grid-cols-2 gap-2">
+                            <Input
+                              type="datetime-local"
+                              variant="faded"
+                              size="sm"
+                              value={format(new Date(newEvent.startDate), "yyyy-MM-dd'T'HH:mm")}
+                              onChange={(e) => setNewEvent(prev => ({ ...prev, startDate: e.target.value }))}
+                              classNames={{
+                                inputWrapper: "h-7 px-2 bg-default-50/50 hover:bg-default-100 border-transparent transition-colors rounded-lg shadow-none",
+                                input: "text-xs font-medium text-default-600"
+                              }}
+                            />
+                            <Input
+                              type="datetime-local"
+                              variant="faded"
+                              size="sm"
+                              value={format(new Date(newEvent.endDate), "yyyy-MM-dd'T'HH:mm")}
+                              onChange={(e) => setNewEvent(prev => ({ ...prev, endDate: e.target.value }))}
+                              classNames={{
+                                inputWrapper: "h-7 px-2 bg-default-50/50 hover:bg-default-100 border-transparent transition-colors rounded-lg shadow-none",
+                                input: "text-xs font-medium text-default-600"
+                              }}
+                            />
+                          </div>
+                        )}
                       </div>
                     </div>
 
