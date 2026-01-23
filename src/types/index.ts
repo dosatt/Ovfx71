@@ -119,6 +119,7 @@ export interface Tab {
   title: string;
   history?: Array<{ spaceId?: string; appType?: AppType; title?: string }>;
   historyIndex?: number;
+  previewUrl?: string;
 }
 
 export type AppType = 'browser' | 'calendar' | 'mail' | 'chat' | 'draw' | 'settings' | 'design-system';

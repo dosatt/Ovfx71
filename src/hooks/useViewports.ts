@@ -21,7 +21,23 @@ export function useViewports() {
   const [focusedViewportId, setFocusedViewportId] = useState<string>('root');
 
   useEffect(() => {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(rootViewport));
+    // Clone the viewport tree and remove previewUrls before saving to localStorage
+    const cleanPreviews = (v: Viewport): Viewport => {
+      const cleaned = { ...v };
+      if (cleaned.tabs) {
+        cleaned.tabs = cleaned.tabs.map(t => {
+          const { previewUrl, ...rest } = t;
+          return rest;
+        });
+      }
+      if (cleaned.children) {
+        cleaned.children = [cleanPreviews(cleaned.children[0]), cleanPreviews(cleaned.children[1])];
+      }
+      return cleaned;
+    };
+
+    const cleanedTree = cleanPreviews(rootViewport);
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(cleanedTree));
   }, [rootViewport]);
 
   const findViewport = (id: string, viewport: Viewport = rootViewport): Viewport | null => {
@@ -405,6 +421,13 @@ export function useViewports() {
     return (tab.historyIndex ?? -1) < history.length - 1;
   };
 
+  const setTabPreview = (viewportId: string, tabId: string, previewUrl: string) => {
+    setRootViewport(prev => updateViewportInTree(viewportId, (viewport) => ({
+      ...viewport,
+      tabs: viewport.tabs.map(t => t.id === tabId ? { ...t, previewUrl } : t)
+    }), prev));
+  };
+
   const moveTab = (sourceViewportId: string, targetViewportId: string, tabId: string, targetIndex: number) => {
     setRootViewport(prev => {
       let movedTab: Tab | null = null;
@@ -485,6 +508,7 @@ export function useViewports() {
     canNavigateBack,
     canNavigateForward,
     moveTab,
+    setTabPreview,
     focusedViewportId,
     setFocusedViewportId
   };

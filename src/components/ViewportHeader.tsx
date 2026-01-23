@@ -1,5 +1,6 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { createPortal } from 'react-dom';
+import { domToDataUrl } from 'modern-screenshot';
 import { useDrag, useDrop } from 'react-dnd';
 import {
   Button,
@@ -19,6 +20,7 @@ import type { Viewport } from '../types';
 import type { Space } from '../types';
 import type { Settings } from '../hooks/useSettings';
 import { PropertiesView } from './spaces/PropertiesView';
+import { TabPreview } from './TabPreview';
 
 const ITEM_TYPE_TAB = 'VIEWPORT_TAB';
 
@@ -34,6 +36,7 @@ interface TabItemProps {
   displayTitle: string;
   settings: Settings;
   viewportsState: any;
+  spacesState: any;
   onCloseTab: (tabId: string) => void;
   onContextMenu: (e: React.MouseEvent, tabId: string, title: string) => void;
   index: number;
@@ -51,6 +54,7 @@ function TabItem({
   displayTitle,
   settings,
   viewportsState,
+  spacesState,
   onCloseTab,
   onContextMenu,
   index
@@ -58,6 +62,27 @@ function TabItem({
   const ref = useRef<HTMLDivElement>(null);
   const [isHovered, setIsHovered] = useState(false);
   const isViewportFocused = viewportsState.focusedViewportId === viewport.id;
+
+  const captureCurrentView = async () => {
+    // We only capture what's currently VISIBLE in the viewport content area
+    const container = document.querySelector(`[data-viewport-id="${viewport.id}"] [data-viewport-content]`);
+    if (!container) return;
+
+    try {
+      // Find the currently active tab ID to assign the preview to it
+      const activeTabId = viewport.tabs.find(t => t.id === viewport.activeTabId)?.id;
+      if (!activeTabId) return;
+
+      const dataUrl = await domToDataUrl(container as HTMLElement, {
+        scale: 0.52,
+        quality: 0.6
+      });
+
+      viewportsState.setTabPreview(viewport.id, activeTabId, dataUrl);
+    } catch (err) {
+      // Silent fail
+    }
+  };
 
   const [{ isDragging }, drag] = useDrag({
     type: ITEM_TYPE_TAB,
@@ -104,17 +129,19 @@ function TabItem({
   const getTabActiveStyle = () => {
     if (!isActive || !isViewportFocused) return {};
 
+    const isLight = settings.theme === 'light';
+
     if (settings.backgroundType === 'gradient') {
       return {
         background: `linear-gradient(${settings.gradientAngle}deg, ${settings.gradientStart} 0%, ${settings.gradientEnd} 100%)`,
-        filter: 'brightness(1.1) saturate(1.2)',
-        color: 'white'
+        filter: isLight ? 'brightness(0.98) contrast(1.02)' : 'brightness(1.1) saturate(1.2)',
+        color: isLight ? '#111827' : 'white'
       };
     }
     return {
       backgroundColor: settings.backgroundColor,
-      filter: 'brightness(0.9) saturate(1.5)',
-      color: 'white'
+      filter: isLight ? 'brightness(0.98) contrast(1.02)' : 'brightness(0.9) saturate(1.5)',
+      color: isLight ? '#111827' : 'white'
     };
   };
 
@@ -122,25 +149,20 @@ function TabItem({
     <div
       ref={ref}
       className={`flex-shrink-0 flex items-center h-full py-1 ${isDragging ? 'opacity-0' : 'opacity-100'}`}
-      onMouseEnter={() => setIsHovered(true)}
+      onMouseEnter={() => {
+        setIsHovered(true);
+        if (isActive) {
+          captureCurrentView();
+        }
+      }}
       onMouseLeave={() => setIsHovered(false)}
     >
       <Tooltip
         content={
-          <div className="p-1 min-w-[160px]">
-            <p className="text-tiny font-bold mb-2 border-b border-white/20 pb-1">{tab.title}</p>
-            <div className="aspect-video w-full rounded bg-default-200/20 overflow-hidden relative flex items-center justify-center border border-white/10 shadow-inner">
-              {tabSpace?.type === 'page' && <File size={24} className="text-default-400 opacity-20" />}
-              {tabSpace?.type === 'canvas' && <LayoutGrid size={24} className="text-default-400 opacity-20" />}
-              {!tab.spaceId && <DiamondPlus size={24} className="text-default-400 opacity-20" />}
-              <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent" />
-              <div className="absolute bottom-1 right-1">
-                <Eye size={10} className="text-white/40" />
-              </div>
+          <div className="p-0.5">
+            <div className="aspect-video w-[360px] rounded-xl bg-default-200/20 overflow-hidden relative border border-white/10 shadow-inner group">
+              <TabPreview tab={tab} tabSpace={tabSpace} spacesState={spacesState} />
             </div>
-            <p className="text-[10px] text-default-400 mt-2 italic">
-              {tabSpace?.type ? `Space: ${tabSpace.type}` : 'New Tab'}
-            </p>
           </div>
         }
         size="sm"
@@ -152,6 +174,9 @@ function TabItem({
           variant={isActive ? (isViewportFocused ? 'solid' : 'flat') : 'light'}
           color={isActive ? (isViewportFocused ? 'primary' : 'default') : 'default'}
           onClick={() => {
+            if (!isActive) {
+              captureCurrentView(); // Capture before switching
+            }
             viewportsState.setActiveTab(viewport.id, tab.id);
             viewportsState.setFocusedViewportId(viewport.id);
           }}
@@ -159,7 +184,7 @@ function TabItem({
           startContent={
             (isActive || showTitle) ? (
               IconComponent ? (
-                <IconComponent size={14} style={{ color: isActive && isViewportFocused ? 'white' : iconColor }} className="shrink-0" />
+                <IconComponent size={14} style={{ color: isActive && isViewportFocused ? (settings.theme === 'light' ? '#111827' : 'white') : iconColor }} className="shrink-0" />
               ) : (
                 tabSpace?.icon && <span className="shrink-0 text-[14px]">{tabSpace.icon}</span>
               )
@@ -178,7 +203,7 @@ function TabItem({
                   e.stopPropagation();
                   onCloseTab(tab.id);
                 }}
-                className={`ml-1 flex items-center cursor-pointer hover:bg-white/20 rounded-full p-0.5 transition-all ${isActive && isViewportFocused ? 'text-white/80' : 'text-default-500'}`}
+                className={`ml-1 flex items-center cursor-pointer hover:bg-black/5 rounded-full p-0.5 transition-all ${isActive && isViewportFocused ? (settings.theme === 'light' ? 'text-black/60' : 'text-white/80') : 'text-default-500'}`}
               >
                 <X size={12} />
               </span>
@@ -186,21 +211,21 @@ function TabItem({
           }
           className={`
             h-8 min-h-0 rounded-full transition-all duration-300
-            ${isActive ? 'shadow-lg px-4' : 'px-3 text-default-500 hover:text-default-900'}
-            ${isActive && !isViewportFocused ? 'bg-default-200/50 text-default-700' : ''}
-            ${isActive || showTitle ? 'min-w-[100px] max-w-[160px] justify-between' : 'min-w-[32px] w-auto justify-center'}
-            ${isViewportFocused && isActive ? 'border-1 border-white/40 shadow-xl shadow-primary/20 scale-105' : ''}
+          ${isActive ? 'shadow-lg px-4' : 'px-3 text-default-500 hover:text-default-900'}
+          ${isActive && !isViewportFocused ? 'bg-default-200/50 text-default-700' : ''}
+          ${isActive || showTitle ? 'min-w-[100px] max-w-[160px] justify-between' : 'min-w-[32px] w-auto justify-center'}
+          ${isViewportFocused && isActive ? `border-1 ${settings.theme === 'light' ? 'border-black/5 shadow-black/5' : 'border-white/40 shadow-primary/20'} shadow-xl scale-105` : ''}
           `}
           onContextMenu={(e) => onContextMenu(e, tab.id, tab.title)}
         >
           {(isActive || showTitle) && (
-            <span className={`truncate text-left flex-1 text-[13px] font-semibold ml-1 ${isActive && isViewportFocused ? 'text-white' : (isActive ? 'text-default-700' : '')}`}>
+            <span className={`truncate text-left flex-1 text-[13px] font-semibold ml-1 ${isActive && isViewportFocused ? (settings.theme === 'light' ? 'text-black' : 'text-white') : (isActive ? 'text-default-700' : '')}`}>
               {displayTitle}
             </span>
           )}
         </Button>
       </Tooltip>
-    </div>
+    </div >
   );
 }
 
@@ -431,6 +456,7 @@ export function ViewportHeader({ viewport, space, spacesState, viewportsState, s
               displayTitle={displayTitle}
               settings={settings}
               viewportsState={viewportsState}
+              spacesState={spacesState}
               onCloseTab={handleCloseTab}
               onContextMenu={handleTabContextMenu}
               index={index}
