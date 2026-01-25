@@ -94,7 +94,8 @@ export function ViewportContent({
       <div
         data-viewport-content
         className={`
-          flex-1 overflow-auto no-scrollbar
+          flex-1
+          ${space?.type === 'page' && !showMarkdown ? 'overflow-hidden' : 'overflow-auto no-scrollbar'}
           ${settings.viewportTransparency ? 'bg-transparent' : 'bg-background'}
         `}
       >

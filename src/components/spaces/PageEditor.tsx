@@ -60,16 +60,19 @@ export function PageEditor({
   const titleInputRef = useRef<HTMLInputElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { pushAction } = useHistory();
-  const [isScrolling, setIsScrolling] = useState(false);
-  const scrollTimeoutRef = useRef<any>(null);
+  const [isActive, setIsActive] = useState(false);
+  const activityTimeoutRef = useRef<any>(null);
 
-  const handleScroll = useCallback(() => {
-    setIsScrolling(true);
-    if (scrollTimeoutRef.current) clearTimeout(scrollTimeoutRef.current);
-    scrollTimeoutRef.current = setTimeout(() => {
-      setIsScrolling(false);
+  const handleActivity = useCallback(() => {
+    setIsActive(true);
+    if (activityTimeoutRef.current) clearTimeout(activityTimeoutRef.current);
+    activityTimeoutRef.current = setTimeout(() => {
+      setIsActive(false);
     }, 500);
   }, []);
+
+  const handleScroll = handleActivity;
+  const handleMouseMove = handleActivity;
 
   const content = space.content as PageContent;
   const blocks = content?.blocks || [];
@@ -1146,7 +1149,8 @@ export function PageEditor({
     <div
       ref={dropRef}
       onScroll={handleScroll}
-      className={`flex-1 h-full overflow-y-auto overflow-x-hidden transition-colors duration-200 autohide-scrollbar ${isScrolling ? 'is-scrolling' : ''} ${isCalendarEmbed ? '' : 'min-h-[500px] pb-32'} ${isOver ? 'bg-primary/5' : ''}`}
+      onMouseMove={handleMouseMove}
+      className={`flex-1 h-full overflow-y-auto overflow-x-hidden transition-colors duration-200 autohide-scrollbar relative ${isActive ? 'is-active' : ''} ${isCalendarEmbed ? '' : 'min-h-[500px] pb-32'} ${isOver ? 'bg-primary/5' : ''}`}
     >
       <div
         className={`${isCalendarEmbed ? 'w-full' : 'max-w-4xl mx-auto'} flex flex-col transition-all duration-300 ${isCalendarEmbed

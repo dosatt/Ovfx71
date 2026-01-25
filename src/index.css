@@ -5384,10 +5384,16 @@ input[type=range].slider::-webkit-slider-runnable-track {
 .autohide-scrollbar {
   overflow-y: auto;
   scrollbar-width: thin;
-  scrollbar-color: transparent transparent;
-  transition: scrollbar-color 2s cubic-bezier(0.4, 0, 0.2, 1);
+  --scrollbar-thumb-active: rgba(0, 0, 0, 0.35);
+  --scrollbar-thumb-inactive: rgba(0, 0, 0, 0);
+  scrollbar-color: var(--scrollbar-thumb-inactive) var(--scrollbar-thumb-inactive);
+  transition: scrollbar-color 0.5s ease-in-out;
   border-right: none !important;
-  /* Remove any border/line */
+}
+
+.dark .autohide-scrollbar {
+  --scrollbar-thumb-active: rgba(255, 255, 255, 0.45);
+  --scrollbar-thumb-inactive: rgba(255, 255, 255, 0);
 }
 
 @supports (overflow: overlay) {
@@ -5396,9 +5402,9 @@ input[type=range].slider::-webkit-slider-runnable-track {
   }
 }
 
-.autohide-scrollbar:hover,
-.autohide-scrollbar.is-scrolling {
-  scrollbar-color: var(--tw-black) transparent;
+.autohide-scrollbar.is-active {
+  scrollbar-color: var(--scrollbar-thumb-active) var(--scrollbar-thumb-inactive);
+  transition-duration: 0.1s;
 }
 
 /* For Webkit browsers (Chrome, Safari, Edge) */
@@ -5412,25 +5418,21 @@ input[type=range].slider::-webkit-slider-runnable-track {
 }
 
 .autohide-scrollbar::-webkit-scrollbar-thumb {
-  background: transparent;
   border-radius: 10px;
-  transition: background 2s cubic-bezier(0.4, 0, 0.2, 1);
+  background-color: var(--scrollbar-thumb-inactive);
+  transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-.autohide-scrollbar:hover::-webkit-scrollbar-thumb,
-.autohide-scrollbar.is-scrolling::-webkit-scrollbar-thumb {
-  background: rgba(0, 0, 0, 0.15);
+.autohide-scrollbar.is-active::-webkit-scrollbar-thumb {
+  background-color: var(--scrollbar-thumb-active);
+  transition: all 0.1s ease-in-out;
 }
 
-.dark .autohide-scrollbar:hover::-webkit-scrollbar-thumb,
-.dark .autohide-scrollbar.is-scrolling::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.2);
-}
-
+/* Remove hover overrides that break the inactivity timer and transitions */
 .autohide-scrollbar::-webkit-scrollbar-thumb:hover {
-  background: rgba(0, 0, 0, 0.25) !important;
+  background-color: var(--scrollbar-thumb-active);
 }
 
 .dark .autohide-scrollbar::-webkit-scrollbar-thumb:hover {
-  background: rgba(255, 255, 255, 0.3) !important;
+  background-color: var(--scrollbar-thumb-active);
 }
