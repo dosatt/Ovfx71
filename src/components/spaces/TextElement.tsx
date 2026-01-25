@@ -1765,7 +1765,7 @@ export function TextElement({
                     <input
                       value={block.metadata?.title || ''}
                       onChange={(e) => onUpdate(block.id, { metadata: { ...block.metadata, title: e.target.value } })}
-                      placeholder="Title"
+                      placeholder="Code"
                       className="code-block-title-input"
                     />
                   </div>
