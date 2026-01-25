@@ -5382,12 +5382,22 @@ input[type=range].slider::-webkit-slider-runnable-track {
 /* --- MANUAL SPACING PATCH END --- */
 
 .autohide-scrollbar {
+  overflow-y: auto;
   scrollbar-width: thin;
   scrollbar-color: transparent transparent;
-  transition: scrollbar-color 0.3s ease;
+  transition: scrollbar-color 2s cubic-bezier(0.4, 0, 0.2, 1);
+  border-right: none !important;
+  /* Remove any border/line */
 }
 
-.autohide-scrollbar:hover {
+@supports (overflow: overlay) {
+  .autohide-scrollbar {
+    overflow-y: overlay;
+  }
+}
+
+.autohide-scrollbar:hover,
+.autohide-scrollbar.is-scrolling {
   scrollbar-color: var(--tw-black) transparent;
 }
 
@@ -5404,14 +5414,16 @@ input[type=range].slider::-webkit-slider-runnable-track {
 .autohide-scrollbar::-webkit-scrollbar-thumb {
   background: transparent;
   border-radius: 10px;
-  transition: background 0.3s ease;
+  transition: background 2s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-.autohide-scrollbar:hover::-webkit-scrollbar-thumb {
+.autohide-scrollbar:hover::-webkit-scrollbar-thumb,
+.autohide-scrollbar.is-scrolling::-webkit-scrollbar-thumb {
   background: rgba(0, 0, 0, 0.15);
 }
 
-.dark .autohide-scrollbar:hover::-webkit-scrollbar-thumb {
+.dark .autohide-scrollbar:hover::-webkit-scrollbar-thumb,
+.dark .autohide-scrollbar.is-scrolling::-webkit-scrollbar-thumb {
   background: rgba(255, 255, 255, 0.2);
 }
 

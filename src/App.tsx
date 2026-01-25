@@ -46,7 +46,20 @@ export default function App() {
     };
 
     window.addEventListener("mousedown", handleGlobalClick);
-    return () => window.removeEventListener("mousedown", handleGlobalClick);
+
+    // Prevent Chrome native pinch-to-zoom by intercepting the wheel event with ctrlKey
+    const handleGlobalWheel = (e: WheelEvent) => {
+      if (e.ctrlKey) {
+        e.preventDefault();
+      }
+    };
+
+    window.addEventListener("wheel", handleGlobalWheel, { passive: false });
+
+    return () => {
+      window.removeEventListener("mousedown", handleGlobalClick);
+      window.removeEventListener("wheel", handleGlobalWheel);
+    };
   }, []);
 
   return (

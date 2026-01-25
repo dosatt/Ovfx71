@@ -464,33 +464,29 @@ export function ViewportHeader({ viewport, space, spacesState, viewportsState, s
           );
         })}
 
-        <Tooltip content="New Tab" size="sm">
-          <Button
-            isIconOnly
-            size="sm"
-            variant="light"
-            color="primary"
-            onClick={() => viewportsState.addTab(viewport.id, undefined, undefined, 'New Tab')}
-            className="flex-shrink-0 w-8 h-8 min-w-0 rounded-full"
-          >
-            <Plus size={16} />
-          </Button>
-        </Tooltip>
+        <Button
+          isIconOnly
+          size="sm"
+          variant="light"
+          color="primary"
+          onClick={() => viewportsState.addTab(viewport.id, undefined, undefined, 'New Tab')}
+          className="flex-shrink-0 w-8 h-8 min-w-0 rounded-full"
+        >
+          <Plus size={16} />
+        </Button>
       </div>
 
       {/* Actions */}
       <div className="flex gap-1 shrink-0">
-        <Tooltip content="Viewport actions" size="sm">
-          <Button
-            isIconOnly
-            size="sm"
-            variant="light"
-            onClick={(e) => setActionsMenuAnchor(e.currentTarget)}
-            className="min-w-0 w-8 h-8 rounded-full"
-          >
-            <LayoutGrid size={16} />
-          </Button>
-        </Tooltip>
+        <Button
+          isIconOnly
+          size="sm"
+          variant="light"
+          onClick={(e) => setActionsMenuAnchor(e.currentTarget)}
+          className="min-w-0 w-8 h-8 rounded-full"
+        >
+          <LayoutGrid size={16} />
+        </Button>
       </div>
 
       {/* Custom Dropdown menu */}

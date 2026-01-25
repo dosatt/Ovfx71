@@ -68,7 +68,7 @@ export function PageEditor({
     if (scrollTimeoutRef.current) clearTimeout(scrollTimeoutRef.current);
     scrollTimeoutRef.current = setTimeout(() => {
       setIsScrolling(false);
-    }, 2000);
+    }, 500);
   }, []);
 
   const content = space.content as PageContent;
@@ -1146,7 +1146,7 @@ export function PageEditor({
     <div
       ref={dropRef}
       onScroll={handleScroll}
-      className={`flex-1 h-full overflow-y-auto overflow-x-hidden transition-colors duration-200 ${isScrolling ? 'autohide-scrollbar' : 'no-scrollbar'} ${isCalendarEmbed ? '' : 'min-h-[500px] pb-32'} ${isOver ? 'bg-primary/5' : ''}`}
+      className={`flex-1 h-full overflow-y-auto overflow-x-hidden transition-colors duration-200 autohide-scrollbar ${isScrolling ? 'is-scrolling' : ''} ${isCalendarEmbed ? '' : 'min-h-[500px] pb-32'} ${isOver ? 'bg-primary/5' : ''}`}
     >
       <div
         className={`${isCalendarEmbed ? 'w-full' : 'max-w-4xl mx-auto'} flex flex-col transition-all duration-300 ${isCalendarEmbed
@@ -1165,7 +1165,7 @@ export function PageEditor({
         )}
 
         {/* Actions Bar */}
-        {!isCalendarEmbed && (
+        {!isCalendarEmbed && space.type !== 'page' && (
           <div className="flex justify-end mb-4 opacity-0 hover:opacity-100 transition-opacity">
             <Button
               isIconOnly
