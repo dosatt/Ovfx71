@@ -73,6 +73,7 @@ import {
   TableCell,
   TableRow,
 } from "../ui/table";
+import { SupportedLanguage, supportedLanguages, highlightCode } from '../../utils/syntaxHighlighter';
 
 // Helper components for conditional rendering
 function RenderSpaceEmbed({ spaceId, spacesState, viewportsState }: any) {
@@ -883,7 +884,6 @@ export function TextElement({
         aPressCount.current = 0;
       }
 
-      e.preventDefault();
       e.stopPropagation();
 
       const newCount = aPressCount.current + 1;
@@ -891,20 +891,27 @@ export function TextElement({
       lastAPressTime.current = now;
 
       if (newCount === 1) {
+        // Allow browser to select all text within the contenteditable
+        // We don't call preventDefault here
+        return;
+      } else if (newCount === 2) {
+        e.preventDefault();
         // Seleziona il blocco corrente
         if (onToggleSelection) {
           onToggleSelection(block.id, false);
         }
-      } else if (newCount === 2) {
+      } else if (newCount === 3) {
+        e.preventDefault();
         // Seleziona il gruppo
         if (onSelectGroup) {
           onSelectGroup();
         } else if (onSelectAll) {
           // Se non c'è un gruppo, passa a Seleziona tutto
           onSelectAll();
-          aPressCount.current = 3;
+          aPressCount.current = 4;
         }
-      } else if (newCount >= 3) {
+      } else if (newCount >= 4) {
+        e.preventDefault();
         // Seleziona tutto
         if (onSelectAll) {
           onSelectAll();
@@ -933,42 +940,57 @@ export function TextElement({
       return;
     }
 
-    if (e.key === "Enter" && !e.shiftKey) {
-      e.preventDefault();
-
-      // If current block is a list type OR HEADER and is empty, convert to text
-      const typesToConvertToText = ['bulletList', 'numberedList', 'checkbox', 'checkboxNumberedList', 'heading1', 'heading2', 'heading3', 'heading4', 'math', 'callout'];
-      if (typesToConvertToText.includes(block.type) && (!block.content || block.content.trim() === '')) {
-        // If it's an indented list item, outdent it first before converting to text
-        if (canIndent && (block.indent || 0) > 0) {
-          onUpdate(block.id, { indent: (block.indent || 0) - 1 });
-          return;
-        }
-
-        onConvertBlock(block.id, 'text');
-
-        // Use a timeout to ensure React has re-rendered the component as text
-        // before attempting to focus it. We can't rely on existing refs because
-        // the component structure might change (e.g. from check+input to just input).
-        setTimeout(() => {
-          // We need to find the element again because the DOM might have been replaced
-          // or we just need to re-trigger focus on the updated component.
-          // Since we are inside the component instance, we can try using focusBlockByIndex 
-          // if available, which searches by ID/Index.
-          if (focusBlockByIndex) {
-            focusBlockByIndex(index);
+    if (e.key === "Enter") {
+      if (block.type === 'code') {
+        if (e.shiftKey) {
+          e.preventDefault();
+          const handler = createNextBlock || onCreateNextBlock;
+          if (handler) {
+            handler(block.id, 'text');
           }
-        }, 10);
+        }
+        // Se non c'è shiftKey, lasciamo che il browser gestisca l'Enter (nuova riga)
         return;
       }
 
-      const handler = createNextBlock || onCreateNextBlock;
-      if (handler) {
-        // If current block is a header, next block should be text
-        const nextType = block.type.startsWith('heading') ? 'text' : block.type;
-        handler(block.id, nextType);
+      if (!e.shiftKey) {
+        e.preventDefault();
+
+        // If current block is a list type OR HEADER and is empty, convert to text
+        const typesToConvertToText = ['bulletList', 'numberedList', 'checkbox', 'checkboxNumberedList', 'heading1', 'heading2', 'heading3', 'heading4', 'math', 'callout'];
+        if (typesToConvertToText.includes(block.type) && (!block.content || block.content.trim() === '')) {
+          // If it's an indented list item, outdent it first before converting to text
+          if (canIndent && (block.indent || 0) > 0) {
+            onUpdate(block.id, { indent: (block.indent || 0) - 1 });
+            return;
+          }
+
+          onConvertBlock(block.id, 'text');
+
+          // Use a timeout to ensure React has re-rendered the component as text
+          // before attempting to focus it. We can't rely on existing refs because
+          // the component structure might change (e.g. from check+input to just input).
+          setTimeout(() => {
+            // We need to find the element again because the DOM might have been replaced
+            // or we just need to re-trigger focus on the updated component.
+            // Since we are inside the component instance, we can try using focusBlockByIndex 
+            // if available, which searches by ID/Index.
+            if (focusBlockByIndex) {
+              focusBlockByIndex(index);
+            }
+          }, 10);
+          return;
+        }
+
+        const handler = createNextBlock || onCreateNextBlock;
+        if (handler) {
+          // If current block is a header, next block should be text
+          const nextType = block.type.startsWith('heading') ? 'text' : block.type;
+          handler(block.id, nextType);
+        }
       }
-    } else if (e.key === "Backspace") {
+    }
+    else if (e.key === "Backspace") {
       const target = e.target as HTMLElement;
       let isAtStart = false;
       let isEmpty = false;
@@ -1160,7 +1182,7 @@ export function TextElement({
       case 'heading3': styles = 'text-2xl font-semibold leading-tight'; break;
       case 'heading4': styles = 'text-xl font-semibold leading-tight'; break;
       case 'quote': styles = 'py-1 italic text-default-600 leading-relaxed font-script text-3xl'; break;
-      case 'code': styles = 'font-mono text-sm bg-default-100 p-3 rounded-md leading-normal'; break;
+      case 'code': styles = 'font-mono text-sm leading-normal'; break;
       case 'math': styles = 'font-mono bg-default-50 p-3 rounded-md border-l-4 border-primary leading-normal'; break;
       case 'callout': styles = 'bg-default-100 p-4 rounded-lg flex gap-3 items-start border border-default-200 leading-relaxed'; break;
       default: styles = 'text-base leading-relaxed'; break;
@@ -1735,6 +1757,59 @@ export function TextElement({
               <div className="flex gap-2 items-start">
                 <span className="font-medium min-w-[24px] shrink-0 text-right tabular-nums">{listNumber !== undefined ? listNumber + '.' : '1.'}</span>
                 {renderRichText(activeConfig.placeholder, "min-h-[24px] outline-none text-base w-full")}
+              </div>
+            ) : effectiveBlock.type === 'code' ? (
+              <div className="code-block-container w-full">
+                <div className="code-block-header flex justify-between items-center">
+                  <div className="flex-1 min-w-0 mr-2">
+                    <input
+                      value={block.metadata?.title || ''}
+                      onChange={(e) => onUpdate(block.id, { metadata: { ...block.metadata, title: e.target.value } })}
+                      placeholder="Title"
+                      className="code-block-title-input"
+                    />
+                  </div>
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Chip
+                        size="sm"
+                        variant="flat"
+                        className="cursor-pointer hover:bg-default-200 h-6 text-[10px]"
+                      >
+                        {supportedLanguages.find(l => l.value === (block.metadata?.language || 'javascript'))?.label || 'JavaScript'}
+                        <ChevronDown className="inline-block ml-1 h-2 w-2" />
+                      </Chip>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end" className="w-[160px] max-h-[300px] overflow-y-auto">
+                      <DropdownMenuLabel>Language</DropdownMenuLabel>
+                      <DropdownMenuSeparator />
+                      {supportedLanguages.map((lang) => (
+                        <DropdownMenuItem
+                          key={lang.value}
+                          onClick={() => onUpdate(block.id, { metadata: { ...block.metadata, language: lang.value } })}
+                          className={block.metadata?.language === lang.value ? 'bg-default-100' : ''}
+                        >
+                          {lang.label}
+                        </DropdownMenuItem>
+                      ))}
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </div>
+                <div className="p-4 pointer-events-auto">
+                  <RichTextEditor
+                    content={block.content}
+                    onChange={handleContentChange}
+                    onKeyDown={handleKeyDown}
+                    onFocus={() => setIsFocused(true)}
+                    onBlur={() => setIsFocused(false)}
+                    placeholder={activeConfig.placeholder}
+                    spacesState={spacesState}
+                    viewportsState={viewportsState}
+                    contentEditableRef={contentEditableRef}
+                    className="min-h-[24px] outline-none text-sm w-full font-mono"
+                    language={(block.metadata?.language as SupportedLanguage) || 'javascript'}
+                  />
+                </div>
               </div>
             ) : effectiveBlock.type === 'image' ? (
               <div className="flex flex-col gap-2">

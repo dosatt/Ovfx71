@@ -17,6 +17,7 @@ import {
   Sigma
 } from 'lucide-react';
 import { Button } from '@heroui/react';
+import { highlightCode, SupportedLanguage } from '../../utils/syntaxHighlighter';
 
 interface BlockEmbedProps {
   block: Block;
@@ -118,10 +119,18 @@ export function BlockEmbed({ block, sourceSpaceName, onNavigate, sourceSpaceId }
         );
       case 'code':
         return (
-          <div className="font-mono bg-default-100 p-3 rounded-md text-sm">
-            <span className="font-mono">
-              {block.content || '(vuoto)'}
-            </span>
+          <div className="code-block-container w-full">
+            {block.metadata?.title && (
+              <div className="code-block-header px-3 py-1 bg-default-50 border-b border-divider">
+                <span className="code-block-title-display">{block.metadata.title}</span>
+              </div>
+            )}
+            <div className="p-3 font-mono text-sm overflow-x-auto">
+              <pre
+                className="whitespace-pre-wrap break-words"
+                dangerouslySetInnerHTML={{ __html: highlightCode(block.content || '', (block.metadata?.language as SupportedLanguage) || 'javascript') }}
+              />
+            </div>
           </div>
         );
       case 'math':

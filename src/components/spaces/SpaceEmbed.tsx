@@ -11,6 +11,7 @@ import {
 } from 'lucide-react';
 import * as LucideIcons from 'lucide-react';
 import { Space } from '../../types';
+import { highlightCode, SupportedLanguage } from '../../utils/syntaxHighlighter';
 import { RichTextRenderer } from './RichTextRenderer';
 import { useSettings } from '../../hooks/useSettings';
 import { useState, useRef, useEffect } from 'react';
@@ -202,6 +203,25 @@ export function SpaceEmbed({ space, onNavigate, compact = false, spacesState }: 
                   <span className="italic overflow-hidden text-ellipsis whitespace-nowrap block font-script text-3xl">
                     {block.content || '(vuoto)'}
                   </span>
+                </div>
+              );
+            }
+
+            // Code
+            if (block.type === 'code') {
+              return (
+                <div key={index} className="code-block-container w-full mb-2">
+                  {block.metadata?.title && (
+                    <div className="code-block-header px-2 py-0.5 bg-default-50 border-b border-divider">
+                      <span className="code-block-title-display !text-[9px]">{block.metadata.title}</span>
+                    </div>
+                  )}
+                  <div className="p-2 font-mono text-[10px] overflow-hidden">
+                    <pre
+                      className="whitespace-nowrap overflow-hidden text-ellipsis"
+                      dangerouslySetInnerHTML={{ __html: highlightCode(block.content || '', (block.metadata?.language as SupportedLanguage) || 'javascript') }}
+                    />
+                  </div>
                 </div>
               );
             }

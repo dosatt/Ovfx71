@@ -5092,6 +5092,123 @@ body {
   line-height: 0.8;
 }
 
+/* Syntax Highlighting (VS Code Dark+ Style) */
+:root {
+  --syntax-keyword: #569cd6;
+  /* Blue */
+  --syntax-control: #c586c0;
+  /* Purple (if, else, return) */
+  --syntax-string: #ce9178;
+  /* Orange/Salmon */
+  --syntax-comment: #6a9955;
+  /* Green */
+  --syntax-number: #b5cea8;
+  /* Light Green */
+  --syntax-builtin: #4ec9b0;
+  /* Teal/Cyan (Types/Classes) */
+  --syntax-property: #9cdcfe;
+  /* Light Blue (Variables/Props) */
+  --syntax-operator: #d4d4d4;
+  /* Light Grey */
+  --syntax-class: #4ec9b0;
+  /* Teal */
+  --syntax-id: #dcdcaa;
+  /* Yellow */
+  --syntax-function: #dcdcaa;
+  /* Yellow */
+}
+
+.syntax-keyword {
+  color: var(--syntax-keyword);
+  font-weight: 500;
+}
+
+.syntax-control {
+  color: var(--syntax-control);
+  font-weight: 500;
+}
+
+.syntax-string {
+  color: var(--syntax-string);
+}
+
+.syntax-comment {
+  color: var(--syntax-comment);
+  font-style: italic;
+}
+
+.syntax-number {
+  color: var(--syntax-number);
+}
+
+.syntax-builtin {
+  color: var(--syntax-builtin);
+}
+
+.syntax-property {
+  color: var(--syntax-property);
+}
+
+.syntax-operator {
+  color: var(--syntax-operator);
+}
+
+.syntax-class {
+  color: var(--syntax-class);
+}
+
+.syntax-id {
+  color: var(--syntax-id);
+}
+
+.syntax-function {
+  color: var(--syntax-function);
+}
+
+/* Code Block Container */
+.code-block-container {
+  border: 1px solid #e2e8f0;
+  border-radius: 16px;
+  box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+  overflow: hidden;
+  background-color: transparent;
+  position: relative;
+}
+
+.code-block-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 4px 8px;
+  background-color: #f1f5f9;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.code-block-title-input {
+  background: transparent !important;
+  border: none !important;
+  font-size: 11px !important;
+  color: #64748b !important;
+  font-weight: 500 !important;
+  padding: 0 4px !important;
+  height: 20px !important;
+  width: auto !important;
+  min-width: 100px !important;
+  box-shadow: none !important;
+}
+
+.code-block-title-input:focus {
+  outline: none !important;
+  color: #475569 !important;
+}
+
+.code-block-title-display {
+  font-size: 10px;
+  color: #64748b;
+  font-weight: 500;
+  padding: 2px 4px;
+}
+
 #root {
   width: 100%;
   min-height: 100vh;
