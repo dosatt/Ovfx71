@@ -5087,6 +5087,11 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
+.font-script {
+  font-family: 'Tangerine', cursive;
+  line-height: 0.8;
+}
+
 #root {
   width: 100%;
   min-height: 100vh;

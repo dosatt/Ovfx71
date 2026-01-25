@@ -1159,7 +1159,7 @@ export function TextElement({
       case 'heading2': styles = 'text-3xl font-semibold leading-tight'; break;
       case 'heading3': styles = 'text-2xl font-semibold leading-tight'; break;
       case 'heading4': styles = 'text-xl font-semibold leading-tight'; break;
-      case 'quote': styles = 'border-l-4 border-default-300 pl-4 py-1 italic text-default-500 leading-relaxed'; break;
+      case 'quote': styles = 'py-1 italic text-default-600 leading-relaxed font-script text-3xl'; break;
       case 'code': styles = 'font-mono text-sm bg-default-100 p-3 rounded-md leading-normal'; break;
       case 'math': styles = 'font-mono bg-default-50 p-3 rounded-md border-l-4 border-primary leading-normal'; break;
       case 'callout': styles = 'bg-default-100 p-4 rounded-lg flex gap-3 items-start border border-default-200 leading-relaxed'; break;
@@ -1167,7 +1167,7 @@ export function TextElement({
     }
 
     // Alignment logic
-    if (isHeader || effectiveBlock.type === 'text') {
+    if (isHeader || effectiveBlock.type === 'text' || effectiveBlock.type === 'quote') {
       // The justification classes are kept but might not affect non-flex containers.
       // Text alignment is handled by getTextAlignmentClass() applied to inputs/editors.
       if (block.align === 'left') styles += ' justify-start';
@@ -1175,7 +1175,8 @@ export function TextElement({
       else if (block.align === 'right') styles += ' justify-end';
       else {
         // Default justification based on type
-        styles += ' justify-start';
+        if (effectiveBlock.type === 'quote') styles += ' justify-center';
+        else styles += ' justify-start';
       }
     }
 
@@ -1187,6 +1188,9 @@ export function TextElement({
     if (block.align === 'left') return 'text-left';
     if (block.align === 'center') return 'text-center';
     if (block.align === 'right') return 'text-right';
+
+    // Default logic: quote is centered by default
+    if (effectiveBlock.type === 'quote') return 'text-center';
 
     // Default logic: Always left to ensure cursor position is predictable (before the text)
     return 'text-left';
@@ -1482,7 +1486,7 @@ export function TextElement({
                     </>
                   )}
 
-                  {(isHeader || effectiveBlock.type === 'text') && (
+                  {(isHeader || effectiveBlock.type === 'text' || effectiveBlock.type === 'quote') && (
                     <>
                       <DropdownMenuSeparator className="my-2" />
                       <DropdownMenuSub>

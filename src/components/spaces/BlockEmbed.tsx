@@ -112,8 +112,8 @@ export function BlockEmbed({ block, sourceSpaceName, onNavigate, sourceSpaceId }
         );
       case 'quote':
         return (
-          <div className="border-l-4 border-divider pl-4">
-            <span className="italic">{block.content || '(vuoto)'}</span>
+          <div className="w-full text-center">
+            <span className="italic font-script text-3xl">{block.content || '(vuoto)'}</span>
           </div>
         );
       case 'code':
@@ -183,8 +183,9 @@ export function BlockEmbed({ block, sourceSpaceName, onNavigate, sourceSpaceId }
     <div
       className="p-4 bg-white shadow-sm"
       style={{
-        borderRadius: '32px',
-        border: '2px solid #D4AF37',
+        borderRadius: '16px',
+        border: '1px solid #e2e8f0',
+        boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1)',
         pointerEvents: 'auto'
       }}
     >

@@ -67,8 +67,8 @@ export function SpaceEmbed({ space, onNavigate, compact = false, spacesState }: 
   };
 
   const TypeIcon = getTypeIcon(space.type);
-  const SpaceIcon = space.icon && (LucideIcons as any)[space.icon] 
-    ? (LucideIcons as any)[space.icon] 
+  const SpaceIcon = space.icon && (LucideIcons as any)[space.icon]
+    ? (LucideIcons as any)[space.icon]
     : TypeIcon;
 
   // Preview content based on type
@@ -82,7 +82,7 @@ export function SpaceEmbed({ space, onNavigate, compact = false, spacesState }: 
           <h1 className="text-3xl font-bold text-center mb-4 overflow-hidden text-ellipsis whitespace-nowrap">
             {space.title}
           </h1>
-          
+
           {/* Blocchi */}
           {blocks.map((block: any, index: number) => {
             // Heading 1
@@ -197,9 +197,9 @@ export function SpaceEmbed({ space, onNavigate, compact = false, spacesState }: 
               return (
                 <div
                   key={index}
-                  className="border-l-4 border-divider pl-4 mb-2 overflow-hidden"
+                  className="w-full text-center overflow-hidden"
                 >
-                  <span className="italic overflow-hidden text-ellipsis whitespace-nowrap block">
+                  <span className="italic overflow-hidden text-ellipsis whitespace-nowrap block font-script text-3xl">
                     {block.content || '(vuoto)'}
                   </span>
                 </div>
@@ -286,10 +286,10 @@ export function SpaceEmbed({ space, onNavigate, compact = false, spacesState }: 
           const y1 = el.y;
           const x2 = el.x + (el.width || 0);
           const y2 = el.y + (el.height || 0);
-          
+
           // Determinazione del percorso (d) per supporto frecce elettriche/curvate
           let pathData = `M ${x1},${y1} L ${x2},${y2}`;
-          
+
           if (el.arrowType === 'curved') {
             const midX = (x1 + x2) / 2;
             const midY = (y1 + y2) / 2;
@@ -410,10 +410,10 @@ export function SpaceEmbed({ space, onNavigate, compact = false, spacesState }: 
                 const y1 = el.y;
                 const x2 = el.x + (el.width || 0);
                 const y2 = el.y + (el.height || 0);
-                
+
                 // Determinazione del percorso (d) per supporto frecce elettriche/curvate
                 let pathData = `M ${x1},${y1} L ${x2},${y2}`;
-                
+
                 if (el.arrowType === 'curved') {
                   const midX = (x1 + x2) / 2;
                   const midY = (y1 + y2) / 2;
@@ -450,7 +450,7 @@ export function SpaceEmbed({ space, onNavigate, compact = false, spacesState }: 
                       // Calcolo angolo finale per la punta della freccia
                       let angle = 0;
                       let lastX = x1, lastY = y1;
-                      
+
                       if (el.arrowType === 'electrical' && el.waypoints && el.waypoints.length > 0) {
                         const lastPoint = el.waypoints[el.waypoints.length - 1];
                         lastX = lastPoint.x;
@@ -469,7 +469,7 @@ export function SpaceEmbed({ space, onNavigate, compact = false, spacesState }: 
                         lastX = cpX;
                         lastY = cpY;
                       }
-                      
+
                       angle = Math.atan2(y2 - lastY, x2 - lastX);
                       const arrowSize = 8;
                       return (
@@ -619,8 +619,9 @@ export function SpaceEmbed({ space, onNavigate, compact = false, spacesState }: 
         }}
         className="p-4 bg-background relative overflow-visible transition-all cursor-default hover:shadow-sm"
         style={{
-          borderRadius: '32px',
-          border: '2px solid #D4AF37',
+          borderRadius: '16px',
+          border: '1px solid #e2e8f0',
+          boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1)',
           pointerEvents: 'auto'
         }}
       >
@@ -641,9 +642,9 @@ export function SpaceEmbed({ space, onNavigate, compact = false, spacesState }: 
         </div>
 
         {/* Anteprima con altezza condizionale */}
-        <div 
+        <div
           className="w-full"
-          style={{ 
+          style={{
             maxHeight: previewHeight === 'reduced' ? '300px' : 'none',
             overflow: previewHeight === 'reduced' ? 'auto' : 'visible'
           }}
