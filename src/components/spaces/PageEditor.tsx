@@ -547,6 +547,9 @@ export function PageEditor({
       return;
     }
 
+    const oldBlocks = [...blocks];
+
+
     // Remove the block(s)
     const removed = newBlocks.splice(dragIndex, count);
 
@@ -568,6 +571,21 @@ export function PageEditor({
 
     newBlocks.splice(insertIndex, 0, ...cleanedRemoved);
     updateContent(newBlocks);
+
+    pushAction({
+      type: 'moveBlock',
+      description: 'Sposta blocco',
+      undo: () => {
+        spacesState.updateSpace(space.id, {
+          content: { ...content, blocks: oldBlocks }
+        });
+      },
+      redo: () => {
+        spacesState.updateSpace(space.id, {
+          content: { ...content, blocks: newBlocks }
+        });
+      }
+    });
   }, [blocks, content, space.id, spacesState]);
 
   const toggleHeaderCollapse = (blockId: string) => {
@@ -750,6 +768,10 @@ export function PageEditor({
   const [{ isOver }, dropRef] = useDrop({
     accept: [ITEM_TYPE_TO_WORKSPACE, ITEM_TYPE_TEXT_ELEMENT, 'CALENDAR_EVENT', NativeTypes.FILE],
     drop: (item: any, monitor) => {
+      if (monitor.didDrop()) {
+        return;
+      }
+
       // Handle File Drop
       if (monitor.getItemType() === NativeTypes.FILE) {
         const files = item.files;

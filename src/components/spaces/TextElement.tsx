@@ -475,7 +475,8 @@ export function TextElement({
       const dropResult: any = monitor.getDropResult();
       // If the block was dropped into a collection view (which returns handled: true)
       // we remove it from the page to complete the "move" operation
-      if (dropResult?.handled && onDelete) {
+      // BUT if it was an internal move (moveHandled: true), we don't delete it because moveBlock handled it
+      if (dropResult?.handled && !dropResult?.moveHandled && onDelete) {
         onDelete(block.id);
       }
 
@@ -574,7 +575,7 @@ export function TextElement({
         }
       }
       setDropLinePosition(null);
-      return { pulledOut: true, handled: true };
+      return { pulledOut: true, handled: true, moveHandled: itemType === ITEM_TYPE_TEXT_ELEMENT && item.sourceSpaceId === currentSpaceId && dragMode !== 'duplicate' };
     },
     collect: (monitor) => ({
       isOver: monitor.isOver({ shallow: true }),
