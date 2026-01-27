@@ -7,6 +7,14 @@ import { Switch } from "../ui/switch";
 import {
   Trash2,
   AlertCircle,
+  Info,
+  AlertTriangle,
+  CheckCircle2,
+  XCircle,
+  Lightbulb,
+  Zap,
+  Flame,
+  Bug,
   Heading1,
   Heading2,
   Heading3,
@@ -74,6 +82,33 @@ import {
   TableRow,
 } from "../ui/table";
 import { SupportedLanguage, supportedLanguages, highlightCode } from '../../utils/syntaxHighlighter';
+
+const CALLOUT_THEMES = {
+  blue: { color: '#3b82f6', label: 'Blue' },
+  green: { color: '#10b981', label: 'Green' },
+  yellow: { color: '#f59e0b', label: 'Yellow' },
+  red: { color: '#ef4444', label: 'Red' },
+  purple: { color: '#8b5cf6', label: 'Purple' },
+  gray: { color: '#6b7280', label: 'Gray' },
+};
+
+const getCalloutBg = (hex: string) => `${hex}12`; // 12 is approx 7% opacity
+
+const CALLOUT_ICONS = {
+  AlertCircle,
+  Info,
+  AlertTriangle,
+  CheckCircle2,
+  XCircle,
+  Lightbulb,
+  Quote,
+  Zap,
+  Flame,
+  Bug,
+  Star,
+  Search,
+};
+
 
 // Helper components for conditional rendering
 function RenderSpaceEmbed({ spaceId, spacesState, viewportsState }: any) {
@@ -1188,7 +1223,10 @@ export function TextElement({
       case 'quote': styles = 'py-1 italic text-default-600 leading-relaxed font-script text-3xl'; break;
       case 'code': styles = 'font-mono text-sm leading-normal'; break;
       case 'math': styles = 'font-mono bg-default-50 p-3 rounded-md border-l-4 border-primary leading-normal'; break;
-      case 'callout': styles = 'bg-default-100 p-4 rounded-lg flex gap-3 items-start border border-default-200 leading-relaxed'; break;
+      case 'callout': {
+        styles = `p-0 rounded-lg flex flex-col items-stretch leading-relaxed overflow-hidden`;
+        break;
+      }
       default: styles = 'text-base leading-relaxed'; break;
     }
 
@@ -1556,6 +1594,34 @@ export function TextElement({
                             <AlignRight className="mr-2 h-4 w-4 text-default-500" />
                             <span className="text-sm text-default-700">Right</span>
                           </DropdownMenuItem>
+                        </DropdownMenuSubContent>
+                      </DropdownMenuSub>
+                    </>
+                  )}
+
+                  {effectiveBlock.type === 'callout' && (
+                    <>
+                      <DropdownMenuSeparator className="my-2" />
+                      <DropdownMenuSub>
+                        <DropdownMenuSubTrigger>
+                          <Palette className="mr-2 h-4 w-4" />
+                          <span>Callout Appearance</span>
+                        </DropdownMenuSubTrigger>
+                        <DropdownMenuSubContent className="w-[160px] p-1">
+                          {Object.entries(CALLOUT_THEMES).map(([id, theme]) => (
+                            <DropdownMenuItem
+                              key={id}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setIsMenuOpen(false);
+                                onUpdate(block.id, { metadata: { ...block.metadata, calloutColor: id } });
+                              }}
+                              className={`flex items-center p-2 cursor-pointer focus:bg-default-100 rounded-md outline-none ${block.metadata?.calloutColor === id ? 'bg-default-100' : ''}`}
+                            >
+                              <div className="w-4 h-4 rounded-full mr-2" style={{ backgroundColor: theme.color }} />
+                              <span className="text-sm text-default-700">{theme.label}</span>
+                            </DropdownMenuItem>
+                          ))}
                         </DropdownMenuSubContent>
                       </DropdownMenuSub>
                     </>
@@ -1941,6 +2007,54 @@ export function TextElement({
                 spacesState={spacesState}
                 viewportsState={viewportsState}
               />
+            ) : effectiveBlock.type === 'callout' ? (
+              <div
+                className="w-full flex flex-col"
+                style={{ backgroundColor: getCalloutBg(CALLOUT_THEMES[block.metadata?.calloutColor as keyof typeof CALLOUT_THEMES]?.color || CALLOUT_THEMES.blue.color) }}
+              >
+                <div
+                  className="pt-5 pb-1 px-3 flex items-center gap-2 font-bold"
+                  style={{ color: CALLOUT_THEMES[block.metadata?.calloutColor as keyof typeof CALLOUT_THEMES]?.color || CALLOUT_THEMES.blue.color }}
+                >
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <div className="cursor-pointer hover:bg-black/5 rounded p-1 transition-colors">
+                        {(() => {
+                          const IconName = block.metadata?.calloutIcon as keyof typeof CALLOUT_ICONS;
+                          const IconComp = (IconName && CALLOUT_ICONS[IconName]) || AlertCircle;
+                          return <IconComp size={18} />;
+                        })()}
+                      </div>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent className="p-2 min-w-[140px] grid grid-cols-4 gap-1">
+                      {Object.keys(CALLOUT_ICONS).map((iconName) => {
+                        const Icon = CALLOUT_ICONS[iconName as keyof typeof CALLOUT_ICONS];
+                        return (
+                          <DropdownMenuItem
+                            key={iconName}
+                            onSelect={() => onUpdate(block.id, { metadata: { ...block.metadata, calloutIcon: iconName } })}
+                            className="w-8 h-8 flex items-center justify-center cursor-pointer hover:bg-default-100 rounded-md focus:bg-default-100 outline-none p-0"
+                          >
+                            <Icon size={18} />
+                          </DropdownMenuItem>
+                        );
+                      })}
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                  <input
+                    value={block.metadata?.title || ''}
+                    onChange={(e) => onUpdate(block.id, { metadata: { ...block.metadata, title: e.target.value } })}
+                    placeholder="Callout"
+                    className="bg-transparent border-none outline-none font-bold flex-1"
+                    style={{ color: 'inherit' }}
+                  />
+                </div>
+                <div
+                  className="p-3 pb-4 pt-0"
+                >
+                  {renderRichText(activeConfig.placeholder, "min-h-[24px] outline-none text-base w-full")}
+                </div>
+              </div>
             ) : (
               renderRichText(activeConfig.placeholder, `bg-transparent border-none shadow-none outline-none p-0 font-inherit w-full ${getTextAlignmentClass()}`)
             )}
