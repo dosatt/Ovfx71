@@ -1,7 +1,7 @@
 import { LinkContextMenu } from './LinkContextMenu';
 import { useRef, useState, useEffect } from "react";
 import { useDrag, useDrop } from "react-dnd";
-import { Button, Textarea, Input, Chip, Tooltip } from "@heroui/react";
+import { Button, Textarea, Input, Chip, Tooltip, Popover, PopoverTrigger, PopoverContent } from "@heroui/react";
 import { Checkbox } from "../ui/checkbox";
 import { Switch } from "../ui/switch";
 import {
@@ -50,8 +50,11 @@ import {
   Star,
   Search,
   Library,
-  List
+  List,
+  Settings as SettingsIcon
 } from "lucide-react";
+import katex from 'katex';
+import 'katex/dist/katex.min.css';
 import { Block, BlockType } from "../../types";
 import { SpaceEmbed } from './SpaceEmbed';
 import { BlockEmbed } from './BlockEmbed';
@@ -60,6 +63,7 @@ import { CalendarElement } from './CalendarElement';
 import { CalendarAutocomplete } from './CalendarAutocomplete';
 import { SpaceLinkAutocomplete } from './SpaceLinkAutocomplete';
 import { RichTextEditor } from './RichTextEditor';
+import { motion, AnimatePresence } from 'motion/react';
 import { useCrossViewportDrag } from '../../hooks/useCrossViewportDrag';
 import { ITEM_TYPE_TEXT_ELEMENT } from '../SpaceTreeItem';
 import { blockTypeConfig, orderedBlockTypes } from './blockConfig';
@@ -389,6 +393,8 @@ export function TextElement({
   const [showRelinkMenu, setShowRelinkMenu] = useState(false);
   const [relinkMenuPosition, setRelinkMenuPosition] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
   const [relinkingLinkId, setRelinkingLinkId] = useState<string>('');
+
+  const [showMathInput, setShowMathInput] = useState(false);
 
   const [isFocused, setIsFocused] = useState(false);
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
@@ -1223,7 +1229,8 @@ export function TextElement({
       case 'heading4': styles = 'text-xl font-semibold leading-tight'; break;
       case 'quote': styles = 'py-1 italic text-default-600 leading-relaxed font-script text-3xl'; break;
       case 'code': styles = 'font-mono text-sm leading-normal'; break;
-      case 'math': styles = 'font-mono bg-default-50 p-3 rounded-md border-l-4 border-primary leading-normal'; break;
+
+      case 'math': styles = 'font-mono bg-default-50 p-3 rounded-md leading-normal'; break;
       case 'callout': {
         styles = `p-0 rounded-lg flex flex-col items-stretch leading-relaxed overflow-hidden`;
         break;
@@ -2048,57 +2055,120 @@ export function TextElement({
                   {renderRichText(activeConfig.placeholder, "min-h-[24px] outline-none text-base w-full")}
                 </div>
               </div>
+            ) : effectiveBlock.type === 'math' ? (
+              <div className="relative w-full py-1 flex flex-col items-center justify-center group overflow-hidden">
+                <div
+                  className={`w-full flex items-center justify-center overflow-x-auto py-1 cursor-pointer transition-all ${!block.content ? 'text-default-400 opacity-50' : ''}`}
+                  onClick={() => setShowMathInput(!showMathInput)}
+                  dangerouslySetInnerHTML={{
+                    __html: katex.renderToString(block.content || 'E = mc^2', {
+                      throwOnError: false,
+                      displayMode: true
+                    })
+                  }}
+                />
+
+                <div className="absolute top-0 right-0 opacity-0 group-hover:opacity-100 transition-opacity z-10">
+                  <Button
+                    isIconOnly
+                    size="sm"
+                    variant="light"
+                    className="min-w-0 w-8 h-8 rounded-full bg-default-100/80 backdrop-blur-sm shadow-sm hover:bg-default-200"
+                    onPress={() => setShowMathInput(!showMathInput)}
+                  >
+                    <Sigma size={16} className="text-primary" />
+                  </Button>
+                </div>
+
+                <AnimatePresence>
+                  {showMathInput && (
+                    <motion.div
+                      initial={{ height: 0, opacity: 0, marginTop: 0 }}
+                      animate={{ height: 'auto', opacity: 1, marginTop: 16 }}
+                      exit={{ height: 0, opacity: 0, marginTop: 0 }}
+                      className="w-full max-w-md"
+                    >
+                      <div className="flex flex-col gap-2 p-3 bg-white/50 backdrop-blur-sm rounded-lg border border-divider">
+                        <div className="flex justify-between items-center mb-1">
+                          <p className="text-[10px] font-bold text-default-500 uppercase tracking-wider">Formula LaTeX</p>
+                          <Button
+                            size="sm"
+                            variant="light"
+                            isIconOnly
+                            className="h-6 w-6 min-w-0"
+                            onPress={() => setShowMathInput(false)}
+                          >
+                            <ChevronDown size={14} className="rotate-180" />
+                          </Button>
+                        </div>
+                        <Input
+                          autoFocus
+                          value={block.content || ''}
+                          onValueChange={(val) => onUpdate(block.id, { content: val })}
+                          placeholder="E = mc^2"
+                          size="sm"
+                          variant="faded"
+                          classNames={{
+                            input: "text-center font-mono",
+                            inputWrapper: "bg-white shadow-sm"
+                          }}
+                        />
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
             ) : (
               renderRichText(activeConfig.placeholder, `bg-transparent border-none shadow-none outline-none p-0 font-inherit w-full ${getTextAlignmentClass()}`)
             )}
+
+            {/* Balancing Spacer for symmetry (compensates for the left-hand handle) */}
+            <div className="w-4 shrink-0 pointer-events-none" aria-hidden="true" />
+
+            {/* Link Autocomplete */}
+            {showSpaceLinkAutocomplete && (
+              <SpaceLinkAutocomplete
+                spaces={spacesState.spaces}
+                onSelect={handleSpaceSelected}
+                onClose={() => {
+                  setShowSpaceLinkAutocomplete(false);
+                  setLinkTriggerIndex(-1);
+                  setAutocompleteMode(null);
+                }}
+                position={spaceLinkPosition}
+                currentSpaceId={currentSpaceId}
+                selectedIndex={autocompleteSelectedIndex}
+                onSelectedIndexChange={setAutocompleteSelectedIndex}
+              />
+            )}
+
+            {showCalendarAutocomplete && (
+              <CalendarAutocomplete
+                spaces={spacesState.spaces}
+                onSelect={handleEventSelected}
+                onCreateNew={handleCreateNewEvent}
+                onClose={() => {
+                  setShowCalendarAutocomplete(false);
+                  setLinkTriggerIndex(-1);
+                }}
+                position={spaceLinkPosition}
+              />
+            )}
+
+            {/* Link Context Menu */}
+            {showLinkContextMenu && (
+              <LinkContextMenu
+                linkId={selectedLinkId}
+                linkText={selectedLinkText}
+                position={linkContextMenuPosition}
+                spacesState={spacesState}
+                onRename={() => { }} // TODO
+                onRelink={() => { }} // TODO
+                onClose={() => setShowLinkContextMenu(false)}
+              />
+            )}
+
           </div>
-
-          {/* Balancing Spacer for symmetry (compensates for the left-hand handle) */}
-          <div className="w-4 shrink-0 pointer-events-none" aria-hidden="true" />
-
-          {/* Link Autocomplete */}
-          {showSpaceLinkAutocomplete && (
-            <SpaceLinkAutocomplete
-              spaces={spacesState.spaces}
-              onSelect={handleSpaceSelected}
-              onClose={() => {
-                setShowSpaceLinkAutocomplete(false);
-                setLinkTriggerIndex(-1);
-                setAutocompleteMode(null);
-              }}
-              position={spaceLinkPosition}
-              currentSpaceId={currentSpaceId}
-              selectedIndex={autocompleteSelectedIndex}
-              onSelectedIndexChange={setAutocompleteSelectedIndex}
-            />
-          )}
-
-          {showCalendarAutocomplete && (
-            <CalendarAutocomplete
-              spaces={spacesState.spaces}
-              onSelect={handleEventSelected}
-              onCreateNew={handleCreateNewEvent}
-              onClose={() => {
-                setShowCalendarAutocomplete(false);
-                setLinkTriggerIndex(-1);
-              }}
-              position={spaceLinkPosition}
-            />
-          )}
-
-          {/* Link Context Menu */}
-          {showLinkContextMenu && (
-            <LinkContextMenu
-              linkId={selectedLinkId}
-              linkText={selectedLinkText}
-              position={linkContextMenuPosition}
-              spacesState={spacesState}
-              onRename={() => { }} // TODO
-              onRelink={() => { }} // TODO
-              onClose={() => setShowLinkContextMenu(false)}
-            />
-          )}
-
         </div>
       </div>
     </div>

@@ -36,7 +36,7 @@ export const blockTypeConfig: Record<BlockType, { icon: any; label: string; plac
   quote: { icon: Quote, label: 'Quote', placeholder: 'Quote' },
   divider: { icon: Minus, label: 'Divider', placeholder: '' },
   callout: { icon: AlertCircle, label: 'Callout', placeholder: 'Callout text' },
-  math: { icon: Sigma, label: 'Math', placeholder: 'Math equation' },
+  math: { icon: Sigma, label: 'Math', placeholder: 'E = mc^2' },
   code: { icon: Code, label: 'Code', placeholder: 'Code block' },
   image: { icon: ImageIcon, label: 'Image', placeholder: 'Insert image' },
   file: { icon: FileIcon, label: 'File', placeholder: 'Insert file' },
