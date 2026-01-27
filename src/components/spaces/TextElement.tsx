@@ -395,7 +395,6 @@ export function TextElement({
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [showDividerMenu, setShowDividerMenu] = useState(false);
   const shouldFocusRef = useRef(false);
-  const [justMoved, setJustMoved] = useState(false);
 
   // Per la gestione di Cmd+A progressivo
   const lastAPressTime = useRef<number>(0);
@@ -481,8 +480,7 @@ export function TextElement({
       }
 
       if (monitor.didDrop()) {
-        setJustMoved(true);
-        setTimeout(() => setJustMoved(false), 700);
+        // Opacity handled by isDragging
       }
     }
   });
@@ -1323,8 +1321,8 @@ export function TextElement({
     <div
       ref={ref}
       className={`
-        relative w-full group transition-opacity duration-500
-        ${(isDragging || justMoved) ? 'opacity-50' : 'opacity-100'}
+        relative w-full group
+        ${isDragging ? 'opacity-50' : 'opacity-100'}
       `}
     >
       <div className={`${isEventPage ? 'w-full px-1' : 'max-w-[700px] mx-auto px-4'} relative`}>
