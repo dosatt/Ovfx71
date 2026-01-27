@@ -61,6 +61,7 @@ export function PageEditor({
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { pushAction } = useHistory();
   const [isActive, setIsActive] = useState(false);
+  const [hasFocus, setHasFocus] = useState(false);
   const activityTimeoutRef = useRef<any>(null);
 
   const handleActivity = useCallback(() => {
@@ -1063,6 +1064,8 @@ export function PageEditor({
 
               onToggleSelection={onToggleSelection}
               isEventPage={isCalendarEmbed}
+              allBlocks={blocks}
+              pageHasFocus={hasFocus}
             />
           );
           i = j;
@@ -1118,6 +1121,8 @@ export function PageEditor({
 
           onToggleSelection={onToggleSelection}
           isEventPage={isCalendarEmbed}
+          allBlocks={blocks}
+          pageHasFocus={hasFocus}
         />
       );
       i++;
@@ -1150,6 +1155,12 @@ export function PageEditor({
       ref={dropRef}
       onScroll={handleScroll}
       onMouseMove={handleMouseMove}
+      onFocus={() => setHasFocus(true)}
+      onBlur={(e) => {
+        if (!e.currentTarget.contains(e.relatedTarget as Node)) {
+          setHasFocus(false);
+        }
+      }}
       className={`flex-1 h-full overflow-y-auto overflow-x-hidden transition-colors duration-200 autohide-scrollbar relative ${isActive ? 'is-active' : ''} ${isCalendarEmbed ? '' : 'min-h-[500px] pb-32'} ${isOver ? 'bg-primary/5' : ''}`}
     >
       <div

@@ -43,7 +43,9 @@ export type TextElementType =
   | 'embed'
   | 'pageLink'
   | 'spaceEmbed'
-  | 'elementEmbed';
+  | 'elementEmbed'
+  | 'calendar'
+  | 'blockEmbed';
 
 export interface TextElement {
   id: string;

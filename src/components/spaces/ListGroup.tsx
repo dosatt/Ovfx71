@@ -54,10 +54,12 @@ interface ListGroupProps {
 
   onSelectGroup?: (ids: string[]) => void;
   isEventPage?: boolean;
+  allBlocks?: Block[];
+  pageHasFocus?: boolean;
 }
 
 export function ListGroup(props: ListGroupProps) {
-  const { blocks, startIndex, currentSpaceId, currentSpaceName, listNumbers, onConvertBlock, onConvertBlocks, selectedBlockIds = [], onToggleSelection, onSelectAll, onSelectGroup, onUpdateSettings, isEventPage } = props;
+  const { blocks, startIndex, currentSpaceId, currentSpaceName, listNumbers, onConvertBlock, onConvertBlocks, selectedBlockIds = [], onToggleSelection, onSelectAll, onSelectGroup, onUpdateSettings, isEventPage, allBlocks, pageHasFocus } = props;
   const [menuOpen, setMenuOpen] = useState(false);
   const [previewType, setPreviewType] = useState<BlockType | null>(null);
   const [dragHovered, setDragHovered] = useState(false);
@@ -138,6 +140,8 @@ export function ListGroup(props: ListGroupProps) {
               onSelectAll={onSelectAll}
               onSelectGroup={() => onSelectGroup && onSelectGroup(blocks.map(b => b.id))}
               isEventPage={isEventPage}
+              allBlocks={allBlocks}
+              pageHasFocus={pageHasFocus}
             />
           );
         })}

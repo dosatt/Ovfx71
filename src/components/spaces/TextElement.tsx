@@ -252,7 +252,7 @@ interface TextElementProps {
   toggleHeaderCollapse?: (blockId: string) => void;
   isBlockCollapsed?: (index: number) => boolean;
   collapsedHeaders?: Set<string>;
-  focusBlockByIndex?: (index: number) => void;
+  focusBlockByIndex?: (index: number, caretPosition?: 'start' | 'end' | number) => void;
   totalBlocks?: number;
   config: any;
   prevBlock?: Block;
@@ -274,6 +274,8 @@ interface TextElementProps {
   onSelectAll?: () => void;
   onSelectGroup?: () => void;
   isEventPage?: boolean;
+  allBlocks?: Block[];
+  pageHasFocus?: boolean;
 }
 
 const ALLOWED_INDENT_TYPES = ['bulletList', 'numberedList', 'checkbox', 'checkboxNumberedList'];
@@ -314,6 +316,8 @@ export function TextElement({
   onSelectAll,
   onSelectGroup,
   isEventPage,
+  allBlocks,
+  pageHasFocus,
 }: TextElementProps) {
   const [previewType, setPreviewType] = useState<BlockType | null>(null);
   const effectiveBlock = previewType ? { ...block, type: previewType } : block;
@@ -1145,8 +1149,8 @@ export function TextElement({
   };
 
   const handleManualOverrideChange = (val: number | undefined) => {
-    if (val !== undefined && blocks && blocks.length > 0 && blocks[0].id === block.id) {
-      blocks.slice(1).forEach(b => {
+    if (val !== undefined && parentBlocks && parentBlocks.length > 0 && parentBlocks[0].id === block.id) {
+      parentBlocks.slice(1).forEach(b => {
         if (b.listNumber !== undefined) {
           onUpdate(b.id, { listNumber: undefined });
         }
@@ -1238,7 +1242,7 @@ export function TextElement({
       placeholder={placeholder || activeConfig.placeholder}
       spacesState={spacesState}
       viewportsState={viewportsState}
-      contentEditableRef={contentEditableRef}
+      contentEditableRef={contentEditableRef as any}
       brokenLinks={brokenLinks}
       brokenLinksVersion={brokenLinksVersion}
       className={className || getTextAlignmentClass()}
@@ -1366,7 +1370,7 @@ export function TextElement({
                     </DropdownMenuItem>
 
                     <DropdownMenuItem
-                      onClick={() => onAddAfter && onAddAfter(block.id)}
+                      onClick={(e) => onAddAfter && onAddAfter(block.id, e.currentTarget as HTMLElement)}
                       className="flex flex-col items-center justify-center w-20 h-16 p-1 cursor-pointer focus:bg-default-100 rounded-md outline-none mx-auto"
                     >
                       <Plus className="h-6 w-6 mb-1 text-default-500" />
@@ -1443,7 +1447,7 @@ export function TextElement({
                             <Switch
                               checked={block.listNumber !== undefined}
                               onCheckedChange={(checked) => {
-                                handleManualOverrideChange(checked ? (listNumber || 1) : undefined);
+                                handleManualOverrideChange(checked ? (typeof listNumber === 'number' ? listNumber : (parseInt(String(listNumber).split('.').pop() || '1', 10) || 1)) : undefined);
                                 if (!checked) setIsMenuOpen(false);
                               }}
                               className="scale-75"
@@ -1644,74 +1648,78 @@ export function TextElement({
                   {renderRichText(" ", getTextAlignmentClass())}
 
                   {/* Custom Placeholder and Insert Button */}
-                  {!block.content && (isFocused || isDropdownOpen) && (
-                    <div className={`absolute top-0 left-0 w-full pointer-events-none pb-1 select-none px-0 leading-[1.8] ${getTextAlignmentClass()}`}>
-                      <span className="text-default-400 opacity-50 font-normal font-sans text-base">{index === 0 ? 'Type "#" to add a title' : (activeConfig.placeholder || "Type something")}</span>
-                      <span className="text-default-400 opacity-50 font-normal font-sans text-base"> or </span>
-                      <div className="pointer-events-auto inline-block align-baseline">
-                        <DropdownMenu onOpenChange={setIsDropdownOpen} modal={false}>
-                          <DropdownMenuTrigger asChild>
-                            <button
-                              type="button"
-                              onMouseDown={(e) => e.preventDefault()}
-                              className="relative z-10 bg-neutral-200 hover:bg-neutral-300 cursor-pointer border-none rounded-full px-3 py-1 flex items-center gap-1 leading-none text-neutral-600 font-normal text-[14px] transition-colors"
+                  {!block.content && (
+                    isFocused ||
+                    isDropdownOpen ||
+                    (!pageHasFocus && index === 0 && (!allBlocks || allBlocks.filter(b => !b.id.toLowerCase().includes('trailing')).every(b => !b.content)))
+                  ) && (
+                      <div className={`absolute top-0 left-0 w-full pointer-events-none pb-1 select-none px-0 leading-[1.8] ${getTextAlignmentClass()}`}>
+                        <span className="text-default-400 opacity-50 font-normal font-sans text-base">{index === 0 ? 'Type "#" to add a title' : (activeConfig.placeholder || "Type something")}</span>
+                        <span className="text-default-400 opacity-50 font-normal font-sans text-base"> or </span>
+                        <div className="pointer-events-auto inline-block align-baseline">
+                          <DropdownMenu onOpenChange={setIsDropdownOpen} modal={false}>
+                            <DropdownMenuTrigger asChild>
+                              <button
+                                type="button"
+                                onMouseDown={(e) => e.preventDefault()}
+                                className="relative z-10 bg-neutral-200 hover:bg-neutral-300 cursor-pointer border-none rounded-full px-3 py-1 flex items-center gap-1 leading-none text-neutral-600 font-normal text-[14px] transition-colors"
+                              >
+                                an element <ChevronDown className="h-3 w-3" />
+                              </button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent
+                              align="start"
+                              side="bottom"
+                              sideOffset={15}
+                              className="z-[2000]"
+                              onCloseAutoFocus={(e) => {
+                                e.preventDefault();
+                                if (contentEditableRef.current) {
+                                  contentEditableRef.current.focus();
+                                } else if (textareaRef.current) {
+                                  textareaRef.current.focus();
+                                }
+                              }}
                             >
-                              an element <ChevronDown className="h-3 w-3" />
-                            </button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent
-                            align="start"
-                            side="bottom"
-                            sideOffset={15}
-                            className="z-[2000]"
-                            onCloseAutoFocus={(e) => {
-                              e.preventDefault();
-                              if (contentEditableRef.current) {
-                                contentEditableRef.current.focus();
-                              } else if (textareaRef.current) {
-                                textareaRef.current.focus();
-                              }
-                            }}
-                          >
-                            <DropdownMenuLabel>Insert Element</DropdownMenuLabel>
-                            <DropdownMenuSeparator />
-                            {orderedBlockTypes.map(type => {
-                              const Icon = blockTypeConfig[type]?.icon || Type;
-                              return (
-                                <DropdownMenuItem
-                                  key={type}
-                                  onSelect={() => {
-                                    if (type === 'spaceEmbed') {
-                                      setShowSpaceLinkAutocomplete(true);
-                                      setAutocompleteMode('spacePreview');
-                                      setLinkTriggerIndex(0);
+                              <DropdownMenuLabel>Insert Element</DropdownMenuLabel>
+                              <DropdownMenuSeparator />
+                              {orderedBlockTypes.map(type => {
+                                const Icon = blockTypeConfig[type]?.icon || Type;
+                                return (
+                                  <DropdownMenuItem
+                                    key={type}
+                                    onSelect={() => {
+                                      if (type === 'spaceEmbed') {
+                                        setShowSpaceLinkAutocomplete(true);
+                                        setAutocompleteMode('spacePreview');
+                                        setLinkTriggerIndex(0);
 
-                                      // Fallback position if chip is used
-                                      if (contentRef.current) {
-                                        const rect = contentRef.current.getBoundingClientRect();
-                                        setSpaceLinkPosition({
-                                          top: rect.bottom + 4,
-                                          left: rect.left
-                                        });
+                                        // Fallback position if chip is used
+                                        if (contentRef.current) {
+                                          const rect = contentRef.current.getBoundingClientRect();
+                                          setSpaceLinkPosition({
+                                            top: rect.bottom + 4,
+                                            left: rect.left
+                                          });
+                                        }
+                                      } else {
+                                        onConvertBlock(block.id, type as BlockType);
                                       }
-                                    } else {
-                                      onConvertBlock(block.id, type as BlockType);
-                                    }
-                                  }}
-                                >
-                                  <Icon className="mr-2 h-4 w-4" />
-                                  <span>{blockTypeConfig[type]?.label}</span>
-                                </DropdownMenuItem>
-                              );
-                            })}
-                          </DropdownMenuContent>
-                        </DropdownMenu>
+                                    }}
+                                  >
+                                    <Icon className="mr-2 h-4 w-4" />
+                                    <span>{blockTypeConfig[type]?.label}</span>
+                                  </DropdownMenuItem>
+                                );
+                              })}
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </div>
+                        {index === 0 && (
+                          <span className="text-default-400 opacity-50 font-normal font-sans text-base"> or just simply type something...</span>
+                        )}
                       </div>
-                      {index === 0 && (
-                        <span className="text-default-400 opacity-50 font-normal font-sans text-base"> or just simply type something...</span>
-                      )}
-                    </div>
-                  )}
+                    )}
                 </div>
               </div>
             ) : effectiveBlock.type === 'checkbox' ? (
@@ -1805,7 +1813,7 @@ export function TextElement({
                     placeholder={activeConfig.placeholder}
                     spacesState={spacesState}
                     viewportsState={viewportsState}
-                    contentEditableRef={contentEditableRef}
+                    contentEditableRef={contentEditableRef as any}
                     className="min-h-[24px] outline-none text-sm w-full font-mono"
                     language={(block.metadata?.language as SupportedLanguage) || 'javascript'}
                   />
@@ -1879,7 +1887,7 @@ export function TextElement({
                       const sourceSpace = spacesState.getSpace(block.metadata.sourceSpaceId);
                       if (sourceSpace && sourceSpace.content?.blocks) {
                         const sourceBlocks = sourceSpace.content.blocks;
-                        const blockIndex = sourceBlocks.findIndex((b: any) => b.id === block.metadata.linkedEventId);
+                        const blockIndex = sourceBlocks.findIndex((b: any) => b.id === block.metadata?.linkedEventId);
                         if (blockIndex !== -1) {
                           const sourceBlock = sourceBlocks[blockIndex];
                           const newSourceBlock = {
@@ -1928,7 +1936,7 @@ export function TextElement({
               />
             ) : effectiveBlock.type === 'blockEmbed' ? (
               <RenderBlockEmbed
-                blockId={block.blockId}
+                blockId={block.elementId || ''}
                 sourceSpaceId={block.sourceSpaceId}
                 spacesState={spacesState}
                 viewportsState={viewportsState}
