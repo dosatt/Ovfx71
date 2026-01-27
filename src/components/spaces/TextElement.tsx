@@ -64,6 +64,8 @@ import { useCrossViewportDrag } from '../../hooks/useCrossViewportDrag';
 import { ITEM_TYPE_TEXT_ELEMENT } from '../SpaceTreeItem';
 import { blockTypeConfig, orderedBlockTypes } from './blockConfig';
 import type { Settings } from '../../hooks/useSettings';
+import * as LucideIcons from 'lucide-react';
+import { IconPicker } from '../IconPicker';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -2013,44 +2015,36 @@ export function TextElement({
                 style={{ backgroundColor: getCalloutBg(CALLOUT_THEMES[block.metadata?.calloutColor as keyof typeof CALLOUT_THEMES]?.color || CALLOUT_THEMES.blue.color) }}
               >
                 <div
-                  className="pt-5 pb-1 px-3 flex items-center gap-2 font-bold"
+                  className="pt-3 pb-2 px-3 flex items-center gap-2 font-bold"
                   style={{ color: CALLOUT_THEMES[block.metadata?.calloutColor as keyof typeof CALLOUT_THEMES]?.color || CALLOUT_THEMES.blue.color }}
                 >
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
                       <div className="cursor-pointer hover:bg-black/5 rounded p-1 transition-colors">
                         {(() => {
-                          const IconName = block.metadata?.calloutIcon as keyof typeof CALLOUT_ICONS;
-                          const IconComp = (IconName && CALLOUT_ICONS[IconName]) || AlertCircle;
+                          const iconName = block.metadata?.calloutIcon || 'AlertCircle';
+                          const IconComp = (LucideIcons as any)[iconName] || LucideIcons.AlertCircle;
                           return <IconComp size={18} />;
                         })()}
                       </div>
                     </DropdownMenuTrigger>
-                    <DropdownMenuContent className="p-2 min-w-[140px] grid grid-cols-4 gap-1">
-                      {Object.keys(CALLOUT_ICONS).map((iconName) => {
-                        const Icon = CALLOUT_ICONS[iconName as keyof typeof CALLOUT_ICONS];
-                        return (
-                          <DropdownMenuItem
-                            key={iconName}
-                            onSelect={() => onUpdate(block.id, { metadata: { ...block.metadata, calloutIcon: iconName } })}
-                            className="w-8 h-8 flex items-center justify-center cursor-pointer hover:bg-default-100 rounded-md focus:bg-default-100 outline-none p-0"
-                          >
-                            <Icon size={18} />
-                          </DropdownMenuItem>
-                        );
-                      })}
+                    <DropdownMenuContent className="p-3 w-[280px]">
+                      <IconPicker
+                        currentIcon={block.metadata?.calloutIcon || 'AlertCircle'}
+                        onIconChange={(iconName) => onUpdate(block.id, { metadata: { ...block.metadata, calloutIcon: iconName } })}
+                      />
                     </DropdownMenuContent>
                   </DropdownMenu>
                   <input
                     value={block.metadata?.title || ''}
                     onChange={(e) => onUpdate(block.id, { metadata: { ...block.metadata, title: e.target.value } })}
                     placeholder="Callout"
-                    className="bg-transparent border-none outline-none font-bold flex-1"
+                    className="bg-transparent border-none outline-none font-bold placeholder:opacity-50 flex-1"
                     style={{ color: 'inherit' }}
                   />
                 </div>
                 <div
-                  className="p-3 pb-4 pt-0"
+                  className="px-3 pb-3 pt-0"
                 >
                   {renderRichText(activeConfig.placeholder, "min-h-[24px] outline-none text-base w-full")}
                 </div>
