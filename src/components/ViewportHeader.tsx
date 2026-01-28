@@ -37,9 +37,10 @@ interface TabItemProps {
   settings: Settings;
   viewportsState: any;
   spacesState: any;
-  onCloseTab: (tabId: string) => void;
+  onCloseTab: (tabId: string, e?: React.MouseEvent) => void;
   onContextMenu: (e: React.MouseEvent, tabId: string, title: string) => void;
   index: number;
+  frozenWidth: number | null;
 }
 
 function TabItem({
@@ -57,7 +58,8 @@ function TabItem({
   spacesState,
   onCloseTab,
   onContextMenu,
-  index
+  index,
+  frozenWidth
 }: TabItemProps) {
   const ref = useRef<HTMLDivElement>(null);
   const [isHovered, setIsHovered] = useState(false);
@@ -148,7 +150,11 @@ function TabItem({
   return (
     <div
       ref={ref}
-      className={`flex-shrink-0 flex items-center h-full py-1 ${isDragging ? 'opacity-0' : 'opacity-100'}`}
+      className={`flex-1 min-w-0 max-w-[160px] flex items-center h-full py-1 ${isDragging ? 'opacity-0' : 'opacity-100'}`}
+      style={{
+        flex: frozenWidth ? `0 0 ${frozenWidth}px` : undefined,
+        transition: frozenWidth ? 'none' : 'flex 0.4s cubic-bezier(0.4, 0, 0.2, 1), max-width 0.4s cubic-bezier(0.4, 0, 0.2, 1)'
+      }}
       onMouseEnter={() => {
         setIsHovered(true);
         if (isActive) {
@@ -201,7 +207,7 @@ function TabItem({
               <span
                 onClick={(e) => {
                   e.stopPropagation();
-                  onCloseTab(tab.id);
+                  onCloseTab(tab.id, e);
                 }}
                 className={`ml-1 flex items-center cursor-pointer hover:bg-black/5 rounded-full p-0.5 transition-all ${isActive && isViewportFocused ? (settings.theme === 'light' ? 'text-black/60' : 'text-white/80') : 'text-default-500'}`}
               >
@@ -210,10 +216,10 @@ function TabItem({
             ) : undefined
           }
           className={`
-            h-8 min-h-0 rounded-full transition-all duration-300
+            h-8 min-h-0 rounded-full transition-all duration-300 w-full
           ${isActive ? 'shadow-lg px-4' : 'px-3 text-default-500 hover:text-default-900'}
           ${isActive && !isViewportFocused ? 'bg-default-200/50 text-default-700' : ''}
-          ${isActive || showTitle ? 'min-w-[100px] max-w-[160px] justify-between' : 'min-w-[32px] w-auto justify-center'}
+          ${isActive || showTitle ? 'justify-between' : 'justify-center'}
           ${isViewportFocused && isActive ? `border-1 ${settings.theme === 'light' ? 'border-black/5 shadow-black/5' : 'border-white/40 shadow-primary/20'} shadow-xl scale-105` : ''}
           `}
           onContextMenu={(e) => onContextMenu(e, tab.id, tab.title)}
@@ -245,11 +251,50 @@ export function ViewportHeader({ viewport, space, spacesState, viewportsState, s
   const [renameValue, setRenameValue] = useState('');
   const [actionsMenuAnchor, setActionsMenuAnchor] = useState<HTMLElement | null>(null);
   const [hamburgerMenuAnchor, setHamburgerMenuAnchor] = useState<HTMLElement | null>(null);
+  const [frozenWidth, setFrozenWidth] = useState<number | null>(null);
+  const [frozenOffset, setFrozenOffset] = useState<number>(0);
+  const [lastClickX, setLastClickX] = useState<number | null>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const tabsWrapperRef = useRef<HTMLDivElement>(null);
 
   const canClose = viewport.id !== 'root';
   const activeTab = viewport.tabs?.find(t => t && t.id === viewport.activeTabId);
 
-  const handleCloseTab = (tabId: string) => {
+  const handleCloseTab = (tabId: string, e?: React.MouseEvent) => {
+    // Chrome-style stable closing: freeze width and calculate centering shift
+    if (e && tabsWrapperRef.current) {
+      const tabs = Array.from(tabsWrapperRef.current.querySelectorAll('.flex-1.min-w-0')) as HTMLElement[];
+      const closedTabItem = (e.currentTarget as HTMLElement).closest('.flex-1.min-w-0') as HTMLElement;
+
+      if (tabs.length > 0 && closedTabItem) {
+        const closedIndex = tabs.indexOf(closedTabItem);
+        const firstTabRect = tabs[0].getBoundingClientRect();
+
+        // Measure current values
+        const width = frozenWidth || firstTabRect.width;
+        const gap = tabs.length > 1 ? (tabs[1].getBoundingClientRect().left - tabs[0].getBoundingClientRect().right) : 8;
+
+        let shift = frozenOffset;
+        // The container centers the tabs. When one is removed, the center shifts by (width + gap) / 2.
+        // We need to counteract this shift with translateX.
+        if (closedIndex === tabs.length - 1 && tabs.length > 1) {
+          // Closing last: Remaining items are on the left.
+          // Container centers them, shifting them LEFT by half a tab-width.
+          // We shift them RIGHT to compensate.
+          shift += (width + gap) / 2;
+        } else {
+          // Closing not last: Remaining items (on the right) move left to fill gap.
+          // Container also centers the whole group, shifting it RIGHT by half a tab-width.
+          // Net result: we need to shift LEFT to compensate.
+          shift -= (width + gap) / 2;
+        }
+
+        setFrozenWidth(width);
+        setFrozenOffset(shift);
+        setLastClickX(e.clientX);
+      }
+    }
+
     if (viewport.tabs.length === 1) {
       // Se è l'ultima tab, chiudi l'intero viewport invece di sostituire con welcome
       if (viewport.id !== 'root') {
@@ -313,6 +358,7 @@ export function ViewportHeader({ viewport, space, spacesState, viewportsState, s
 
   return (
     <div
+      ref={containerRef}
       className={`flex items-center justify-between px-3 py-1.5 gap-3 min-h-[44px] transition-all duration-300 bg-transparent ${isViewportFocused ? 'opacity-100' : 'opacity-80'}`}
       onClick={() => viewportsState.setFocusedViewportId(viewport.id)}
     >
@@ -390,16 +436,37 @@ export function ViewportHeader({ viewport, space, spacesState, viewportsState, s
 
       {/* Tabs - Centrate */}
       <div
-        ref={dropTabArea}
-        className={`flex-1 min-w-0 overflow-x-auto no-scrollbar flex gap-2 items-center justify-center h-full transition-colors rounded-lg ${isOverTabArea ? 'bg-primary/5' : ''}`}
+        ref={(node) => {
+          tabsWrapperRef.current = node;
+          dropTabArea(node);
+        }}
+        className={`flex-1 min-w-0 flex gap-2 items-center justify-center h-full rounded-lg ${isOverTabArea ? 'bg-primary/5' : ''}`}
+        style={{
+          transform: `translateX(${frozenOffset}px)`,
+          transition: frozenWidth ? 'none' : 'transform 0.4s cubic-bezier(0.4, 0, 0.2, 1), background-color 0.3s ease'
+        }}
+        onMouseMove={(e) => {
+          if (frozenWidth !== null && lastClickX !== null) {
+            const deltaX = Math.abs(e.clientX - lastClickX);
+            if (deltaX > 1) {
+              setFrozenWidth(null);
+              setFrozenOffset(0);
+              setLastClickX(null);
+            }
+          }
+        }}
+        onMouseLeave={() => {
+          setFrozenWidth(null);
+          setFrozenOffset(0);
+          setLastClickX(null);
+        }}
       >
         {viewport.tabs?.map((tab, index) => {
           const isActive = tab.id === viewport.activeTabId;
           const tabSpace = tab.spaceId ? spacesState.spaces.find((s: Space) => s && s.id === tab.spaceId) : null;
 
-          // Logica di collasso: se ci sono molte tab, mostra solo l'icona per quelle non attive
-          const totalTabs = viewport.tabs.length;
-          const showTitle = isActive || totalTabs <= 3;
+          // Logica di collasso: rimosso l'auto-collasso per mantenere le tab uniformi
+          const showTitle = true;
 
           const isOnlyWelcomeTab = viewport.tabs.length === 1 && !tab.spaceId && !tab.appType;
 
@@ -460,6 +527,7 @@ export function ViewportHeader({ viewport, space, spacesState, viewportsState, s
               onCloseTab={handleCloseTab}
               onContextMenu={handleTabContextMenu}
               index={index}
+              frozenWidth={frozenWidth}
             />
           );
         })}
