@@ -395,6 +395,9 @@ export function TextElement({
   const [relinkingLinkId, setRelinkingLinkId] = useState<string>('');
 
   const [showMathInput, setShowMathInput] = useState(false);
+  const [mathScale, setMathScale] = useState(1);
+  const mathContainerRef = useRef<HTMLDivElement>(null);
+  const mathContentRef = useRef<HTMLDivElement>(null);
 
   const [isFocused, setIsFocused] = useState(false);
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
@@ -405,6 +408,30 @@ export function TextElement({
   // Per la gestione di Cmd+A progressivo
   const lastAPressTime = useRef<number>(0);
   const aPressCount = useRef<number>(0);
+
+  // Scaling logic for Math formulas
+  useEffect(() => {
+    if (effectiveBlock.type !== 'math' || !mathContainerRef.current || !mathContentRef.current) return;
+
+    const updateScale = () => {
+      if (mathContainerRef.current && mathContentRef.current) {
+        const containerWidth = mathContainerRef.current.offsetWidth - 8; // Small safety margin
+        const contentWidth = mathContentRef.current.scrollWidth;
+        if (contentWidth > containerWidth && containerWidth > 0) {
+          setMathScale(containerWidth / contentWidth);
+        } else {
+          setMathScale(1);
+        }
+      }
+    };
+
+    updateScale();
+    const observer = new ResizeObserver(updateScale);
+    observer.observe(mathContainerRef.current);
+    if (mathContentRef.current) observer.observe(mathContentRef.current);
+
+    return () => observer.disconnect();
+  }, [effectiveBlock.type, block.content]);
 
   // Restore focus after type conversion
   useEffect(() => {
@@ -2056,61 +2083,66 @@ export function TextElement({
                 </div>
               </div>
             ) : effectiveBlock.type === 'math' ? (
-              <div className="relative w-full py-1 flex flex-col items-center justify-center group overflow-hidden">
+              <div
+                ref={mathContainerRef}
+                className="relative w-full py-2 flex flex-col items-center justify-center group min-h-[44px]"
+              >
                 <div
-                  className={`w-full flex items-center justify-center overflow-x-auto py-1 cursor-pointer transition-all ${!block.content ? 'text-default-400 opacity-50' : ''}`}
+                  className="max-w-full flex items-center justify-center cursor-pointer"
                   onClick={() => setShowMathInput(!showMathInput)}
-                  dangerouslySetInnerHTML={{
-                    __html: katex.renderToString(block.content || 'E = mc^2', {
-                      throwOnError: false,
-                      displayMode: true
-                    })
+                  style={{
+                    transform: mathScale < 1 ? `scale(${mathScale})` : 'none',
+                    transformOrigin: 'center'
                   }}
-                />
-
-                <div className="absolute top-0 right-0 opacity-0 group-hover:opacity-100 transition-opacity z-10">
-                  <Button
-                    isIconOnly
-                    size="sm"
-                    variant="light"
-                    className="min-w-0 w-8 h-8 rounded-full bg-default-100/80 backdrop-blur-sm shadow-sm hover:bg-default-200"
-                    onPress={() => setShowMathInput(!showMathInput)}
+                >
+                  <div
+                    ref={mathContentRef}
+                    className="flex items-center gap-1 py-1 px-4"
                   >
-                    <Sigma size={16} className="text-primary" />
-                  </Button>
+                    <div
+                      className={!block.content ? 'text-default-400/60' : 'text-foreground'}
+                      style={{
+                        whiteSpace: 'nowrap',
+                        display: 'inline-block',
+                        color: !block.content ? '#A1A1AA' : undefined // Force light grey for placeholder
+                      }}
+                      dangerouslySetInnerHTML={{
+                        __html: katex.renderToString(block.content || 'E = mc^2', {
+                          throwOnError: false,
+                          displayMode: true
+                        })
+                      }}
+                    />
+                    <div className="shrink-0 transition-opacity duration-200 opacity-0 group-hover:opacity-100 flex items-center">
+                      <ChevronDown
+                        size={10}
+                        className="text-blue-500 transition-transform duration-200"
+                        style={{ color: '#006FEE', transform: showMathInput ? 'rotate(180deg)' : 'none' }}
+                      />
+                    </div>
+                  </div>
                 </div>
 
                 <AnimatePresence>
                   {showMathInput && (
                     <motion.div
-                      initial={{ height: 0, opacity: 0, marginTop: 0 }}
-                      animate={{ height: 'auto', opacity: 1, marginTop: 16 }}
-                      exit={{ height: 0, opacity: 0, marginTop: 0 }}
-                      className="w-full max-w-md"
+                      initial={{ height: 0, opacity: 0 }}
+                      animate={{ height: 'auto', opacity: 1 }}
+                      exit={{ height: 0, opacity: 0 }}
+                      className="w-full mt-2"
                     >
-                      <div className="flex flex-col gap-2 p-3 bg-white/50 backdrop-blur-sm rounded-lg border border-divider">
-                        <div className="flex justify-between items-center mb-1">
-                          <p className="text-[10px] font-bold text-default-500 uppercase tracking-wider">Formula LaTeX</p>
-                          <Button
-                            size="sm"
-                            variant="light"
-                            isIconOnly
-                            className="h-6 w-6 min-w-0"
-                            onPress={() => setShowMathInput(false)}
-                          >
-                            <ChevronDown size={14} className="rotate-180" />
-                          </Button>
-                        </div>
-                        <Input
+                      <div className="w-full flex flex-col p-2 bg-default-50 rounded-xl border border-divider shadow-sm">
+                        <Textarea
                           autoFocus
                           value={block.content || ''}
                           onValueChange={(val) => onUpdate(block.id, { content: val })}
-                          placeholder="E = mc^2"
-                          size="sm"
-                          variant="faded"
+                          placeholder="Formula LaTeX..."
+                          variant="flat"
+                          minRows={1}
+                          maxRows={12}
                           classNames={{
-                            input: "text-center font-mono",
-                            inputWrapper: "bg-white shadow-sm"
+                            input: "font-mono text-[13px] py-1 text-center",
+                            inputWrapper: "bg-white border-divider hover:border-default-400 focus-within:border-primary px-3 w-full h-auto min-h-[40px]"
                           }}
                         />
                       </div>

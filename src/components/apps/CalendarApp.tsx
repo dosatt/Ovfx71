@@ -1345,14 +1345,14 @@ export function CalendarApp({ spacesState, viewportsState }: CalendarAppProps) {
       if (!id) return;
 
       if (isLeftToRight) {
-        // Selection by intersection (touches)
+        // Selection by intersection (touches) - LEFT TO RIGHT
         const intersects = !(elRect.left > screenM.right ||
           elRect.right < screenM.left ||
           elRect.top > screenM.bottom ||
           elRect.bottom < screenM.top);
         if (intersects) newSelectedIds.add(id);
       } else {
-        // Selection by inclusion (fully inside)
+        // Selection by inclusion (fully inside) - RIGHT TO LEFT
         const included = (elRect.left >= screenM.left &&
           elRect.right <= screenM.right &&
           elRect.top >= screenM.top &&
