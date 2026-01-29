@@ -1,15 +1,15 @@
 import { Block } from '../../types';
 import * as LucideIcons from 'lucide-react';
-import { 
-  Type, 
-  Heading1, 
-  Heading2, 
-  Heading3, 
-  List as ListIcon, 
-  ListOrdered, 
-  CheckSquare, 
-  Quote, 
-  Minus, 
+import {
+  Type,
+  Heading1,
+  Heading2,
+  Heading3,
+  List as ListIcon,
+  ListOrdered,
+  CheckSquare,
+  Quote,
+  Minus,
   Code,
   AlertCircle,
   Image as ImageIcon,
@@ -65,7 +65,7 @@ export function CanvasBlockEmbed({
   onUpdateSettings
 }: CanvasBlockEmbedProps) {
   // Trova lo space e il blocco dai dati
-  const sourceSpace = element.sourceSpaceId 
+  const sourceSpace = element.sourceSpaceId
     ? spacesState.getSpace(element.sourceSpaceId)
     : null;
 
@@ -139,7 +139,7 @@ export function CanvasBlockEmbed({
   // Se il blocco non viene trovato, mostra un placeholder
   if (!embeddedBlock || !sourceSpace) {
     const TypeIcon = getTypeIcon(element.blockType || 'text');
-    
+
     return (
       <foreignObject
         data-element-id={element.id}
@@ -190,7 +190,7 @@ export function CanvasBlockEmbed({
     const rotation = element.rotation || 0;
     const centerX = element.x + width / 2;
     const centerY = element.y + height / 2;
-    
+
     return (
       <g
         data-element-id={element.id}
@@ -210,8 +210,8 @@ export function CanvasBlockEmbed({
           height={height + 80}
           style={{ overflow: 'visible', pointerEvents: 'none' }}
         >
-          <div 
-            style={{ 
+          <div
+            style={{
               width: width,
               height: height,
               margin: '40px',
@@ -233,10 +233,10 @@ export function CanvasBlockEmbed({
           style={{ overflow: 'visible' }}
           transform={`rotate(${rotation}, ${centerX}, ${centerY})`}
         >
-          <div 
-            style={{ 
-              width: '100%', 
-              height: '100%', 
+          <div
+            style={{
+              width: '100%',
+              height: '100%',
               pointerEvents: 'none',
               borderRadius: '12px',
               overflow: 'hidden',
@@ -246,10 +246,10 @@ export function CanvasBlockEmbed({
             }}
           >
             <div style={{ pointerEvents: 'auto', width: '100%', height: '100%', borderRadius: '8px', overflow: 'hidden' }}>
-              <ImageWithFallback 
-                src={embeddedBlock.content} 
-                alt="Embedded" 
-                className="w-full h-full object-cover transition-transform duration-500 hover:scale-105" 
+              <ImageWithFallback
+                src={embeddedBlock.content}
+                alt="Embedded"
+                className="w-full h-full object-cover transition-transform duration-500 hover:scale-105"
               />
             </div>
           </div>
@@ -262,7 +262,7 @@ export function CanvasBlockEmbed({
   if (embeddedBlock.type === 'file') {
     const layout = embeddedBlock.metadata?.layout || 'bookmark';
     const isCollection = ['grid', 'featured', 'collection'].includes(layout);
-    
+
     // Dimensione dinamica basata sul layout se non specificata
     const defaultWidth = isCollection ? 600 : (layout === 'square' ? 200 : 350);
     const defaultHeight = isCollection ? 500 : (layout === 'square' ? 200 : 80);
@@ -282,10 +282,10 @@ export function CanvasBlockEmbed({
         onMouseLeave={onMouseLeave}
         style={{ cursor, opacity, overflow: 'visible' }}
       >
-        <div 
-          style={{ 
-            width: '100%', 
-            height: '100%', 
+        <div
+          style={{
+            width: '100%',
+            height: '100%',
             transform: `rotate(${element.rotation || 0}deg)`,
             transformOrigin: 'center',
             pointerEvents: 'none'
@@ -367,7 +367,7 @@ export function CanvasBlockEmbed({
       case 'calendar':
         return (
           <div className="w-full">
-            <CalendarElement 
+            <CalendarElement
               data={{
                 startDate: embeddedBlock.metadata?.startDate || new Date().toISOString(),
                 endDate: embeddedBlock.metadata?.endDate || '',
@@ -415,7 +415,7 @@ export function CanvasBlockEmbed({
           justifyContent: 'center'
         }}
       >
-        <div 
+        <div
           style={{ pointerEvents: 'auto' }}
           className="hover:ring-2 hover:ring-primary/30 rounded-lg transition-all p-2"
         >

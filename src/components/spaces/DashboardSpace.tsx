@@ -78,14 +78,14 @@ export function DashboardSpace({ space, spacesState, settings, onUpdateSettings 
   };
 
   const handleResize = (id: string, w: number, h: number) => {
-    const newWidgets = widgets.map(widget => 
+    const newWidgets = widgets.map(widget =>
       widget.id === id ? { ...widget, w, h } : widget
     );
     updateWidgets(newWidgets);
   };
 
   const handleUpdateWidget = (id: string, updates: Partial<Widget>) => {
-    const newWidgets = widgets.map(widget => 
+    const newWidgets = widgets.map(widget =>
       widget.id === id ? { ...widget, ...updates } : widget
     );
     updateWidgets(newWidgets);
@@ -102,63 +102,63 @@ export function DashboardSpace({ space, spacesState, settings, onUpdateSettings 
     let newWidget: Widget | null = null;
 
     if (type === ItemTypes.EXTERNAL_ELEMENT) {
-        // Drop from FileElement sidebar
-        newWidget = {
-            id: `w_file_${Date.now()}`,
-            type: 'file',
-            title: item.data.fileName,
-            content: { 
-              ...item.data,
-              layout: item.data.isFolder ? 'collection' : 'compact'
-            },
-            w: item.data.isFolder ? 6 : 4,
-            h: item.data.isFolder ? 16 : 6
-        };
+      // Drop from FileElement sidebar
+      newWidget = {
+        id: `w_file_${Date.now()}`,
+        type: 'file',
+        title: item.data.fileName,
+        content: {
+          ...item.data,
+          layout: item.data.isFolder ? 'collection' : 'compact'
+        },
+        w: item.data.isFolder ? 6 : 4,
+        h: item.data.isFolder ? 16 : 6
+      };
     } else if (type === ITEM_TYPE_TO_WORKSPACE) {
-        // Drop from Space sidebar
-        newWidget = {
-            id: `w_space_${Date.now()}`,
-            type: 'space',
-            title: item.spaceData?.title || 'Space Preview',
-            content: { 
-              spaceId: item.spaceId,
-              spaceData: item.spaceData
-            },
-            w: 4,
-            h: 8
-        };
+      // Drop from Space sidebar
+      newWidget = {
+        id: `w_space_${Date.now()}`,
+        type: 'space',
+        title: item.spaceData?.title || 'Space Preview',
+        content: {
+          spaceId: item.spaceId,
+          spaceData: item.spaceData
+        },
+        w: 4,
+        h: 8
+      };
     } else if (type === ITEM_TYPE_TEXT_ELEMENT) {
-        // Drop from TextElement (PageEditor)
-        newWidget = {
-            id: `w_text_${Date.now()}`,
-            type: 'text',
-            title: 'Text Snippet',
-            content: { text: item.content || 'Imported text' },
-            w: 4,
-            h: 10
-        };
+      // Drop from TextElement (PageEditor)
+      newWidget = {
+        id: `w_text_${Date.now()}`,
+        type: 'text',
+        title: 'Text Snippet',
+        content: { text: item.content || 'Imported text' },
+        w: 4,
+        h: 10
+      };
     } else if (type === ItemTypes.WIDGET) {
-        // Internal move handled by hover, but cross-viewport moves handled here?
-        // If the widget is not in the current list, add it.
-        const exists = widgets.find(w => w.id === item.id);
-        if (!exists && item.widget) {
-             newWidget = {
-                ...item.widget,
-                id: `w_copy_${Date.now()}` // Create copy to avoid ID conflicts if dragging back and forth
-             };
-        }
+      // Internal move handled by hover, but cross-viewport moves handled here?
+      // If the widget is not in the current list, add it.
+      const exists = widgets.find(w => w.id === item.id);
+      if (!exists && item.widget) {
+        newWidget = {
+          ...item.widget,
+          id: `w_copy_${Date.now()}` // Create copy to avoid ID conflicts if dragging back and forth
+        };
+      }
     }
 
     if (newWidget) {
-        updateWidgets([...widgets, newWidget]);
+      updateWidgets([...widgets, newWidget]);
     }
   };
 
   const [{ isOver }, drop] = useDrop({
     accept: [ItemTypes.WIDGET, ItemTypes.EXTERNAL_ELEMENT, ITEM_TYPE_TEXT_ELEMENT, ITEM_TYPE_TO_WORKSPACE],
     drop: (item, monitor) => {
-        if (monitor.didDrop()) return;
-        handleDrop(item, monitor.getItemType() as string);
+      if (monitor.didDrop()) return;
+      handleDrop(item, monitor.getItemType() as string);
     },
     collect: (monitor) => ({
       isOver: monitor.isOver()
@@ -168,7 +168,7 @@ export function DashboardSpace({ space, spacesState, settings, onUpdateSettings 
   return (
     <div className="flex flex-col h-full overflow-hidden bg-background">
       {/* Dashboard grid container */}
-      <div 
+      <div
         ref={drop as any}
         className={`flex-1 overflow-auto p-4 bg-default-50/50 transition-colors ${isOver ? 'bg-primary/5' : ''}`}
       >
@@ -189,35 +189,35 @@ export function DashboardSpace({ space, spacesState, settings, onUpdateSettings 
 
           {/* Persistent Add Button Card - Fixed Size for now */}
           <div className="col-span-3 row-span-8">
-              <Dropdown>
-                <DropdownTrigger>
-                    <div 
-                        role="button"
-                        className="flex flex-col items-center justify-center h-full min-h-[140px] border border-dashed border-default-200 rounded-xl hover:border-primary/50 hover:bg-white/50 cursor-pointer transition-all group gap-2"
-                    >
-                        <div className="w-10 h-10 rounded-full bg-default-100 flex items-center justify-center group-hover:bg-primary/10 group-hover:text-primary transition-colors">
-                            <Plus size={20} className="text-default-400 group-hover:text-primary" />
-                        </div>
-                        <span className="text-xs font-bold text-default-400 uppercase tracking-wider group-hover:text-primary">Add Widget</span>
-                    </div>
-                </DropdownTrigger>
-                <DropdownMenu aria-label="Add Widget Actions">
-                    <DropdownItem 
-                        key="text" 
-                        startContent={<FileText size={16} />}
-                        onPress={() => addWidget('text')}
-                    >
-                        Text Note
-                    </DropdownItem>
-                    <DropdownItem 
-                        key="file" 
-                        startContent={<FileIcon size={16} />}
-                        onPress={() => addWidget('file')}
-                    >
-                        File Placeholder
-                    </DropdownItem>
-                </DropdownMenu>
-              </Dropdown>
+            <Dropdown>
+              <DropdownTrigger>
+                <div
+                  role="button"
+                  className="flex flex-col items-center justify-center h-full min-h-[140px] border border-dashed border-default-200 rounded-xl hover:border-primary/50 hover:bg-white/50 cursor-pointer transition-all group gap-2"
+                >
+                  <div className="w-10 h-10 rounded-full bg-default-100 flex items-center justify-center group-hover:bg-primary/10 group-hover:text-primary transition-colors">
+                    <Plus size={20} className="text-default-400 group-hover:text-primary" />
+                  </div>
+                  <span className="text-xs font-bold text-default-400 uppercase tracking-wider group-hover:text-primary">Add Widget</span>
+                </div>
+              </DropdownTrigger>
+              <DropdownMenu aria-label="Add Widget Actions">
+                <DropdownItem
+                  key="text"
+                  startContent={<FileText size={16} />}
+                  onPress={() => addWidget('text')}
+                >
+                  Text Note
+                </DropdownItem>
+                <DropdownItem
+                  key="file"
+                  startContent={<FileIcon size={16} />}
+                  onPress={() => addWidget('file')}
+                >
+                  File Placeholder
+                </DropdownItem>
+              </DropdownMenu>
+            </Dropdown>
           </div>
         </div>
       </div>

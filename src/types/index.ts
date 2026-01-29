@@ -59,7 +59,8 @@ export interface TextElement {
   pageId?: string; // Per pageLink
   spaceId?: string; // Per spaceEmbed
   elementId?: string; // Per elementEmbed
-  sourceSpaceId?: string; // Space di origine per elementEmbed
+  blockId?: string; // Per blockEmbed
+  sourceSpaceId?: string; // Space di origine per elementEmbed/blockEmbed
   metadata?: {
     // File element metadata
     fileLayout?: 'square' | 'bookmark' | 'grid';

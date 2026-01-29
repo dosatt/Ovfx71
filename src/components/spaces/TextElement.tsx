@@ -2037,7 +2037,7 @@ export function TextElement({
               />
             ) : effectiveBlock.type === 'blockEmbed' ? (
               <RenderBlockEmbed
-                blockId={block.elementId || ''}
+                blockId={block.elementId || block.blockId || ''}
                 sourceSpaceId={block.sourceSpaceId}
                 spacesState={spacesState}
                 viewportsState={viewportsState}

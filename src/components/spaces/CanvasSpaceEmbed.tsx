@@ -42,7 +42,7 @@ export function CanvasSpaceEmbed({
   onNavigate
 }: CanvasSpaceEmbedProps) {
   // Trova lo space completo dai dati
-  const embeddedSpace = element.spaceId 
+  const embeddedSpace = element.spaceId
     ? spacesState.getSpace(element.spaceId)
     : null;
 
@@ -64,7 +64,7 @@ export function CanvasSpaceEmbed({
   // Se non troviamo lo space, mostra un placeholder con le info che abbiamo
   if (!embeddedSpace) {
     const TypeIcon = element.spaceType ? getTypeIcon(element.spaceType) : FileText;
-    
+
     return (
       <foreignObject
         x={element.x}
