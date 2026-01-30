@@ -467,7 +467,7 @@ const DraggableMultiDayEvent = memo(({
         text-[10px] px-1.5 rounded-sm truncate select-none shadow-sm
         flex items-center gap-1 group calendar-event-item
         ${isResizing ? 'bg-primary/5 ring-1 ring-primary/10' : getTypeStyles()}
-        ${isSelected ? 'z-[110]' : ''}
+        ${isSelected ? 'z-[32]' : ''}
         ${isHovered && !isSelected && !isResizing ? 'ring-2 ring-primary/50' : ''}
         ${isStart ? 'rounded-l' : ''}
         ${isEnd ? 'rounded-r' : ''}
@@ -1155,6 +1155,8 @@ export function CalendarApp({ spacesState, viewportsState }: CalendarAppProps) {
   }, [view]);
   const { isOpen, onOpen, onOpenChange, onClose } = useDisclosure();
   const [containerRef, setContainerRef] = useState<HTMLDivElement | null>(null);
+  const headerContainerRef = useRef<HTMLDivElement>(null);
+  const sidebarContainerRef = useRef<HTMLDivElement>(null);
 
   // Zoom state for week/day views
   const [zoomLevel, setZoomLevel] = useState(1.0);
@@ -1379,12 +1381,15 @@ export function CalendarApp({ spacesState, viewportsState }: CalendarAppProps) {
 
     // Prevent date shifts during drag OR if a shift is already pending
     if (isAnyDraggingGlobal || pendingScrollRef.current) {
-      // Still sync header scroll though - REMOVED (using sticky)
-      // if (headerRef.current.scrollLeft !== e.currentTarget.scrollLeft) {
-      //   headerRef.current.scrollLeft = e.currentTarget.scrollLeft;
-      // }
+      // Sync external containers even during drag/pending scroll for visual consistency
+      if (headerContainerRef.current) headerContainerRef.current.scrollLeft = e.currentTarget.scrollLeft;
+      if (sidebarContainerRef.current) sidebarContainerRef.current.scrollTop = e.currentTarget.scrollTop;
       return;
     }
+
+    // Sync external containers
+    if (headerContainerRef.current) headerContainerRef.current.scrollLeft = e.currentTarget.scrollLeft;
+    if (sidebarContainerRef.current) sidebarContainerRef.current.scrollTop = e.currentTarget.scrollTop;
 
     // Sync header X scroll logic removed (using sticky positioning now)
 
@@ -1937,7 +1942,7 @@ export function CalendarApp({ spacesState, viewportsState }: CalendarAppProps) {
         const totalDays = n + 120;
         if (containerRef.scrollWidth) {
           const trackWidth = containerRef.scrollWidth;
-          const dayWidth = (trackWidth - 60) / totalDays;
+          const dayWidth = trackWidth / totalDays;
           const targetScrollLeft = 60 * dayWidth;
           containerRef.scrollTo({ left: targetScrollLeft, behavior: 'instant' });
         }
@@ -2660,83 +2665,105 @@ export function CalendarApp({ spacesState, viewportsState }: CalendarAppProps) {
   const renderDayView = () => {
     const hours = Array.from({ length: 24 }, (_, i) => i);
     const dayEvents = allEvents.filter(event => isSameDay(event.start, currentDate));
+    const SIDEBAR_WIDTH = 48;
 
     return (
-      <div
-        ref={setContainerRef}
-        className="flex h-full overflow-auto select-none"
-        onMouseUp={(e) => isSelecting && handleEndSelectionStable(e)}
-        onMouseLeave={() => isSelecting && handleEndSelectionStable()}
-      >
-        <div className="w-[60px] shrink-0 border-r border-divider bg-default-50/50 relative">
-          <div className="h-[40px] sticky top-0 bg-default-50/50 z-10 border-b border-divider" />
-          {hours.map(hour => (
-            <div key={hour} style={{ height: `${hourHeight}px` }} className="px-1 relative border-t border-divider text-[10px] text-default-400">
-              <span className="absolute -top-[7px] left-1/2 -translate-x-1/2 bg-default-50 px-1 rounded-sm">
-                {`${hour}:00`}
-              </span>
-            </div>
-          ))}
-        </div>
-
-        <div className="flex-1 relative flex flex-col shrink-0">
-          <div className="h-[40px] flex items-center justify-center border-b border-divider sticky top-0 bg-white z-10 font-bold shrink-0">
+      <div className="flex flex-col h-full bg-white relative overflow-hidden select-none">
+        {/* TOP ROW: Corner & Header */}
+        <div className="flex shrink-0 h-[36px] w-full border-b border-divider bg-white">
+          <div
+            className="shrink-0 border-r border-divider bg-default-50 flex items-center justify-center font-bold text-[9px] text-default-400 uppercase tracking-widest"
+            style={{ width: `${SIDEBAR_WIDTH}px` }}
+          >
+            Time
+          </div>
+          <div className="flex-1 flex items-center justify-center font-bold text-[12px] text-default-800 bg-white">
             {format(currentDate, 'EEEE d MMMM', { locale: enUS })}
           </div>
-          <div className="relative shrink-0 overflow-hidden" style={{ height: hourHeight * 24 }}>
-            {hours.map(hour => (
-              <CalendarDaySlot
-                key={hour}
-                hour={hour}
-                day={currentDate}
-                onStartSelection={handleStartSelection}
-                onUpdateSelection={handleUpdateSelection}
-                onUpdateEvent={handleUpdateEvent}
-                allEvents={allEvents}
-                hourHeight={hourHeight}
-                isAnyDragging={isAnyDraggingGlobal}
-                isSelecting={isSelecting}
-                onDragEnter={handleDragEnter}
-                onDragLeave={handleDragLeave}
-              />
-            ))}
+        </div>
 
-            {selectionRange && isSameDay(selectionRange.start, currentDate) && (
-              <div
-                className="absolute left-1 right-1 bg-primary/30 border-2 border-primary rounded-md z-30 pointer-events-none"
-                style={{
-                  top: `${Math.min(selectionRange.start.getHours(), selectionRange.end.getHours()) * hourHeight}px`,
-                  height: `${Math.max(1, Math.abs(selectionRange.end.getHours() - selectionRange.start.getHours())) * hourHeight}px`
-                }}
-              />
-            )}
+        {/* BOTTOM ROW: Sidebar & Grid */}
+        <div className="flex flex-1 min-h-0 overflow-hidden">
+          {/* Sidebar Area */}
+          <div
+            ref={sidebarContainerRef}
+            className="shrink-0 overflow-hidden border-r border-divider bg-default-50/50 pointer-events-none"
+            style={{ width: `${SIDEBAR_WIDTH}px` }}
+          >
+            <div style={{ height: `${hourHeight * 24}px` }} className="flex flex-col">
+              {hours.map(hour => (
+                <div key={hour} style={{ height: `${hourHeight}px` }} className="px-1 relative border-t border-divider text-[9px] text-default-400 font-medium">
+                  <span className="absolute -top-[7px] left-1/2 -translate-x-1/2 bg-default-50 px-1 rounded-sm">
+                    {`${hour}:00`}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
 
-            {calculateTimelineLayout(allEvents.filter(e => {
-              const start = new Date(e.start);
-              const end = e.end ? new Date(e.end) : addMinutes(start, 60);
-              return isWithinInterval(currentDate, { start: startOfDay(start), end: endOfDay(end) });
-            }), hourHeight, currentDate).map((item, idx) => (
-              <DraggableTimelineEvent
-                key={item.id || idx}
-                event={item}
-                top={item.layout.top}
-                height={item.layout.height}
-                left={item.layout.left}
-                width={item.layout.width}
-                onUpdate={(id: string, updates: any) => handleUpdateEvent(id, id, item.sourceSpaceId, updates)}
-                onHoverEvent={(id: string | null) => {
-                  if (!dragGhostItem && !isSelecting) {
-                    setHoveredEventId(id);
-                  }
-                }}
-                isHovered={hoveredEventId === item.id}
-                onSelect={handleToggleEventSelection}
-                onContextMenu={handleEventContextMenu}
-                onOpenDrawer={handleOpenDrawer}
-                hourHeight={hourHeight}
-                isSelected={selectedEventId === item.id || selectedEventIds.has(item.id)}
-              />
-            ))}
+          {/* Grid Area */}
+          <div
+            ref={setContainerRef}
+            className="flex-1 overflow-auto relative no-scrollbar scroll-smooth overscroll-none"
+            onScroll={handleScroll}
+            onMouseUp={(e) => isSelecting && handleEndSelectionStable(e)}
+            onMouseLeave={() => isSelecting && handleEndSelectionStable()}
+          >
+            <div className="relative shrink-0 overflow-hidden" style={{ height: hourHeight * 24 }}>
+              {hours.map(hour => (
+                <CalendarDaySlot
+                  key={hour}
+                  hour={hour}
+                  day={currentDate}
+                  onStartSelection={handleStartSelection}
+                  onUpdateSelection={handleUpdateSelection}
+                  onUpdateEvent={handleUpdateEvent}
+                  allEvents={allEvents}
+                  hourHeight={hourHeight}
+                  isAnyDragging={isAnyDraggingGlobal}
+                  isSelecting={isSelecting}
+                  onDragEnter={handleDragEnter}
+                  onDragLeave={handleDragLeave}
+                />
+              ))}
+
+              {selectionRange && isSameDay(selectionRange.start, currentDate) && (
+                <div
+                  className="absolute left-1 right-1 bg-primary/30 border-2 border-primary rounded-md z-30 pointer-events-none"
+                  style={{
+                    top: `${Math.min(selectionRange.start.getHours(), selectionRange.end.getHours()) * hourHeight}px`,
+                    height: `${Math.max(1, Math.abs(selectionRange.end.getHours() - selectionRange.start.getHours())) * hourHeight}px`
+                  }}
+                />
+              )}
+
+              {calculateTimelineLayout(allEvents.filter(e => {
+                const start = new Date(e.start);
+                const end = e.end ? new Date(e.end) : addMinutes(start, 60);
+                return isWithinInterval(currentDate, { start: startOfDay(start), end: endOfDay(end) });
+              }), hourHeight, currentDate).map((item, idx) => (
+                <DraggableTimelineEvent
+                  key={item.id || idx}
+                  event={item}
+                  top={item.layout.top}
+                  height={item.layout.height}
+                  left={item.layout.left}
+                  width={item.layout.width}
+                  onUpdate={(id: string, updates: any) => handleUpdateEvent(id, id, item.sourceSpaceId, updates)}
+                  onHoverEvent={(id: string | null) => {
+                    if (!dragGhostItem && !isSelecting) {
+                      setHoveredEventId(id);
+                    }
+                  }}
+                  isHovered={hoveredEventId === item.id}
+                  onSelect={handleToggleEventSelection}
+                  onContextMenu={handleEventContextMenu}
+                  onOpenDrawer={handleOpenDrawer}
+                  hourHeight={hourHeight}
+                  isSelected={selectedEventId === item.id || selectedEventIds.has(item.id)}
+                />
+              ))}
+            </div>
           </div>
         </div>
       </div>
@@ -2918,77 +2945,80 @@ export function CalendarApp({ spacesState, viewportsState }: CalendarAppProps) {
 
   const renderHorizontalGrid = (n: number) => {
     const BUFFER = 60;
-    // Render: [-BUFFER ... -1, 0, 1 ... n-1, n ... n+BUFFER-1]
     const totalDays = n + (BUFFER * 2);
     const startOffset = -BUFFER;
-
-    // Stable day generation
     const daysBuffer = Array.from({ length: totalDays }, (_, i) => addDays(startOfDay(currentDate), i + startOffset));
     const hours = Array.from({ length: 24 }, (_, i) => i);
 
-    // Total track width must include the sidebar (60px) plus the columns.
-    // However, since columns are flex-1, we use containerWidthPct to scale them relative to viewport.
     const totalWidthPct = (totalDays / n) * 100;
+    const SIDEBAR_WIDTH = 48;
+    const HEADER_HEIGHT = 36; // Slightly more than 34 to accommodate text comfortably
 
     return (
       <div className="flex flex-col h-full bg-white relative overflow-hidden select-none">
-        <div
-          ref={setContainerRef}
-          className="flex-1 overflow-auto relative no-scrollbar scroll-smooth overscroll-none"
-          onScroll={handleScroll}
-        >
-          {/* Scrollable track with explicit width for sticky row bounds */}
+        {/* TOP ROW: Corner & Header */}
+        <div className="flex shrink-0 h-[36px] w-full border-b border-divider bg-white">
           <div
-            className="flex flex-col relative min-h-full"
-            style={{ width: `${totalWidthPct}%`, minWidth: '100%' }}
+            className="shrink-0 border-r border-divider bg-default-50 flex items-center justify-center font-bold text-[9px] text-default-400 uppercase tracking-widest"
+            style={{ width: `${SIDEBAR_WIDTH}px` }}
           >
-            {/* Header Row - Sticky Top */}
-            <div className="sticky top-0 z-40 flex border-b border-divider bg-white shrink-0 h-[40px] w-full">
-              {/* Corner */}
-              <div
-                className="w-[60px] shrink-0 border-r border-divider bg-default-50 sticky left-0 z-50 flex items-center justify-center font-bold text-[10px] text-default-400"
-                style={{ transform: 'translate3d(0,0,0)', willChange: 'transform' }}
-              >
-                TIME
-              </div>
-
-              {/* Header Days */}
-              <div className="flex-1 flex bg-white min-w-0">
-                {daysBuffer.map((day, i) => {
-                  const isToday = isSameDay(day, new Date());
-                  return (
-                    <div key={day.getTime()} className="flex-1 flex flex-col items-center justify-center border-r border-divider min-w-0 bg-white">
-                      <span className="text-[10px] uppercase font-bold text-default-400 leading-none">{format(day, 'EEE', { locale: enUS })}</span>
-                      <span className={`text-[13px] mt-0.5 ${isToday ? 'font-black text-primary' : 'font-bold text-default-800'}`}>{format(day, 'd')}</span>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-
-            {/* Grid Body Sticky Row */}
-            <div className="flex flex-1 relative bg-white min-h-0 overflow-visible" style={{ width: '100%' }}>
-              {/* Sidebar - Sticky Left */}
-              <div
-                className="w-[60px] shrink-0 bg-default-50 border-r border-divider sticky left-0 z-40 pointer-events-none self-start flex flex-col"
-                style={{
-                  height: `${hourHeight * 24}px`,
-                  transform: 'translate3d(0,0,0)',
-                  willChange: 'transform'
-                }}
-              >
-                {hours.map(hour => (
-                  <div key={hour} style={{ height: `${hourHeight}px` }} className="px-1 relative border-t border-divider text-[10px] text-default-400 font-medium">
-                    <span className="absolute -top-[7px] left-1/2 -translate-x-1/2 bg-default-50 px-1 rounded-sm">
-                      {`${hour}:00`}
+            Time
+          </div>
+          <div
+            ref={headerContainerRef}
+            className="flex-1 overflow-hidden pointer-events-none"
+          >
+            <div
+              className="flex h-full"
+              style={{ width: `${totalWidthPct}%` }}
+            >
+              {daysBuffer.map((day) => {
+                const isToday = isSameDay(day, new Date());
+                return (
+                  <div key={day.getTime()} className="flex-1 flex items-center justify-center border-r border-divider min-w-0 bg-white px-1">
+                    <span className={`text-[11px] whitespace-nowrap ${isToday ? 'font-black text-primary' : 'font-bold text-default-700'}`}>
+                      {format(day, 'EEE d', { locale: enUS })}
                     </span>
                   </div>
-                ))}
-              </div>
+                );
+              })}
+            </div>
+          </div>
+        </div>
 
-              {/* Columns Area - Explicitly flex to fill the remaining track width */}
-              <div className="flex-1 flex min-w-0 h-full relative" style={{ width: `calc(100% - 60px)` }}>
-                {daysBuffer.map((day, i) => {
+        {/* BOTTOM ROW: Sidebar & Grid */}
+        <div className="flex flex-1 min-h-0 overflow-hidden">
+          {/* Sidebar Area */}
+          <div
+            ref={sidebarContainerRef}
+            className="shrink-0 overflow-hidden border-r border-divider bg-default-50/50 pointer-events-none"
+            style={{ width: `${SIDEBAR_WIDTH}px` }}
+          >
+            <div style={{ height: `${hourHeight * 24}px` }} className="flex flex-col">
+              {hours.map(hour => (
+                <div key={hour} style={{ height: `${hourHeight}px` }} className="px-1 relative border-t border-divider text-[9px] text-default-400 font-medium">
+                  <span className="absolute -top-[7px] left-1/2 -translate-x-1/2 bg-default-50 px-1 rounded-sm">
+                    {`${hour}:00`}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Grid Area */}
+          <div
+            ref={setContainerRef}
+            className="flex-1 overflow-auto relative no-scrollbar scroll-smooth overscroll-none"
+            onScroll={handleScroll}
+            onMouseUp={(e) => isSelecting && handleEndSelectionStable(e)}
+            onMouseLeave={() => isSelecting && handleEndSelectionStable()}
+          >
+            <div
+              className="relative"
+              style={{ width: `${totalWidthPct}%`, height: `${hourHeight * 24}px` }}
+            >
+              <div className="flex h-full w-full">
+                {daysBuffer.map((day) => {
                   const dayEvents = allEvents.filter(event => {
                     const eventStart = new Date(event.start);
                     const eventEnd = event.end ? new Date(event.end) : addMinutes(eventStart, 60);
@@ -2996,107 +3026,90 @@ export function CalendarApp({ spacesState, viewportsState }: CalendarAppProps) {
                   });
 
                   return (
-                    <div key={day.getTime()} className="flex-1 border-r border-divider relative min-w-0 bg-white">
-                      <div className="relative w-full overflow-hidden" style={{ height: hourHeight * 24 }}>
-                        {hours.map(hour => (
-                          <CalendarDaySlot
-                            key={hour}
-                            hour={hour}
-                            day={day}
-                            onStartSelection={handleStartSelection}
-                            onUpdateSelection={handleUpdateSelection}
-                            onUpdateEvent={handleUpdateEvent}
-                            allEvents={allEvents}
-                            hourHeight={hourHeight}
-                            isAnyDragging={isAnyDraggingGlobal}
-                            isSelecting={isSelecting}
-                            onDragEnter={handleDragEnter}
-                            onDragLeave={handleDragLeave}
-                          />
-                        ))}
+                    <div key={day.getTime()} className="flex-1 border-r border-divider relative min-w-0 h-full">
+                      {hours.map(hour => (
+                        <CalendarDaySlot
+                          key={hour}
+                          hour={hour}
+                          day={day}
+                          onStartSelection={handleStartSelection}
+                          onUpdateSelection={handleUpdateSelection}
+                          onUpdateEvent={handleUpdateEvent}
+                          allEvents={allEvents}
+                          hourHeight={hourHeight}
+                          isAnyDragging={isAnyDraggingGlobal}
+                          isSelecting={isSelecting}
+                          onDragEnter={handleDragEnter}
+                          onDragLeave={handleDragLeave}
+                        />
+                      ))}
 
-                        {selectionRange && (() => {
-                          // Normalize range
-                          const s = selectionRange.start < selectionRange.end ? selectionRange.start : selectionRange.end;
-                          const e = selectionRange.start < selectionRange.end ? selectionRange.end : selectionRange.start;
+                      {selectionRange && (() => {
+                        const s = selectionRange.start < selectionRange.end ? selectionRange.start : selectionRange.end;
+                        const e = selectionRange.start < selectionRange.end ? selectionRange.end : selectionRange.start;
+                        const dayStart = startOfDay(day);
+                        const dayEnd = endOfDay(day);
 
-                          const dayStart = startOfDay(day);
-                          const dayEnd = endOfDay(day);
+                        if (s < dayEnd && e > dayStart) {
+                          let top = 0;
+                          let height = hourHeight * 24;
+                          const isS = isSameDay(s, day);
+                          const isE = isSameDay(e, day);
 
-                          // Check if selection overlaps this day
-                          if (s < dayEnd && e > dayStart) {
-                            let top = 0;
-                            let height = hourHeight * 24;
-
-                            const isS = isSameDay(s, day);
-                            const isE = isSameDay(e, day);
-
-                            if (isS && isE) {
-                              top = (s.getHours() * 60 + s.getMinutes()) * (hourHeight / 60);
-                              const durationMinutes = (e.getHours() * 60 + e.getMinutes()) - (s.getHours() * 60 + s.getMinutes());
-                              height = Math.max(15 * (hourHeight / 60), durationMinutes * (hourHeight / 60));
-                            } else if (isS) {
-                              top = (s.getHours() * 60 + s.getMinutes()) * (hourHeight / 60);
-                              height = (24 * 60 - (s.getHours() * 60 + s.getMinutes())) * (hourHeight / 60);
-                            } else if (isE) {
-                              top = 0;
-                              height = (e.getHours() * 60 + e.getMinutes()) * (hourHeight / 60);
-                            }
-
-                            return (
-                              <div
-                                className={`
-                                  absolute left-0 right-0 bg-primary/30 z-[35] pointer-events-none border-x-2 border-primary
-                                  ${isS ? 'border-t-2 rounded-t-md mt-0.5' : ''} 
-                                  ${isE ? 'border-b-2 rounded-b-md mb-0.5' : ''}
-                                `}
-                                style={{
-                                  top: `${top}px`,
-                                  height: `${height}px`,
-                                  left: '2px',
-                                  right: '2px'
-                                }}
-                              />
-                            );
+                          if (isS && isE) {
+                            top = (s.getHours() * 60 + s.getMinutes()) * (hourHeight / 60);
+                            const durationMinutes = (e.getHours() * 60 + e.getMinutes()) - (s.getHours() * 60 + s.getMinutes());
+                            height = Math.max(15 * (hourHeight / 60), durationMinutes * (hourHeight / 60));
+                          } else if (isS) {
+                            top = (s.getHours() * 60 + s.getMinutes()) * (hourHeight / 60);
+                            height = (24 * 60 - (s.getHours() * 60 + s.getMinutes())) * (hourHeight / 60);
+                          } else if (isE) {
+                            top = 0;
+                            height = (e.getHours() * 60 + e.getMinutes()) * (hourHeight / 60);
                           }
-                          return null;
-                        })()}
 
-                        {calculateTimelineLayout(dayEvents, hourHeight, day).map((item, idx) => (
-                          <DraggableTimelineEvent
-                            key={item.id || idx}
-                            event={item}
-                            top={item.layout.top}
-                            height={item.layout.height}
-                            left={item.layout.left}
-                            width={item.layout.width}
-                            onUpdate={(id: string, updates: any) => handleUpdateEvent(id, id, item.sourceSpaceId, updates)}
-                            onNavigate={(sid: string, title: string) => {
-                              if (viewportsState) {
-                                viewportsState.replaceCurrentTab(viewportsState.focusedViewportId, sid, undefined, title);
-                              }
-                            }}
-                            onHoverEvent={(id: string | null) => {
-                              if (!dragGhostItem && !isSelecting) {
-                                setHoveredEventId(id);
-                              }
-                            }}
-                            isHovered={hoveredEventId === item.id}
-                            onSelect={handleToggleEventSelection}
-                            onContextMenu={handleEventContextMenu}
-                            onOpenDrawer={handleOpenDrawer}
-                            hourHeight={hourHeight}
-                            isSelected={selectedEventId === item.id || selectedEventIds.has(item.id)}
-                          />
-                        ))}
-                      </div>
+                          return (
+                            <div
+                              className={`absolute left-0 right-0 bg-primary/30 z-[35] pointer-events-none border-x-2 border-primary ${isS ? 'border-t-2 rounded-t-md mt-0.5' : ''} ${isE ? 'border-b-2 rounded-b-md mb-0.5' : ''}`}
+                              style={{ top: `${top}px`, height: `${height}px`, left: '2px', right: '2px' }}
+                            />
+                          );
+                        }
+                        return null;
+                      })()}
+
+                      {calculateTimelineLayout(dayEvents, hourHeight, day).map((item, idx) => (
+                        <DraggableTimelineEvent
+                          key={item.id || idx}
+                          event={item}
+                          top={item.layout.top}
+                          height={item.layout.height}
+                          left={item.layout.left}
+                          width={item.layout.width}
+                          onUpdate={(id: string, updates: any) => handleUpdateEvent(id, id, item.sourceSpaceId, updates)}
+                          onNavigate={(sid: string, title: string) => {
+                            if (viewportsState) {
+                              viewportsState.replaceCurrentTab(viewportsState.focusedViewportId, sid, undefined, title);
+                            }
+                          }}
+                          onHoverEvent={(id: string | null) => {
+                            if (!dragGhostItem && !isSelecting) {
+                              setHoveredEventId(id);
+                            }
+                          }}
+                          isHovered={hoveredEventId === item.id}
+                          onSelect={handleToggleEventSelection}
+                          onContextMenu={handleEventContextMenu}
+                          onOpenDrawer={handleOpenDrawer}
+                          hourHeight={hourHeight}
+                          isSelected={selectedEventId === item.id || selectedEventIds.has(item.id)}
+                        />
+                      ))}
                     </div>
                   );
                 })}
               </div>
             </div>
-
-            <div className="h-10 w-full shrink-0" />
           </div>
         </div>
       </div>
@@ -4375,7 +4388,7 @@ function DraggableTimelineEvent({ event, top, height, left = 0, width = 100, onU
         height: `${height}px`,
         left: `calc(${left}% + 2px)`,
         width: `calc(${width}% - 4px)`,
-        zIndex: isDragging ? -1 : (isSelected ? 60 : 50),
+        zIndex: isDragging ? -1 : (isSelected ? 32 : 30),
         pointerEvents: isDragging ? 'none' : 'auto',
         visibility: isDragging ? 'hidden' : 'visible',
         boxShadow: isSelected ? '0 0 0 2px #3b82f6' : undefined,
