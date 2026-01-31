@@ -80,8 +80,40 @@ export function PageEditor({
 
   const showProperties = space.metadata?.showProperties === true; // Default to false (hidden)
 
+  // Handle scrolling to a specific block if requested via URL/navigation
+  useEffect(() => {
+    // Check if space.id contains a query parameter (e.g. from PageEditor navigation)
+    const [id, query] = space.id.split('?');
+    if (query) {
+      const params = new URLSearchParams(query);
+      const targetBlockId = params.get('blockId');
+
+      if (targetBlockId) {
+        // Wait for blocks to be rendered
+        setTimeout(() => {
+          const element = document.querySelector(`[data-block-id="${targetBlockId}"]`);
+          if (element) {
+            element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+
+            // Optional: highlight the block briefly
+            (element as HTMLElement).style.transition = 'background-color 0.5s';
+            (element as HTMLElement).style.backgroundColor = 'rgba(34, 197, 94, 0.1)'; // green-500/10
+            setTimeout(() => {
+              (element as HTMLElement).style.backgroundColor = '';
+            }, 2000);
+          }
+        }, 500);
+      }
+    }
+  }, [space.id]);
+
   // Focus sul primo blocco quando la pagina viene creata
   useEffect(() => {
+    // Se c'è un targetBlockId nel path, evitiamo di forzare il focus sul primo blocco
+    // per non interrompere lo scrolling
+    const hasTargetBlock = space.id.includes('blockId=');
+    if (hasTargetBlock) return;
+
     if (blocks.length === 0) {
       addBlock('text');
       // Wait for the state to update and block to be rendered
@@ -1183,12 +1215,12 @@ export function PageEditor({
           setHasFocus(false);
         }
       }}
-      className={`flex-1 h-full overflow-y-auto overflow-x-hidden transition-colors duration-200 autohide-scrollbar relative ${isActive ? 'is-active' : ''} ${isCalendarEmbed ? '' : 'min-h-[500px] pb-32'} ${isOver ? 'bg-primary/5' : ''}`}
+      className={`flex-1 h-full overflow-y-auto transition-colors duration-200 autohide-scrollbar relative ${isActive ? 'is-active' : ''} ${isCalendarEmbed ? '' : 'min-h-[500px] pb-32'} ${isOver ? 'bg-primary/5' : ''}`}
     >
       <div
         className={`${isCalendarEmbed ? 'w-full' : 'max-w-4xl mx-auto'} flex flex-col transition-all duration-300 ${isCalendarEmbed
           ? 'p-0'
-          : `pb-8 px-8 ${showProperties ? 'pt-6' : 'pt-[15vh]'}`
+          : `pb-8 px-16 ${showProperties ? 'pt-6' : 'pt-[15vh]'}`
           }`}
       >
         {/* Properties Section */}

@@ -2036,12 +2036,14 @@ export function TextElement({
                 viewportsState={viewportsState}
               />
             ) : effectiveBlock.type === 'blockEmbed' ? (
-              <RenderBlockEmbed
-                blockId={block.elementId || block.blockId || ''}
-                sourceSpaceId={block.sourceSpaceId}
-                spacesState={spacesState}
-                viewportsState={viewportsState}
-              />
+              <div className="group w-full relative">
+                <RenderBlockEmbed
+                  blockId={block.elementId || block.blockId || ''}
+                  sourceSpaceId={block.sourceSpaceId}
+                  spacesState={spacesState}
+                  viewportsState={viewportsState}
+                />
+              </div>
             ) : effectiveBlock.type === 'callout' ? (
               <div
                 className="w-full flex flex-col"
